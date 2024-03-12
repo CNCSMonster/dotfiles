@@ -9,7 +9,7 @@ the deploy tool i used is called [xdotter](https://github.com/cncsmonster/xdotte
 ```bash
 git clone https://github.com/cncsmonster/dotfiles.git
 cd dotfiles
-cargo binstall xdotter
+cargo install xdotter
 # to see if the deploy will work
 xdotter deploy --dry-run
 # to deploy the dotfiles
