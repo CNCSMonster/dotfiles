@@ -1,0 +1,9 @@
+subs = ["cargo"]
+
+[links]
+yazi = "~/.config/yazi"
+gdb = "~/.config/gdb"
+navi = "~/.local/share/navi/cheats"
+LazyVim = "~/.config/LazyVim"
+git = "~/.config/git"
+go = "~/.config/go"
