@@ -1,9 +1,9 @@
-subs = [
-    # 
-    "cargo",
-    "go",
-    "yazi",
-]
+# subs = [
+#     # 
+#     "cargo",
+#     "go",
+#     "yazi",
+# ]
 
 
 [links]
@@ -11,3 +11,4 @@ gdb = "~/.config/gdb"
 navi = "~/.local/share/navi/cheats"
 LazyVim = "~/.config/LazyVim"
 git = "~/.config/git"
+"starship.toml" = "~/.config/starship.toml"
