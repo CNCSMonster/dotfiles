@@ -1,0 +1,4 @@
+[links]
+zshrc = "~/.zshrc"
+config = "~/.config/zsh"
+zimrc = "~/.zimrc"
