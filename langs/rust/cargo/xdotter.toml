@@ -1,2 +1,3 @@
 [links]
 "config.toml" = "~/.cargo/config.toml"
+[dependencies]

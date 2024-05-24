@@ -1,14 +1,11 @@
-# subs = [
-#     # 
-#     "cargo",
-#     "go",
-#     "yazi",
-# ]
-
+[dependencies]
+go = "langs/go"
+rust = "langs/rust"
+zsh = "shells/zsh"
 
 [links]
-gdb = "~/.config/gdb"
-navi = "~/.local/share/navi/cheats"
-LazyVim = "~/.config/LazyVim"
-git = "~/.config/git"
-"starship.toml" = "~/.config/starship.toml"
+"navi" = "~/.local/share/navi/cheats"
+"yazi" = "~/.config/yazi"
+"git" = "~/.config/git"
+"gdb" = "~/.config/gdb"
+"LazyVim" = "~/.config/LazyVim"

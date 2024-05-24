@@ -3,10 +3,9 @@
     email = cncsmonster@163.com
 [init]
     defaultBranch = main
-# [core]
-#     # pager = delta
-#     quotepath = false
-#     editor = lvim
+[core]
+    # pager = delta
+    editor = code
 [interactive]
     diffFilter = delta --color-only
 [delta]

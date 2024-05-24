@@ -8,6 +8,21 @@ export XDG_DATA_HOME="$HOME/.local/share"
 export RUSTUP_DIST_SERVER='https://mirrors.ustc.edu.cn/rust-static'
 export RUSTUP_UPDATE_ROOT='https://mirrors.ustc.edu.cn/rust-static/rustup'
 
+# go路径
+export GOBIN='/opt/go/bin'
+export PATH="$GOBIN:$PATH"
+
+# nvim 路径
+export PATH="/opt/nvim/bin:$PATH"
+
+# moonbit 路径
+export PATH="$HOME/.moon/bin:$PATH"
+
+# llvm镜像源
+export LLVM_PATH='/usr/lib/llvm'
+export LLVM_BIN_PATH="$LLVM_PATH/bin"
+export PATH="$LLVM_BIN_PATH:$PATH"
+
 # 用户可执行程序目录
 export PATH="$HOME/.cargo/bin:\
 $PATH:\
@@ -32,6 +47,6 @@ export EDITOR='code'
 # nodejs 本体镜像
 export FNM_NODE_DIST_MIRROR='https://npmmirror.com/mirrors/node'
 
-# mcfly
-export MCFLY_FUZZY=2
-export MCFLY_RESULTS=25
+# # mcfly
+# export MCFLY_FUZZY=2
+# export MCFLY_RESULTS=25

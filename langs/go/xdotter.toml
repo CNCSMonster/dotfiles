@@ -1,2 +1,3 @@
+[dependencies]
 [links]
 env = "~/.config/go/env"

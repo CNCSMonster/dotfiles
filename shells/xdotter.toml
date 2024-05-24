@@ -1,0 +1,9 @@
+[dependencies]
+zsh = "./zsh"
+
+[links]
+# bash配置
+bashrc = "~/.bashrc"
+# 命令行高亮方案,渲染方案
+starship.toml = "~/.config/starship.toml"
+scripts = "~/.config/scripts"

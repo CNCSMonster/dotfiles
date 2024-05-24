@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+version=$1
+rm /usr/lib/llvm
+ln -s /usr/lib/llvm-$version /usr/lib/llvm
