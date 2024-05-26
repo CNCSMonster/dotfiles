@@ -3,12 +3,11 @@
 
 [[ -n "$INTER_DONE" ]] && return
 
-source "$ZSH_CONFIG_HOME/fn.sh"
-
+source "$HOME/.config/shells/common/fn.sh"
 
 if [ -n "$ZSH_VERSION" ]; then
 	SH='zsh'
-	source "$HOME/.config/zsh/config.zsh"
+	source "$HOME/.config/shells/zsh/config.zsh"
 elif [ -n "$BASH_VERSION" ]; then
 	SH='bash'
 fi
@@ -17,7 +16,7 @@ fi
 eval "$(zoxide init $SH)"
 eval "$(starship init $SH)"
 # eval "$(fnm env --use-on-cd)"
-# eval "$(mcfly init $SH)"
+eval "$(mcfly init $SH)"
 eval "$(navi widget $SH)"
 # eval "$(opam env)"
 

@@ -25,6 +25,7 @@ export PATH="$LLVM_BIN_PATH:$PATH"
 
 # 用户可执行程序目录
 export PATH="$HOME/.cargo/bin:\
+$HOME/.config/shells/scripts:\
 $PATH:\
 $HOME/.local/bin:\
 $HOME/.local/scripts:\

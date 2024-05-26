@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+# Prompt:
+# 编写一个bash脚本,删除失效的文件链接
+# 接受命令行参数<dir> ,用于指定要删除失效链接的目录
+# 接受flag -r, 如果有-r,则递归删除
+# 删除功能实现参考: find ${DIR} -type l ! -exec test -e {} \; -delete
+
+# 检查是否提供目录参数
+if [ -z "$1" ]; then
+  echo "Usage: $0 <dir> [-r]"
+  exit 1
+fi
+# 解析参数
+DIR=$1
+RECURSIVE=false
+if [ "$2" == "-r" ]; then
+  RECURSIVE=true
+fi
+# 删除失效链接的函数
+delete_broken_links() {
+  local target_dir=$1
+  if $RECURSIVE; then
+    find "$target_dir" -type l ! -exec test -e {} \; -delete
+  else
+    find "$target_dir" -maxdepth 1 -type l ! -exec test -e {} \; -delete
+  fi
+}
+
+# 执行删除操作
+delete_broken_links "$DIR"
+
+echo "Broken links in $DIR have been deleted."
+
+exit 0

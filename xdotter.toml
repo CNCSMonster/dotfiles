@@ -1,7 +1,6 @@
 [dependencies]
-go = "langs/go"
-rust = "langs/rust"
-zsh = "shells/zsh"
+langs = "langs"
+shells = "shells"
 
 [links]
 "navi" = "~/.local/share/navi/cheats"

@@ -1,0 +1,21 @@
+% conda
+
+; conda相关
+
+# 展示所有环境
+conda env list
+
+# 进入环境
+conda activate <env>
+$ env: conda环境名
+
+# 退出环境
+conda deactivate
+
+# 创建具有指定python版本的环境
+conda create -n <env_name> python=<python_version>
+$ python_version: 比如3.10
+
+# 从environment.yml创建环境
+conda env create -f <config_file>
+$ config_file: 环境文件名,一般为environment.yml

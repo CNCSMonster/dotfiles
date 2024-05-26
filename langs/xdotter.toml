@@ -1,0 +1,3 @@
+[dependencies]
+go = "go"
+rust = "rust"

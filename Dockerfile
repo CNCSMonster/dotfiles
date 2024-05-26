@@ -19,16 +19,12 @@ RUN apt-get install -y --no-install-recommends zsh
 RUN wget https://github.com/neovim/neovim/releases/download/nightly/nvim-linux64.tar.gz -O nvim-linux64.tar.gz && \
     tar -xzvf nvim-linux64.tar.gz -C /opt/ && rm nvim-linux64.tar.gz && mv /opt/nvim-linux64 /opt/nvim
 
-# Install Rust and some tools
-RUN CARGO_BIN=/root/.cargo/bin && PATH=$CARGO_BIN:$PATH && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup.sh && \
-    chmod u+x ./rustup.sh && ./rustup.sh -y && rm ./rustup.sh && \
-    rustup default nightly
-RUN CARGO_BIN=/root/.cargo/bin && PATH=$CARGO_BIN:$PATH && \
-    cargo install cargo-binstall parallel-disk-usage bat navi dotter starship eza conceal xdotter && \
-    cargo binstall -y yazi-fm zoxide fd-find parallel-disk-usage kondo
-
-# 运行的时候设置CARGO_BIN
+# Install LLVM and Clang
+RUN LLVM_PATH=/usr/lib/llvm-14 PATH=${LLVM_PATH}/bin:$PATH && \
+    wget https://apt.llvm.org/llvm.sh && \
+    chmod +x llvm.sh && ./llvm.sh 14 && rm ./llvm.sh && \
+    ln -s /usr/lib/llvm-14 /usr/lib/llvm && \
+    ln -s /usr/lib/llvm/bin/clang /usr/bin/clang
 
 # Install Golang and some tools
 RUN GOBIN=/opt/go/bin PATH=/opt/go/bin:$PATH GORPOXY=https://goproxy.cn && \
@@ -43,17 +39,31 @@ RUN GOBIN=/opt/go/bin PATH=/opt/go/bin:$PATH GORPOXY=https://goproxy.cn && \
     go install -v honnef.co/go/tools/cmd/staticcheck@latest && \
     go install -v golang.org/x/tools/gopls@latest
 
-# Install LLVM and Clang
-RUN LLVM_PATH=/usr/lib/llvm-14 PATH=${LLVM_PATH}/bin:$PATH && \
-    wget https://apt.llvm.org/llvm.sh && \
-    chmod +x llvm.sh && ./llvm.sh 14 && rm ./llvm.sh
 
-# 生成配置,复制当前配置到此目录之中,
+# Install Rust and some tools
+RUN CARGO_BIN=/root/.cargo/bin && PATH=$CARGO_BIN:$PATH && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup.sh && \
+    chmod u+x ./rustup.sh && ./rustup.sh -y && rm ./rustup.sh && \
+    rustup default nightly
+
+RUN CARGO_BIN=/root/.cargo/bin && PATH=$CARGO_BIN:$PATH && \
+    cargo install xdotter
+
 COPY . /root/dotfiles
 # 使用xdotter程序写入配置
 WORKDIR /root/dotfiles
-RUN CARGO_BIN=/root/.cargo/bin && PATH=$CARGO_BIN:$PATH && \
+RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
     xdotter deploy
 
+RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
+    cargo install cargo-binstall parallel-disk-usage bat navi starship eza conceal 
+
+RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
+    cargo install zoxide fd-find
+
+RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
+    cargo binstall -y yazi-fm kondo macchina mcfly
+
+WORKDIR /root
 
 CMD [ "/usr/bin/zsh" ]
