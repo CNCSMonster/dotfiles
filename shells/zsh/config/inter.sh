@@ -16,7 +16,7 @@ fi
 eval "$(zoxide init $SH)"
 eval "$(starship init $SH)"
 # eval "$(fnm env --use-on-cd)"
-eval "$(mcfly init $SH)"
+# eval "$(mcfly init $SH)"
 eval "$(navi widget $SH)"
 # eval "$(opam env)"
 
