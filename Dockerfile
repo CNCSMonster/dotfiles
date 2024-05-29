@@ -59,10 +59,10 @@ RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
     cargo install cargo-binstall parallel-disk-usage bat navi starship eza conceal 
 
 RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo install zoxide fd-find
+    cargo install zoxide fd-find macchina yazi-fm
 
 RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo binstall -y yazi-fm kondo macchina mcfly
+    cargo binstall -y kondo
 
 WORKDIR /root
 

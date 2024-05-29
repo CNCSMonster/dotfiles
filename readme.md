@@ -22,11 +22,15 @@ xdotter deploy
 you can experience my dotfiles by running the following command:
 
 ```bash
+# try to make sure there is no image has the same name
+docker rmi dotfiles
+# build the image
 docker build -t dotfiles -f Dockerfile .
 ```
 this Dockerfile use my dotfiles and use xdotter to deploy the dotfiles.
 you can get the final image and run it to experience the final environment:
-```
+
+```zsh
 docker run -it dotfiles
 ```
 
@@ -35,4 +39,4 @@ docker run -it dotfiles
 - https://github.com/TD-Sky/dotfiles
 - https://github.com/SuperCuber/dotter
 - https://github.com/5eqn/nvim-config
-
+- https://juejin.cn/post/7283030649610223668

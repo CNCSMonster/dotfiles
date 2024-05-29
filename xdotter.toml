@@ -2,9 +2,10 @@
 langs = "langs"
 shells = "shells"
 
+
 [links]
 "navi" = "~/.local/share/navi/cheats"
 "yazi" = "~/.config/yazi"
 "git" = "~/.config/git"
 "gdb" = "~/.config/gdb"
-"LazyVim" = "~/.config/LazyVim"
+"nvims" = "~/.config/nvims"
