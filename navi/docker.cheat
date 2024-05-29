@@ -1,5 +1,8 @@
 % docker
 
+# 删除所有已停止的容器
+docker container prune [-f]
+
 # 查看容器的日志
 docker container logs <name>
 

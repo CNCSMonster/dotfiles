@@ -1,0 +1,10 @@
+% apt
+
+; 更新apt包列表
+apt update
+
+; 下载指定软件包
+apt install <pkg_name>
+
+; 查询本地包列表,查询词支持正则表达式
+apt-cache search <search_term>
