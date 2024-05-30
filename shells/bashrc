@@ -130,7 +130,8 @@ export LLVM_SYS_100_PREFIX=/usr/lib/llvm-14
 export EDITOR=code
 
 source $HOME/.cargo/env
-source $HOME/.config/zsh/init.sh
+source $HOME/.config/shells/common/env.sh
+source $HOME/.config/shells/common/fn.sh
 
 eval "$(zoxide init bash)"
 
