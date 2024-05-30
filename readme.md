@@ -19,6 +19,20 @@ xdotter deploy
 
 ## Quick Start
 
+### Used in Local Machine
+
+```bash
+git clone https://github.com/cncsmonster/dotfiles
+cd dotfiles
+# install xdotter
+cargo install xdotter
+# deploy the dotfiles in interactive mode,which is suggested
+xdotter deploy -i
+# or you can deploy the dotfiles just force
+# xdotter deploy -q
+```
+
+### Quick Experience Using Docker
 you can experience my dotfiles by running the following command:
 
 ```bash
