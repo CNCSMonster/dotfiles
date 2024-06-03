@@ -8,7 +8,7 @@ COPY ./tsinghua.list /etc/apt/sources.list.d/tsinghua.list
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Shanghai
 RUN apt-get update --fix-missing && apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build \
+    apt-get install --fix-missing -y --no-install-recommends apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build \
     lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip htop iotop fzf ripgrep net-tools snapd \
     vim tree git delta python3 python3-pip python3-venv python3-dev python3-setuptools python3-wheel 
 

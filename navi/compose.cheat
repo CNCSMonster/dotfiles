@@ -1,0 +1,9 @@
+% apt
+
+# 使用tar压缩<path> 为.tar.gz格式的<target>,<path>指向文件或者文件夹
+tar -czvf <target> <path>
+
+
+
+# 使用tar解压缩.tar.gz文件<path>
+tar -xzvf <path>

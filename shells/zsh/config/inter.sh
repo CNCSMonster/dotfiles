@@ -15,7 +15,7 @@ fi
 # eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv | rg -v 'export PATH=')"
 eval "$(zoxide init $SH)"
 eval "$(starship init $SH)"
-# eval "$(fnm env --use-on-cd)"
+eval "$(fnm env --use-on-cd)"
 # eval "$(mcfly init $SH)"
 eval "$(navi widget $SH)"
 # eval "$(opam env)"
