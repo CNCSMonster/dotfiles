@@ -23,6 +23,9 @@ export LLVM_PATH='/usr/lib/llvm'
 export LLVM_BIN_PATH="$LLVM_PATH/bin"
 export PATH="$LLVM_BIN_PATH:$PATH"
 
+# 配置bob-nvim下载nvim所到的路径
+export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"
+
 # 用户可执行程序目录
 export PATH="$HOME/.cargo/bin:\
 $HOME/.config/shells/scripts:\

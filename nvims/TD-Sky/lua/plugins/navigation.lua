@@ -64,4 +64,21 @@ return {
             require("telescope").load_extension("bookmarks")
         end,
     },
+    {
+        "mikavilpas/yazi.nvim",
+        dependencies = { "nvim-lua/plenary.nvim" },
+        event = "VeryLazy",
+        keys = {
+            {
+                "<leader>e",
+                function()
+                    require("yazi").yazi()
+                end,
+                desc = "Open the file manager",
+            },
+        },
+        opts = {
+            open_for_directories = false,
+        },
+    },
 }

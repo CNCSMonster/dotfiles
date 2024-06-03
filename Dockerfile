@@ -15,10 +15,6 @@ RUN apt-get update --fix-missing && apt-get upgrade -y && \
 # 下载zsh
 RUN apt-get install -y --no-install-recommends zsh 
 
-# 下载nvim
-RUN wget https://github.com/neovim/neovim/releases/download/nightly/nvim-linux64.tar.gz -O nvim-linux64.tar.gz && \
-    tar -xzvf nvim-linux64.tar.gz -C /opt/ && rm nvim-linux64.tar.gz && mv /opt/nvim-linux64 /opt/nvim
-
 # Install LLVM and Clang
 RUN LLVM_PATH=/usr/lib/llvm-14 PATH=${LLVM_PATH}/bin:$PATH && \
     wget https://apt.llvm.org/llvm.sh && \
@@ -59,10 +55,18 @@ RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
     cargo install cargo-binstall parallel-disk-usage bat navi starship eza conceal 
 
 RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo install zoxide fd-find macchina yazi-fm
+    cargo install zoxide fd-find macchina yazi-fm fnm bob-nvim tree-sitter-cli
 
 RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
     cargo binstall -y kondo jaq
+
+# 使用bob-nvim安装nvim, 使用fnm安装node
+RUN PATH=/root/.cargo/bin:$PATH && \
+    bob-nvim install stable && \
+    fnm install v22.2.0
+
+
+
 
 WORKDIR /root
 

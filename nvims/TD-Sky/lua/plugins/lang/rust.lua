@@ -2,7 +2,7 @@ return {
     {
         "saecki/crates.nvim",
         event = "BufRead Cargo.toml",
-        tag = "v0.4.0",
+        tag = "stable",
         dependencies = { "nvim-lua/plenary.nvim" },
         keys = function()
             local crates = require("crates")
@@ -22,7 +22,7 @@ return {
     },
     {
         "mrcjkb/rustaceanvim",
-        version = "^3",
+        version = "^4",
         ft = { "rust" },
         keys = {
             { "<leader>ce", "<cmd>RustLsp expandMacro<CR>", ft = "rust", desc = "展开宏" },
@@ -39,9 +39,15 @@ return {
             server = {
                 settings = {
                     ["rust-analyzer"] = {
-                        checkOnSave = {
+                        check = {
                             command = "clippy",
+                            extraArgs = {
+                                "--",
+                                "--no-deps",
+                            },
+                            workspace = false,
                         },
+                        checkOnSave = true,
                     },
                 },
             },
