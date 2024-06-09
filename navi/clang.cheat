@@ -1,6 +1,9 @@
 % clang
 
 # 编译c代码为汇编代码
-clang -target <target> -x c <src> -S -o <out> <opt-level>
+clang -target <target> -march=<march> -x c <src> -S -o <out> <opt-level>
 $ target: printf '\nriscv64-unknown-elf'
 $ opt-level: printf '\n-O3'
+$ march: printf '\nrv64gc'
+
+# 使用clang编译当前代码为rv64gc 汇编
