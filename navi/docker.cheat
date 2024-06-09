@@ -2,7 +2,7 @@
 
 # 删除所有已停止的容器 ,<force>为-f时表示强制删除,<force>为空时会询问.
 docker container prune <force>
-$ 
+$ force: printf '\n-f'
 
 
 # 查看容器的日志
