@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+## 交换文件名
+function swap {
+	mv $1 "$1.swapping"
+	mv $2 $1
+	mv "$1.swapping" $2
+}
+
+swap "$@"

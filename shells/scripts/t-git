@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+function t-git {
+	git commit -m "$(date --rfc-3339 seconds)"
+}
+t-git "$@"

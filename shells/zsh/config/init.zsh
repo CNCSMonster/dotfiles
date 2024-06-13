@@ -1,7 +1,6 @@
 ZSH_CONFIG_HOME="$HOME/.config/shells/zsh"
-SHELL_COMMON_HOME="$HOME/.config/shells/common"
 
-source "$SHELL_COMMON_HOME/env.sh"
+source "$ZSH_CONFIG_HOME/env.zsh"
 
 if [ -z "$INIT_DONE" ]; then
 	INIT_DONE=1
@@ -27,4 +26,5 @@ fi
 
 export PATH
 
-source "$ZSH_CONFIG_HOME/inter.sh"
+source "$ZSH_CONFIG_HOME/inter.zsh"
+source "$ZSH_CONFIG_HOME/alias.zsh"

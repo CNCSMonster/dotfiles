@@ -1,3 +1,2 @@
 #!/bin/zsh
-source "$HOME/.config/shells/zsh/init.sh"
-
+source "$HOME/.config/shells/zsh/init.zsh"

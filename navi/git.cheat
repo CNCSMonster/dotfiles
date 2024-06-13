@@ -36,3 +36,31 @@ git worktree add <path> <branch>
 
 # 拉取项目的git子模块
 git submodule update --init
+
+# 添加子模块,
+git submodule add <submodule_repo_url> <submodule_dir>
+$ submodule_repo_url: printf '\nhttps://github.com/cncsmonster/dotfiles'
+$ submodule_dir: printf '\n./dotfiles'
+
+# 初始化子模块
+git submodule init
+
+# 更新子模块到在父仓库中注册的提交
+git submodule update
+
+# 初始化并更新子模块
+git submodule update --init <recursive_flag>
+$ recursive_flag: printf '\n--recursive'
+
+
+# 在子模块上执行命令（例如git pull）
+git submodule foreach git pull origin master
+
+# 检查子模块状态
+git submodule status
+
+# 反初始化子模块
+git submodule deinit <submodule_dir>
+
+# 同步子模块URL
+git submodule sync

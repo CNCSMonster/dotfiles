@@ -125,13 +125,11 @@ if ! shopt -oq posix; then
 fi
 
 
-export PATH=~/.cargo/bin:$PATH
-export LLVM_SYS_100_PREFIX=/usr/lib/llvm-14
-export EDITOR=code
 
-source $HOME/.cargo/env
-source $HOME/.config/shells/common/env.sh
-source $HOME/.config/shells/common/fn.sh
+export SH=bash
+export BASH_CONFIG_DIR=$HOME/.config/shells/bash
+source $BASH_CONFIG_DIR/env.sh
+source $BASH_CONFIG_DIR/alias.sh
+source $BASH_CONFIG_DIR/inter.sh
 
-eval "$(zoxide init bash)"
 

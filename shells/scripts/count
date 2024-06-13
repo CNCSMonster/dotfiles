@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# 统计文件夹中文件数量
+function count {
+	find $1 -type f | wc -l
+}
+count "$@"
