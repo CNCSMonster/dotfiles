@@ -4,6 +4,8 @@
 docker container prune <force>
 $ force: printf '\n-f'
 
+# 删除所有已经悬空的镜像，也就是那些不再能够被引用的镜像
+docker image prune
 
 # 查看容器的日志
 docker container logs <name>

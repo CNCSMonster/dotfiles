@@ -10,31 +10,31 @@ ENV TZ=Asia/Shanghai
 RUN apt-get update --fix-missing && apt-get upgrade -y && \
     apt-get install --fix-missing -y --no-install-recommends apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build \
     lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip htop iotop fzf ripgrep net-tools snapd \
-    vim tree git delta python3 python3-pip python3-venv python3-dev python3-setuptools python3-wheel clang
+    vim tree git delta python3 python3-pip python3-venv python3-dev python3-setuptools python3-wheel
 
 # 下载zsh
 RUN apt-get install -y --no-install-recommends zsh 
 
 # Install LLVM and Clang
-# RUN LLVM_PATH=/usr/lib/llvm-18 PATH=${LLVM_PATH}/bin:$PATH && \
-#     LLVM_VERSION=18 &&\
-#     wget https://apt.llvm.org/llvm.sh && \
-#     chmod +x llvm.sh && ./llvm.sh 18 && rm ./llvm.sh && \
-#     ln -s /usr/lib/llvm-18 /usr/lib/llvm && \
-#     ln -s /usr/lib/llvm/bin/clang /usr/local/bin/clang
+RUN LLVM_PATH=/usr/lib/llvm-18 PATH=${LLVM_PATH}/bin:$PATH && \
+    LLVM_VERSION=18 &&\
+    wget https://apt.llvm.org/llvm.sh && \
+    chmod +x llvm.sh && ./llvm.sh ${LLVM_VERSION} && rm ./llvm.sh && \
+    ln -s /usr/lib/llvm-${LLVM_VERSION} /usr/lib/llvm && \
+    ln -s /usr/lib/llvm/bin/clang /usr/local/bin/clang
 
 # Install Golang and some tools
-# RUN GOBIN=/opt/go/bin PATH=/opt/go/bin:$PATH GORPOXY=https://goproxy.cn && \
-#     wget https://dl.google.com/go/go1.22.3.linux-amd64.tar.gz -O go.tar.gz
-# RUN GOBIN=/opt/go/bin PATH=/opt/go/bin:$PATH GORPOXY=https://goproxy.cn && \
-#     tar -xzvf go.tar.gz -C /opt && \
-#     rm go.tar.gz 
-# RUN GOBIN=/opt/go/bin PATH=/opt/go/bin:$PATH GORPOXY=https://goproxy.cn && \
-#     go install -v golang.org/x/tools/cmd/goimports@latest && \
-#     go install -v golang.org/x/tools/cmd/godoc@latest && \
-#     go install -v github.com/go-delve/delve/cmd/dlv@latest && \
-#     go install -v honnef.co/go/tools/cmd/staticcheck@latest && \
-#     go install -v golang.org/x/tools/gopls@latest
+RUN GOBIN=/opt/go/bin PATH=/opt/go/bin:$PATH GORPOXY=https://goproxy.cn && \
+    wget https://dl.google.com/go/go1.22.3.linux-amd64.tar.gz -O go.tar.gz
+RUN GOBIN=/opt/go/bin PATH=/opt/go/bin:$PATH GORPOXY=https://goproxy.cn && \
+    tar -xzvf go.tar.gz -C /opt && \
+    rm go.tar.gz 
+RUN GOBIN=/opt/go/bin PATH=/opt/go/bin:$PATH GORPOXY="https://goproxy.cn,direct" && \
+    go install -v golang.org/x/tools/cmd/goimports@latest && \
+    go install -v golang.org/x/tools/cmd/godoc@latest && \
+    go install -v github.com/go-delve/delve/cmd/dlv@latest && \
+    go install -v honnef.co/go/tools/cmd/staticcheck@latest && \
+    go install -v golang.org/x/tools/gopls@latest
 
 
 # Install Rust and some tools
@@ -75,9 +75,6 @@ RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
 RUN PATH=/root/.cargo/bin:$PATH && \
     bob install stable && \
     fnm install v22.2.0
-
-
-
 
 WORKDIR /root
 

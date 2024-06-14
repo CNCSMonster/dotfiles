@@ -12,7 +12,7 @@ style = "blue"
 
 ## Configure the duration of the last command
 [cmd_duration]
-min_time = 100
+min_time = 1000
 disabled = true
 style = "dimmed white"
 

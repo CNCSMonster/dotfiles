@@ -1,4 +1,4 @@
 
 [links]
-"bash" = "~/.bashrc"
-"config"="~/.config/bash"
+"bashrc" = "~/.bashrc"
+"config"="~/.config/shells/bash"
