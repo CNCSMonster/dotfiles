@@ -73,7 +73,7 @@ RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
 
 # 使用bob-nvim安装nvim, 使用fnm安装node
 RUN PATH=/root/.cargo/bin:$PATH && \
-    bob install stable && \
+    bob install stable && bob use stable && \
     fnm install v22.2.0
 
 WORKDIR /root
