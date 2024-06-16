@@ -63,7 +63,7 @@ RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
     cargo install zoxide fd-find macchina yazi-fm fnm
 
 RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo install tree-sitter-cli tokei
+    cargo install tree-sitter-cli tokei gen-mdbook-summary
 
 RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
     cargo binstall -y kondo jaq bob-nvim
