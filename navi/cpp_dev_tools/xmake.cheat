@@ -1,0 +1,11 @@
+% xmake
+
+# 使用xmake创建项目
+xmake create <project_name>
+
+# 编译项目,`xmake` or `xmake run`
+xmake
+
+# 运行二进制项目
+xmake run
+
