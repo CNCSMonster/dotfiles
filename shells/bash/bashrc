@@ -132,7 +132,3 @@ source $BASH_CONFIG_DIR/env.sh
 source $BASH_CONFIG_DIR/alias.sh
 source $BASH_CONFIG_DIR/inter.sh
 
-
-# >>> xmake >>>
-test -f "/home/cncsmonster/.xmake/profile" && source "/home/cncsmonster/.xmake/profile"
-# <<< xmake <<<
