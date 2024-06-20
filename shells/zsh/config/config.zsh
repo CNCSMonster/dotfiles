@@ -15,6 +15,12 @@ export HISTFILE="${XDG_CACHE_HOME}/zsh/histfile"
 HISTSIZE=1000
 SAVEHIST=1000
 
+# save history after each command
+setopt INC_APPEND_HISTORY
+
+# share history across all sessions
+setopt SHARE_HISTORY
+
 # Remove older command from the history if a duplicate is to be added.
 setopt HIST_IGNORE_ALL_DUPS
 
