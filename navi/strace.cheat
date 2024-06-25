@@ -1,0 +1,7 @@
+% strace
+
+; 监控和记录unix-like系统上软件执行时的系统调用
+
+# 通过仅监控exec调用 监控程序执行时调用其他程序的行为
+strace -fe execve -s 9999 <order>
+$ order: printf '\necho \"hello\"'

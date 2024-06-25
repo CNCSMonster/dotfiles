@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+gcc $1 -o ~/tmp/$(basename $1 .c) && ~/tmp/$(basename $1 .c) $@
+rm ~/tmp/$(basename $1 .c)
