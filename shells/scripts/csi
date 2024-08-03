@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
 
-gcc $1 -o ~/tmp/$(basename $1 .c) && ~/tmp/$(basename $1 .c) $@
+gcc $1 -o ~/tmp/$(basename $1 .c)
+
+if [ $? -ne 0 ]; then
+    echo "Compilation failed"
+    exit 1
+fi
+
+~/tmp/$(basename $1 .c) $@
+ret=$?
+
 rm ~/tmp/$(basename $1 .c)
+exit $ret
