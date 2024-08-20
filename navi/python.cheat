@@ -1,0 +1,6 @@
+% python
+
+# 打开一个服务器挂载某个文件夹
+python -m http.server -d <dir> <port>
+$ dir: printf '\n.'
+$ port: printf '\n8000'
