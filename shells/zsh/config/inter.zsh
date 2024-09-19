@@ -17,6 +17,9 @@ fi
 eval "$(fnm env --use-on-cd)"
 eval "$(fnm completions --shell $SH)"
 
+# fgm
+eval "$(fgm init)"
+
 # zoxide is a faster way to navigate your filesystem
 eval "$(zoxide init $SH)"
 
