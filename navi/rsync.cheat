@@ -1,0 +1,11 @@
+% rsync
+
+; 同步两个文件夹
+rsync -avz --progress source_directory/ destination_directory/
+
+; 同步本地文件夹到远程文件夹
+rsync <src> <user>@<ip>:<dest>
+
+; 同步远程文件夹到本地文件夹
+rsync -chvzP --stats <user>@<ip>:<src> <dest>
+
