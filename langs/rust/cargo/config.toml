@@ -51,7 +51,9 @@ index = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
 git-fetch-with-cli = true
 
 [target.x86_64-unknown-linux-gnu]
-linker = "/usr/local/bin/clang"
+linker = "clang"    # 无论开不开启使用mold作为链接器,该字段都需要存在,它用来指定用什么来提供参数来驱动设计的linker(lld/mold/...)
+# rustflags= ["-Clink-arg=-fuse-ld=/usr/lib/llvm/bin/ld.lld","-Clink-arg=-Wl,--no-rosegment"] # 这个注释是为了让flamegraph.rs能够正常追踪调用栈
+# linker = "/usr/local/bin/clang"
 # rustflags = ["-C", "link-arg=--ld-path=/usr/bin/mold"]
 
 # [build]

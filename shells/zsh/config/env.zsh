@@ -9,7 +9,7 @@ export RUSTUP_DIST_SERVER='https://mirrors.ustc.edu.cn/rust-static'
 export RUSTUP_UPDATE_ROOT='https://mirrors.ustc.edu.cn/rust-static/rustup'
 
 # go路径
-export GOBIN='/opt/go/bin'
+export GOBIN="$HOME/go/bin"
 export PATH="$GOBIN:$PATH"
 
 # nvim 路径

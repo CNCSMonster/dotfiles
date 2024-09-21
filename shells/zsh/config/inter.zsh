@@ -19,6 +19,7 @@ eval "$(fnm completions --shell $SH)"
 
 # fgm
 eval "$(fgm init)"
+eval "$(fgm completions --shell $SH)"
 
 # zoxide is a faster way to navigate your filesystem
 eval "$(zoxide init $SH)"
