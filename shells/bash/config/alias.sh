@@ -2,7 +2,7 @@
 
 # 文件系统
 
-alias ls='eza -a --color=auto -s=type'
+alias l='eza -a --color=auto -s=type'
 alias ll='eza -laHhg --color=always -s=type --time-style=long-iso'
 alias dirs="eza -Fa1 --color=never -s=type | rg '/' -r ''"
 
