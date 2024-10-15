@@ -1,0 +1,10 @@
+% fd
+
+# 对指定目录下的指定后缀的所有文件 执行指定操作
+fd <dir> -t f -e <ext> -x <order>
+$ dir: printf '\n.'
+$ order: printf '\ndu -sh {}' 
+
+# 对指定目录下的指定后缀的所有文件 删除指定文本
+fd <dir> -t f -e <ext> -x sed -i 's/<old>/<new>/<n>' {}
+$ n: printf '\ng\n'

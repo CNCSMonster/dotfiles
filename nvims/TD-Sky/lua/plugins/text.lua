@@ -7,28 +7,25 @@ return {
             local textcase = require("textcase")
             local wk = require("which-key")
 
-            local function convert_current_word(dest_case)
+            local function convert_case(dest_case)
                 return function()
                     textcase.current_word(dest_case)
                 end
             end
 
-            wk.register({
-                t = {
-                    name = "text-case",
-                    u = { convert_current_word("to_upper_case"), "TO UPPER" },
-                    l = { convert_current_word("to_lower_case"), "to lower" },
-                    s = { convert_current_word("to_snake_case"), "to_snake" },
-                    ["-"] = { convert_current_word("to_dash_case"), "to-dash" },
-                    C = { convert_current_word("to_constant_case"), "TO_CONSTANT" },
-                    d = { convert_current_word("to_dot_case"), "to.dot" },
-                    p = { convert_current_word("to_phrase_case"), "To phrase" },
-                    c = { convert_current_word("to_camel_case"), "toCamel" },
-                    P = { convert_current_word("to_pascal_case"), "ToPascal" },
-                    t = { convert_current_word("to_title_case"), "To Title" },
-                    ["/"] = { convert_current_word("to_path_case"), "to/path" },
-                },
-            }, { prefix = "g", mode = { "n", "x", "o" } })
+            wk.add({
+                mode = { "n", "o", "x" },
+                { "gt", group = "text-case" },
+                { "gt-", convert_case("to_dash_case"), desc = "to-dash" },
+                { "gt/", convert_case("to_path_case"), desc = "to/path" },
+                { "gtC", convert_case("to_constant_case"), desc = "TO_CONSTANT" },
+                { "gtP", convert_case("to_pascal_case"), desc = "ToPascal" },
+                { "gtc", convert_case("to_camel_case"), desc = "toCamel" },
+                { "gtd", convert_case("to_dot_case"), desc = "to.dot" },
+                { "gtp", convert_case("to_phrase_case"), desc = "To phrase" },
+                { "gts", convert_case("to_snake_case"), desc = "to_snake" },
+                { "gtt", convert_case("to_title_case"), desc = "To Title" },
+            })
         end,
     },
     {
@@ -51,6 +48,13 @@ return {
                     \    'kind': ['add', 'delete', 'replace'],
                     \    'action': ['add', 'delete','replace'],
                     \    'input': ['（', '）']
+                    \  },
+                    \  {
+                    \    'buns': ['【', '】'],
+                    \    'nesting': 1, 'match_syntax': 1,
+                    \    'kind': ['add', 'delete', 'replace'],
+                    \    'action': ['add', 'delete','replace'],
+                    \    'input': ['【', '】']
                     \  },
                     \ ]
                 ]],
@@ -108,6 +112,21 @@ return {
         "nvimdev/indentmini.nvim",
         opts = {
             char = "┆",
+        },
+    },
+    {
+        "chrisgrieser/nvim-recorder",
+        event = "RecordingEnter",
+        keys = {
+            { "q", desc = "Start Recording" },
+            { "Q", desc = "Play Recording" },
+        },
+    },
+    {
+        "tzachar/highlight-undo.nvim",
+        event = "VeryLazy",
+        opts = {
+            duration = 100,
         },
     },
 }

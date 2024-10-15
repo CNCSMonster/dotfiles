@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-# 使用$HOME/.config/nvims/5eqn作为nvim的配置目录
-
-export XDG_CONFIG_HOME=$HOME/.config/nvims
-export XDG_DATA_HOME=$HOME/.local/share/nvims
-export XDG_STATE_HOME=$HOME/.local/state/nvims
-export XDG_CACHE_HOME=$HOME/.cache/nvims
-NVIM_APPNAME=5eqn nvim "$@"

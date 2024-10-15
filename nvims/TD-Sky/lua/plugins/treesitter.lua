@@ -25,7 +25,7 @@ return {
             highlight = {
                 enable = true,
                 disable = function(_, buf)
-                    return vim.api.nvim_buf_line_count(buf) > 5000 or vim.g.vscode
+                    return vim.bo[buf].filetype == "bigfile" or vim.g.vscode
                 end,
             },
         },
@@ -38,10 +38,12 @@ return {
     },
     {
         "nkrkv/nvim-treesitter-rescript",
+        enabled = false,
         ft = "rescript",
     },
     {
         "rayliwell/tree-sitter-rstml",
+        enabled = false,
         ft = "rust",
         dependencies = { "nvim-treesitter" },
         build = ":TSUpdate",
