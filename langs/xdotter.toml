@@ -1,3 +1,6 @@
 [dependencies]
 go = "go"
 rust = "rust"
+
+[links]
+"python/uv.toml"="~/.config/uv/uv.toml"

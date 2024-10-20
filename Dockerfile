@@ -47,6 +47,10 @@ RUN RUSTUP_DIST_SERVER="https://rsproxy.cn" RUSTUP_UPDATE_ROOT="https://rsproxy.
 RUN CARGO_BIN=/root/.cargo/bin && PATH=$CARGO_BIN:$PATH && \
     cargo install xdotter
 
+# Install uv for python-pros
+RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/astral-sh/uv/releases/download/0.4.24/uv-installer.sh | sh
+
+
 COPY . /root/dotfiles
 # 使用xdotter程序写入配置
 WORKDIR /root/dotfiles
