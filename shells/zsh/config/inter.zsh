@@ -13,6 +13,9 @@ fi
 
 # eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv | rg -v 'export PATH=')"
 
+# direnv
+eval "$(direnv hook zsh)"
+
 # fnm 
 eval "$(fnm env --use-on-cd)"
 eval "$(fnm completions --shell $SH)"
