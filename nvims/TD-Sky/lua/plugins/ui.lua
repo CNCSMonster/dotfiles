@@ -59,23 +59,32 @@ return {
         },
         config = true,
     },
-    -- {
-    --     "nvimdev/dashboard-nvim",
-    --     optional = true,
-    --     opts = function(_, opts)
-    --         local projects = {
-    --             action = "Telescope neovim-project history",
-    --             desc = " Projects",
-    --             icon = " ",
-    --             key = "p",
-    --         }
-    --
-    --         projects.desc = projects.desc .. string.rep(" ", 43 - #projects.desc)
-    --         projects.key_format = "  %s"
-    --
-    --         table.insert(opts.config.center, 3, projects)
-    --     end,
-    -- },
+    {
+        "nvimdev/dashboard-nvim",
+        optional = true,
+        opts = function(_, opts)
+            local projects = {
+                action = "Telescope neovim-project history",
+                desc = " Projects",
+                icon = " ",
+                key = "p",
+            }
+
+            projects.desc = projects.desc .. string.rep(" ", 43 - #projects.desc)
+            projects.key_format = "  %s"
+
+            table.insert(opts.config.center, 3, projects)
+        end,
+    },
+    {
+        "sindrets/diffview.nvim",
+        config = true,
+        keys = {
+            { "<leader>gd", "<cmd>DiffviewOpen<cr>", desc = "diff" },
+            { "<leader>gH", "<cmd>DiffviewFileHistory<cr>", desc = "文件历史" },
+            { "<leader>gf", "<cmd>DiffviewFileHistory %<cr>", desc = "当前文件历史" },
+        },
+    },
     -- {
     --     "NeogitOrg/neogit",
     --     cmd = "Neogit",
