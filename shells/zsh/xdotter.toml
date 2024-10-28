@@ -1,6 +1,5 @@
 [links]
 zshrc = "~/.zshrc"
 config = "~/.config/shells/zsh"
-zimrc = "~/.zimrc"
 
 [dependencies]
