@@ -69,7 +69,6 @@ done
 # Initialize modules
 # ------------------
 
-hash -d zdot=$ZSH_CONFIG_HOME
 
 _source-existent() {
     [[ -r $1 ]] && source $1

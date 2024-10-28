@@ -41,6 +41,12 @@ $HOME/.local/scripts:\
 $XDG_DATA_HOME/JetBrains/Toolbox/scripts:\
 /usr/lib/jvm/default/bin"
 
+####################
+# dir alias config #
+####################
+hash -d zdot=$ZSH_CONFIG_HOME
+hash -d cache=$XDG_CACHE_HOME
+
 # fcitx5
 # export XMODIFIERS='@im=fcitx'
 # export GTK_IM_MODULE='fcitx'
