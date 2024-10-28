@@ -127,26 +127,79 @@ done
 # Initialize modules
 # ------------------
 
-ZIM_HOME=${ZDOTDIR:-${HOME}}/.zim
-# Download zimfw plugin manager if missing.
-if [[ ! -e ${ZIM_HOME}/zimfw.zsh ]]; then
-  if (( ${+commands[curl]} )); then
-    curl -fsSL --create-dirs -o ${ZIM_HOME}/zimfw.zsh \
-        https://github.com/zimfw/zimfw/releases/latest/download/zimfw.zsh
-  else
-    mkdir -p ${ZIM_HOME} && wget -nv -O ${ZIM_HOME}/zimfw.zsh \
-        https://github.com/zimfw/zimfw/releases/latest/download/zimfw.zsh
-  fi
-fi
-# Install missing modules, and update ${ZIM_HOME}/init.zsh if missing or outdated.
-if [[ ! ${ZIM_HOME}/init.zsh -nt ${ZDOTDIR:-${HOME}}/.zimrc ]]; then
-  source ${ZIM_HOME}/zimfw.zsh init -q
-fi
-# Initialize modules.
-source ${ZIM_HOME}/init.zsh
+hash -d zdot=$ZSH_CONFIG_HOME
+
+_source-existent() {
+    [[ -r $1 ]] && source $1
+}
+
+#==================#
+# Plugins (Part 1) #
+#==================#
+
+[[ -d ~zdot/.zcomet ]] || git clone https://github.com/agkozak/zcomet ~zdot/.zcomet/bin
+
+source ~zdot/.zcomet/bin/zcomet.zsh
+
+# Update every 7 days.
+# Start p10k instant prompt only when no update, otherwise update logs might not be displayed.
+_qc_last_update=(~zdot/.zcomet/update(Nm-7))
+if [[ -z $_qc_last_update ]] {
+    touch ~zdot/.zcomet/update
+    zcomet self-update
+    zcomet update
+    zcomet compile ~zdot/*.zsh  # NOTE: https://github.com/romkatv/zsh-bench#cutting-corners
+} else {
+    _source-existent ~cache/p10k-instant-prompt-${(%):-%n}.zsh
+}
+
+zcomet fpath zsh-users/zsh-completions src
+zcomet fpath nix-community/nix-zsh-completions
+
+zcomet load tj/git-extras etc/git-extras-completion.zsh
+zcomet load QuarticCat/zsh-smartcache
+zcomet load chisui/zsh-nix-shell
+zcomet load romkatv/zsh-no-ps2
+
+AUTOPAIR_SPC_WIDGET=magic-space
+AUTOPAIR_BKSPC_WIDGET=backward-delete-char
+AUTOPAIR_DELWORD_WIDGET=backward-delete-word
+zcomet load hlissner/zsh-autopair
+
+#==================#
+# Plugins (Part 2) #
+#==================#
+
+zcomet compinit
+
+zcomet load Aloxaf/fzf-tab  # TODO: run `build-fzf-tab-module` after update
+zstyle ':fzf-tab:*' fzf-bindings 'tab:accept'
+zstyle ':fzf-tab:*' switch-group '<' '>'
+zstyle ':fzf-tab:*' prefix       ''
+zstyle ':fzf-tab:complete:kill:argument-rest' fzf-preview 'ps hwwo cmd --pid=$word'
+zstyle ':fzf-tab:complete:kill:argument-rest' fzf-flags   '--preview-window=down:3:wrap'
+zstyle ':fzf-tab:complete:kill:*'             popup-pad   0 3
+zstyle ':fzf-tab:complete:*' fzf-bindings 'ctrl-s:toggle' 'ctrl-a:toggle-all'
+
+cmds=('bat')
+for cmd in "${(@kv)cmds}"; do
+    zstyle ":fzf-tab:complete:${cmd}:*" fzf-preview 'exa -a1 --color=auto -s=type $realpath'
+done
+
+zcomet load zsh-users/zsh-autosuggestions
+ZSH_AUTOSUGGEST_MANUAL_REBIND=true
+ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS+=(qc-{sub,shell}-r)
+
+zcomet load zdharma-continuum/fast-syntax-highlighting
+unset 'FAST_HIGHLIGHT[chroma-man]'  # chroma-man will stuck history browsing
+unset 'FAST_HIGHLIGHT[chroma-ssh]'  # 旧版 ssh 不支持参数后置，高亮有误
+
+zcomet load romkatv/powerlevel10k
 
 # ------------------------------
 # Post-init module configuration
 # ------------------------------
 
 # }}} End configuration added by Zim install
+
+_source-existent ~zdot/p10k.zsh

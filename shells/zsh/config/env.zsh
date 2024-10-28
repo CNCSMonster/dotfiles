@@ -4,6 +4,9 @@ export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_STATE_HOME="$HOME/.local/state"
 export XDG_DATA_HOME="$HOME/.local/share"
 
+# 设置zsh的配置文件目录
+export ZSH_CONFIG_HOME="$XDG_CONFIG_HOME/shells/zsh"
+
 # rust 工具链镜像源
 export RUSTUP_DIST_SERVER='https://mirrors.ustc.edu.cn/rust-static'
 export RUSTUP_UPDATE_ROOT='https://mirrors.ustc.edu.cn/rust-static/rustup'
