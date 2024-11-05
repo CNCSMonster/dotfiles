@@ -1,3 +1,5 @@
 [dependencies]
+
 [links]
 env = "~/.config/go/env"
+"fgm.toml" = "~/.config/fgm/config.toml"

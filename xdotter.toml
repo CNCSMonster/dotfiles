@@ -1,6 +1,7 @@
 [dependencies]
 langs = "langs"
 shells = "shells"
+nvims = "nvims"
 
 
 [links]
@@ -8,4 +9,4 @@ shells = "shells"
 "yazi" = "~/.config/yazi"
 "git" = "~/.config/git"
 "gdb" = "~/.config/gdb"
-"nvims" = "~/.config/nvims"
+

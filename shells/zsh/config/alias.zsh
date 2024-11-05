@@ -17,3 +17,5 @@ alias py='python3'
 alias rsi='rust-script'
 
 ##################################################
+
+alias cls="clear"

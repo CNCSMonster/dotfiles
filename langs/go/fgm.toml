@@ -1,0 +1,6 @@
+# set the directory where the go installation packages will be downloaded
+installations_dir="/usr/local/share/fgm"
+# set where the go installation package 's link will be stored
+gate_path="~/.local/share/fgm/go"
+# set the web url where the go installation packages's download link will be fetched
+remote_source="https://go.dev/dl/"
