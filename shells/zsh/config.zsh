@@ -7,6 +7,8 @@
 # Zsh configuration
 # -----------------
 
+
+
 #
 # History
 #
@@ -78,18 +80,18 @@ _source-existent() {
 # Plugins (Part 1) #
 #==================#
 
-[[ -d ~zdot/.zcomet ]] || git clone https://github.com/agkozak/zcomet ~zdot/.zcomet/bin
+[[ -d $ZSH_CONFIG_HOME/.zcomet ]] || git clone https://github.com/agkozak/zcomet $ZSH_CONFIG_HOME/.zcomet/bin
 
-source ~zdot/.zcomet/bin/zcomet.zsh
+source $ZSH_CONFIG_HOME/.zcomet/bin/zcomet.zsh
 
 # Update every 7 days.
 # Start p10k instant prompt only when no update, otherwise update logs might not be displayed.
-_qc_last_update=(~zdot/.zcomet/update(Nm-7))
+_qc_last_update=($ZSH_CONFIG_HOME/.zcomet/update(Nm-7))
 if [[ -z $_qc_last_update ]] {
-    touch ~zdot/.zcomet/update
+    touch $ZSH_CONFIG_HOME/.zcomet/update
     zcomet self-update
     zcomet update
-    zcomet compile ~zdot/*.zsh  # NOTE: https://github.com/romkatv/zsh-bench#cutting-corners
+    zcomet compile $ZSH_CONFIG_HOME/*.zsh  # NOTE: https://github.com/romkatv/zsh-bench#cutting-corners
 } else {
     _source-existent ~cache/p10k-instant-prompt-${(%):-%n}.zsh
 }
@@ -143,4 +145,4 @@ zcomet load romkatv/powerlevel10k
 
 # }}} End configuration added by Zim install
 
-_source-existent ~zdot/p10k.zsh
+_source-existent $ZSH_CONFIG_HOME/p10k.zsh

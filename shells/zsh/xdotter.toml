@@ -1,5 +1,7 @@
+[dependencies]
+
 [links]
 zshrc = "~/.zshrc"
-config = "~/.config/shells/zsh"
-
-[dependencies]
+"init.zsh" = "~/.config/shells/zsh/init.zsh"
+"p10k.zsh" = "~/.config/shells/zsh/p10k.zsh"
+"config.zsh" = "~/.config/shells/zsh/config.zsh"

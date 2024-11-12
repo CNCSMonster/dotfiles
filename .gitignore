@@ -1,2 +1,3 @@
 nvims/**/lazy-lock.json
 .aider*
+.vscode

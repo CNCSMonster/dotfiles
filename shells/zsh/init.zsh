@@ -1,6 +1,8 @@
-ZSH_CONFIG_HOME="$HOME/.config/shells/zsh"
+export SH_COMMON_DIR="$HOME/.config/shells/common"
+source "$SH_COMMON_DIR/env.sh"
+# 设置zsh的配置文件目录
+export ZSH_CONFIG_HOME="$XDG_CONFIG_HOME/shells/zsh"
 
-source "$ZSH_CONFIG_HOME/env.zsh"
 
 if [ -z "$INIT_DONE" ]; then
 	INIT_DONE=1
@@ -26,5 +28,8 @@ fi
 
 export PATH
 
-source "$ZSH_CONFIG_HOME/inter.zsh"
-source "$ZSH_CONFIG_HOME/alias.zsh"
+
+source "$ZSH_CONFIG_HOME/config.zsh"
+
+source "$SH_COMMON_DIR/inter.sh"
+source "$SH_COMMON_DIR/alias.sh"

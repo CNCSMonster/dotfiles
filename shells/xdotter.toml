@@ -1,8 +1,9 @@
 [dependencies]
 zsh = "./zsh"
-bash= "./bash"
+bash = "./bash"
+
 
 [links]
+common = "~/.config/shells/common"
 "starship.toml" = "~/.config/starship.toml"
 scripts = "~/.config/shells/scripts"
-

@@ -60,6 +60,9 @@ return {
             server = {
                 settings = {
                     ["rust-analyzer"] = {
+                        rustc = {
+                            source = "discover",
+                        },
                         check = {
                             command = "clippy",
                             extraArgs = {
@@ -75,6 +78,9 @@ return {
                             },
                             parameterHints = {
                                 enable = false,
+                            },
+                            discriminantHints = {
+                                enable = "always",
                             },
                         },
                     },

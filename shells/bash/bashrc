@@ -127,8 +127,7 @@ fi
 
 
 export SH=bash
-export BASH_CONFIG_DIR=$HOME/.config/shells/bash
-source $BASH_CONFIG_DIR/env.sh
-source $BASH_CONFIG_DIR/alias.sh
-source $BASH_CONFIG_DIR/inter.sh
-
+export SH_COMMON_DIR=$HOME/.config/shells/common
+source $SH_COMMON_DIR/env.sh
+source $SH_COMMON_DIR/alias.sh
+source $SH_COMMON_DIR/inter.sh

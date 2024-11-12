@@ -1,19 +1,15 @@
+
+if [ -n "$ZSH_VERSION" ]; then
+	SH='zsh'
+elif [ -n "$BASH_VERSION" ]; then
+	SH='bash'
+fi
+
 # XDG
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_STATE_HOME="$HOME/.local/state"
 export XDG_DATA_HOME="$HOME/.local/share"
-
-
-# Other
-
-export PATH=~/.cargo/bin:$PATH
-export LLVM_SYS_100_PREFIX=/usr/lib/llvm-14
-
-# set EDITOR for yazi
-export EDITOR=code
-
-source $HOME/.cargo/env
 
 
 # rust 工具链镜像源
@@ -30,10 +26,13 @@ export PATH="/opt/nvim/bin:$PATH"
 # moonbit 路径
 export PATH="$HOME/.moon/bin:$PATH"
 
-# llvm 路径
+# llvm镜像源
 export LLVM_PATH='/usr/lib/llvm'
 export LLVM_BIN_PATH="$LLVM_PATH/bin"
 export PATH="$LLVM_BIN_PATH:$PATH"
+
+# snap 路径
+export PATH="/snap/bin:$PATH"
 
 # 配置bob-nvim下载nvim所到的路径
 export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"
@@ -46,6 +45,11 @@ $HOME/.local/bin:\
 $HOME/.local/scripts:\
 $XDG_DATA_HOME/JetBrains/Toolbox/scripts:\
 /usr/lib/jvm/default/bin"
+
+####################
+# dir alias config #
+####################
+hash -d cache=$XDG_CACHE_HOME
 
 # fcitx5
 # export XMODIFIERS='@im=fcitx'
