@@ -62,7 +62,7 @@ hash -d cache=$XDG_CACHE_HOME
 # export VIMTEX_OUTPUT_DIRECTORY='./target/tex'
 
 # 默认编辑器
-export EDITOR='code'
+export EDITOR='lvim'
 
 # nodejs 本体镜像
 export FNM_NODE_DIST_MIRROR='https://npmmirror.com/mirrors/node'
