@@ -58,7 +58,7 @@ return {
                 },
             },
             server = {
-                settings = {
+                default_settings = {
                     ["rust-analyzer"] = {
                         rustc = {
                             source = "discover",
