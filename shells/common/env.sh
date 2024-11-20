@@ -1,4 +1,3 @@
-
 if [ -n "$ZSH_VERSION" ]; then
 	SH='zsh'
 elif [ -n "$BASH_VERSION" ]; then
@@ -11,7 +10,6 @@ export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_STATE_HOME="$HOME/.local/state"
 export XDG_DATA_HOME="$HOME/.local/share"
 
-
 # rust 工具链镜像源
 export RUSTUP_DIST_SERVER='https://mirrors.ustc.edu.cn/rust-static'
 export RUSTUP_UPDATE_ROOT='https://mirrors.ustc.edu.cn/rust-static/rustup'
@@ -19,6 +17,9 @@ export RUSTUP_UPDATE_ROOT='https://mirrors.ustc.edu.cn/rust-static/rustup'
 # go路径
 export GOBIN="$HOME/go/bin"
 export PATH="$GOBIN:$PATH"
+
+# ort crate使用的onnxruntime库路径
+export ORT_LIB_LOCATION=/usr/local/lib/libonnxruntime.a
 
 # nvim 路径
 export PATH="/opt/nvim/bin:$PATH"
@@ -33,9 +34,6 @@ export PATH="$LLVM_BIN_PATH:$PATH"
 
 # snap 路径
 export PATH="/snap/bin:$PATH"
-
-# 配置bob-nvim下载nvim所到的路径
-export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"
 
 # 用户可执行程序目录
 export PATH="$HOME/.cargo/bin:\

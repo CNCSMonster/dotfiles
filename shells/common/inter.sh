@@ -5,19 +5,8 @@
 
 [[ -n "$INTER_DONE" ]] && return
 
-
-# eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv | rg -v 'export PATH=')"
-
-# direnv
-eval "$(direnv hook $SH)"
-
-# fnm 
-eval "$(fnm env --use-on-cd)"
-eval "$(fnm completions --shell $SH)"
-
-# fgm
-eval "$(fgm init)"
-eval "$(fgm completions --shell $SH)"
+# mise
+eval "$(mise activate $SH)"
 
 # zoxide is a faster way to navigate your filesystem
 eval "$(zoxide init $SH)"
@@ -28,7 +17,6 @@ eval "$(starship init $SH)"
 
 # 配置navi的快捷键为ctrl+n
 eval "$(navi widget $SH)"
-
 
 # eval "$(opam env)"
 
