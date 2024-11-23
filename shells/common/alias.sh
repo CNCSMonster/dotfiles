@@ -21,3 +21,4 @@ alias rsi='rust-script'
 ##################################################
 
 alias cls="clear"
+alias tl="tl-go"
