@@ -1,7 +1,7 @@
 if [ -n "$ZSH_VERSION" ]; then
-	SH='zsh'
+    SH='zsh'
 elif [ -n "$BASH_VERSION" ]; then
-	SH='bash'
+    SH='bash'
 fi
 
 # XDG
@@ -9,6 +9,11 @@ export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_STATE_HOME="$HOME/.local/state"
 export XDG_DATA_HOME="$HOME/.local/share"
+
+# 如果下载了brew，则添加其需要的环境变量
+if [[ -x "/opt/homebrew/bin/brew)" ]]; then
+    eval $(/opt/homebrew/bin/brew shellenv)
+fi
 
 # rust 工具链镜像源
 export RUSTUP_DIST_SERVER='https://mirrors.ustc.edu.cn/rust-static'
