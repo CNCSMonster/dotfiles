@@ -11,7 +11,7 @@ export XDG_STATE_HOME="$HOME/.local/state"
 export XDG_DATA_HOME="$HOME/.local/share"
 
 # 如果下载了brew，则添加其需要的环境变量
-if [[ -x "/opt/homebrew/bin/brew)" ]]; then
+if [[ -x "/opt/homebrew/bin/brew" ]]; then
     eval $(/opt/homebrew/bin/brew shellenv)
 fi
 
