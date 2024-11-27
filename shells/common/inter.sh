@@ -13,7 +13,13 @@ eval "$(zoxide init $SH)"
 
 # starship is the minimal, blazing-fast, and infinitely customizable prompt for any shell!
 eval "$(starship init $SH)"
-# eval "$(mcfly init $SH)"
+
+# mcfly is shell history search engine to replace origin <C+r>
+eval "$(mcfly init $SH)"
+if [ ! -f "$HOME/.cache/zsh/histfile" ]; then
+    mkdir -p "$HOME/.cache/zsh"
+    touch "$HOME/.cache/zsh/histfile"
+fi
 
 # 配置navi的快捷键为ctrl+n
 eval "$(navi widget $SH)"

@@ -13,7 +13,9 @@ export XDG_DATA_HOME="$HOME/.local/share"
 # 如果下载了brew，则添加其需要的环境变量
 if [[ -x "/opt/homebrew/bin/brew" ]]; then
     eval $(/opt/homebrew/bin/brew shellenv)
+    export PATH=/opt/homebrew/opt/llvm/bin:$PATH
 fi
+
 
 # rust 工具链镜像源
 export RUSTUP_DIST_SERVER='https://mirrors.ustc.edu.cn/rust-static'
