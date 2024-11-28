@@ -1,6 +1,6 @@
 % rsync
 
-; 同步两个文件夹
+; 同步两个文件夹,显示进度条且保留文件访问权限,
 rsync -avz --progress source_directory/ destination_directory/
 
 ; 同步本地文件夹到远程文件夹
@@ -8,4 +8,11 @@ rsync <src> <user>@<ip>:<dest>
 
 ; 同步远程文件夹到本地文件夹
 rsync -chvzP --stats <user>@<ip>:<src> <dest>
+
+; 使用ssh的Host 名同步远程文件夹中的内容到本地指定文件夹中
+rsync <keep_file_mode> <delete> <show_progress> -r <Host>:<dir_path>/ <local_dir_path>/
+$ keep_file_mode: printf '\n-a' 
+$ delete: printf '\n--delete'
+$ show_progress: printf '\n--progress'
+$ dir_path: printf '\n~/Downloads'
 

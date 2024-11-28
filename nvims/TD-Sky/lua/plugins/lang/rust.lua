@@ -60,9 +60,6 @@ return {
             server = {
                 default_settings = {
                     ["rust-analyzer"] = {
-                        rustc = {
-                            source = "discover",
-                        },
                         check = {
                             command = "clippy",
                             extraArgs = {

@@ -5,14 +5,28 @@
 # 列印所有目标平台
 rustc --print target-list
 
-# 测试时显示输出
-cargo test -- --nocapture
+# 执行测试
+cargo test <test_item> -- <show_output> <ignore_mode>
+$ test_item: printf '\n\nmod_a::tests_mod\nmod_a::tests_mod::test_a' 
+$ show_output: printf '\n--show-output'
+$ ignore_mode: printf '\n\n--ignored\n--include-ignored'
 
-# 测试隐藏的函数
-cargo test -- --ignored
+# 查看rustup下载的工具链
+rustup show
 
-# 编译器切换成 nightly
+# 下载指定时间及其之后时间内的最早nightly版本
+rustup install nightly-<date>
+$ date: printf '\n2024-09-09'
+
+# 当前目录编译器切换成 nightly
 rustup override set nightly
+
+# 默认编译器切换到stable
+rustup default stable
+
+# 默认编译器切换到nightly
+rsutup default nightly
+
 
 # 添加编译目标
 rustup target add <target>
@@ -24,6 +38,10 @@ rustup toolchain install <toolchain>
 # 卸载工具链
 rustup toolchain uninstall <local-toolchain>
 $ local-toolchain: rustup toolchain list
+
+# 终端查看某个crate简介
+cargo info <crate> --registry <crates_index>
+$ crates_index: printf '\ncrates-io'
 
 # 以树状图追踪一个包为何存在
 cargo tree -i <crate>
@@ -39,9 +57,6 @@ rust-objdump --syms <object>
 
 # 查看项目的全部文档
 cargo doc --document-private-items --open
-
-# 展开主函数
-cargo expand main
 
 # 列印会推送的文件
 cargo package --list
