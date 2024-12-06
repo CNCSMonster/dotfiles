@@ -1,0 +1,10 @@
+[tools]
+neovim = "nightly"
+go = "1.23.3"
+node = "23.3.0"
+
+[settings]
+experimental = true
+
+[settings.python]
+uv_venv_auto = true
