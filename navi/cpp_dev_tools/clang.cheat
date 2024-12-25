@@ -6,4 +6,11 @@ $ target: printf '\nriscv64-unknown-elf'
 $ opt-level: printf '\n-O3'
 $ march: printf '\nrv64gc'
 
-# 使用clang编译当前代码为rv64gc 汇编
+# 使用clang编译当前代码为rv64gc汇编
+
+
+# 查看使用clang编译时的详细信息，比如头文件搜索路径
+clang -v -x c++ -E - < /dev/null
+
+# 查看clang编译过程中查找库文件、可执行文件和其他资源文件的路径
+clang -print-search-dirs

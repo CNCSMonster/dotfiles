@@ -1,0 +1,39 @@
+#!/usr/bin/env zsh
+
+# 检查是否提供了文件参数
+if [ -z "$1" ]; then
+  echo "用法: $0 <cpp文件> [编译参数...]"
+  exit 1
+fi
+
+# 获取 C++ 文件路径
+cpp_file="$1"
+shift  # 移除第一个参数（cpp文件），剩下的参数作为编译参数
+
+# 创建临时目录
+temp_dir=$(mktemp -d)
+
+# 获取文件名（不带扩展名）
+filename=$(basename "$cpp_file" .cpp)
+
+# 使用系统的默认 C++ 编译器（通常是 g++ 或 clang++）
+compiler=${CXX:-c++}
+
+# 编译 C++ 代码，将二进制文件输出到临时目录
+echo "使用编译器: $compiler"
+echo "编译参数: $@"
+$compiler -o "$temp_dir/$filename" "$cpp_file" "$@"
+
+# 检查编译是否成功
+if [ $? -eq 0 ]; then
+  echo "编译成功！正在运行程序..."
+  "$temp_dir/$filename"
+else
+  echo "编译失败！请检查代码和编译参数。"
+  rm -rf "$temp_dir"  # 清理临时目录
+  exit 1
+fi
+
+# 清理临时目录
+rm -rf "$temp_dir"
+echo "临时文件已清理。"
