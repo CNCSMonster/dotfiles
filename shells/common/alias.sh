@@ -22,7 +22,7 @@ alias rsi='rust-script'
 
 # 应用别名
 
-alias ts="trans-go"
+alias trans="trans-go"
 
 ##################################################
 
