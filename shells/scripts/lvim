@@ -5,4 +5,4 @@ export XDG_CONFIG_HOME=$HOME/.config/nvims
 export XDG_DATA_HOME=$HOME/.local/share/nvims
 export XDG_STATE_HOME=$HOME/.local/state/nvims
 export XDG_CACHE_HOME=$HOME/.cache/nvims
-NVIM_APPNAME="TD-Sky" nvim "$@"
+NVIM_APPNAME="LazyVim" nvim "$@"
