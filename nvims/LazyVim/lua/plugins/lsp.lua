@@ -3,9 +3,6 @@ return {
         "neovim/nvim-lspconfig",
         event = "LazyFile",
         opts = {
-            diagnostics = {
-                update_in_insert = true,
-            },
             codelens = {
                 enabled = true,
             },
@@ -26,40 +23,52 @@ return {
                 nushell = {},
                 clangd = {},
                 basedpyright = {},
+                astro = {},
             },
         },
         config = function(_, opts)
             LazyVim.lsp.setup()
 
-            vim.lsp.inlay_hint.enable(opts.inlay_hints.enabled)
+            if vim.g.project_lspconfig ~= nil then
+                opts.servers = vim.tbl_deep_extend("force", opts.servers, vim.g.project_lspconfig)
+            end
 
-            if opts.codelens.enabled then
+            -- 指定诊断日志的图标
+            for severity, icon in pairs(opts.diagnostics.signs.text) do
+                local name = vim.diagnostic.severity[severity]:lower():gsub("^%l", string.upper)
+                name = "DiagnosticSign" .. name
+                vim.fn.sign_define(name, { text = icon, texthl = name, numhl = "" })
+            end
+
+            if opts.inlay_hints.enabled then
+                LazyVim.lsp.on_supports_method("textDocument/inlayHint", function(_, buffer)
+                    if
+                        vim.api.nvim_buf_is_valid(buffer)
+                        and vim.bo[buffer].buftype == ""
+                        and not vim.tbl_contains(opts.inlay_hints.exclude, vim.bo[buffer].filetype)
+                    then
+                        vim.lsp.inlay_hint.enable(true, { bufnr = buffer })
+                    end
+                end)
+            end
+
+            if opts.codelens.enabled and vim.lsp.codelens then
                 LazyVim.lsp.on_supports_method("textDocument/codeLens", function(_, buffer)
                     vim.lsp.codelens.refresh()
-                    vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost" }, {
+                    vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "InsertLeave" }, {
                         buffer = buffer,
                         callback = vim.lsp.codelens.refresh,
                     })
                 end)
             end
 
-            if vim.g.project_lspconfig ~= nil then
-                opts.servers = vim.tbl_deep_extend("force", opts.servers, vim.g.project_lspconfig)
-                opts.servers.rust_analyzer = nil
-            end
-
-            -- 指定诊断日志的图标
-            for level, icon in pairs(require("lazyvim.config").icons.diagnostics) do
-                level = "DiagnosticSign" .. level
-                vim.fn.sign_define(level, { text = icon, texthl = level, numhl = "" })
-            end
             -- 配置诊断
-            vim.diagnostic.config(opts.diagnostics)
+            vim.diagnostic.config(vim.deepcopy(opts.diagnostics))
 
             local capabilities = vim.tbl_deep_extend(
                 "force",
                 vim.lsp.protocol.make_client_capabilities(),
-                require("cmp_nvim_lsp").default_capabilities(), -- 令 cmp-nvim-lsp 连接服务器
+                require("blink.cmp").get_lsp_capabilities(), -- 令 blink.cmp 连接服务器
                 opts.capabilities or {}
             )
 
@@ -84,8 +93,18 @@ return {
             { "gI", "<cmd>Telescope lsp_implementations<cr>", desc = "Goto Implementation" },
             { "gR", "<cmd>Telescope lsp_references<cr>", desc = "References" },
             { "gr", "<cmd>Lspsaga finder ref<cr>", desc = "Saga References" },
-            { "[d", "<cmd>Lspsaga diagnostic_jump_prev<cr>", desc = "Prev Diagnostic" },
-            { "]d", "<cmd>Lspsaga diagnostic_jump_next<cr>", desc = "Next Diagnostic" },
+            {
+                "[d",
+                "<cmd>Lspsaga diagnostic_jump_prev<cr>",
+                mode = { "n", "v" },
+                desc = "Prev Diagnostic",
+            },
+            {
+                "]d",
+                "<cmd>Lspsaga diagnostic_jump_next<cr>",
+                mode = { "n", "v" },
+                desc = "Next Diagnostic",
+            },
             {
                 "[e",
                 function()
@@ -93,6 +112,7 @@ return {
                         severity = vim.diagnostic.severity.ERROR,
                     })
                 end,
+                mode = { "n", "v" },
                 desc = "Prev Error",
             },
             {
@@ -102,6 +122,7 @@ return {
                         severity = vim.diagnostic.severity.ERROR,
                     })
                 end,
+                mode = { "n", "v" },
                 desc = "Next Error",
             },
             -- 审视
@@ -113,8 +134,8 @@ return {
             {
                 "<leader>la",
                 "<cmd>Lspsaga code_action<cr>",
-                desc = "Code Action",
                 mode = { "n", "v" },
+                desc = "Code Action",
             },
             {
                 "<leader>lA",

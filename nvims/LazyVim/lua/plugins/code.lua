@@ -2,12 +2,6 @@ local utils = require("utils")
 
 return {
     {
-        "garymjr/nvim-snippets",
-        opts = {
-            search_paths = { vim.fn.stdpath("config") .. "/snippets" },
-        },
-    },
-    {
         "nvimdev/guard.nvim",
         dependencies = {
             "nvimdev/guard-collection",
@@ -33,7 +27,11 @@ return {
             --     },
             --     stdin = true,
             -- },
-            sh = "shfmt",
+            sh = {
+                cmd = "shfmt",
+                args = { "-i", "4" },
+                stdin = true,
+            },
             ["c,cpp"] = {
                 cmd = "clang-format",
                 args = {
@@ -44,7 +42,7 @@ return {
             },
             rust = "rustfmt",
             go = "gofmt",
-            ["vue,json,jsonc,javascript,typescript,xml,yaml,html,css"] = "prettier",
+            ["vue,json,jsonc,javascript,typescript,xml,yaml,html,css,astro"] = "prettier",
             typst = {
                 cmd = "typstyle",
                 stdin = true,
@@ -72,5 +70,38 @@ return {
     {
         "numToStr/Comment.nvim",
         config = true,
+    },
+    {
+        "saghen/blink.cmp",
+        event = "InsertEnter",
+        opts = {
+            completion = {
+                trigger = {
+                    show_on_x_blocked_trigger_characters = { "'", '"', "(", "{", "=" },
+                },
+                menu = {
+                    border = "rounded",
+                },
+                documentation = {
+                    auto_show_delay_ms = 0,
+                    window = {
+                        border = "rounded",
+                    },
+                },
+                list = {
+                    selection = "auto_insert",
+                },
+            },
+            signature = {
+                enabled = true,
+                window = {
+                    border = "rounded",
+                },
+            },
+            keymap = {
+                ["<Tab>"] = { "select_next", "fallback" },
+                ["<S-Tab>"] = { "select_prev", "fallback" },
+            },
+        },
     },
 }

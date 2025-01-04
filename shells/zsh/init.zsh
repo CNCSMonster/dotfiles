@@ -33,3 +33,4 @@ source "$ZSH_CONFIG_HOME/config.zsh"
 
 source "$SH_COMMON_DIR/inter.sh"
 source "$SH_COMMON_DIR/alias.sh"
+source "$SH_COMMON_DIR/fn.sh"
