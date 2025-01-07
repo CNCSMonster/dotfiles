@@ -16,9 +16,9 @@ function fj() {
     # 检查是否选择了目标目录
     if [ -n "$target" ]; then
         if [ -d "$target" ]; then
-            cd "$target" || exit
+            cd "$target"
         else
-            cd $(dirname $target) || exit
+            cd $(dirname $target)
         fi
     else
         echo "No target dir selected"
