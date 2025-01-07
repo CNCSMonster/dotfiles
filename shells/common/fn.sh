@@ -8,9 +8,9 @@ function fj() {
         target=$(fd "$1" | fzf -q "$2")
     elif [ $# -eq 1 ]; then
         # 如果没有两个参数，使用第一个参数作为fzf查询输入
-        target=$(fd d . | fzf -q $1)
+        target=$(fd . | fzf -q $1)
     else
-        target=$(fd d . | fzf)
+        target=$(fd . | fzf)
     fi
 
     # 检查是否选择了目标目录
