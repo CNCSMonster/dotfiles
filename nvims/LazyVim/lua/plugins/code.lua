@@ -42,7 +42,13 @@ return {
             },
             rust = "rustfmt",
             go = "gofmt",
-            ["vue,json,jsonc,javascript,typescript,xml,yaml,html,css,astro"] = "prettier",
+            ["vue,json,javascript,typescript,xml,yaml,html,css,astro"] = "prettier",
+            ["jsonc,json5"] = {
+                cmd = "prettier",
+                args = { "--trailing-comma", "none", "--stdin-filepath" },
+                fname = true,
+                stdin = true,
+            },
             typst = {
                 cmd = "typstyle",
                 stdin = true,
@@ -73,6 +79,7 @@ return {
     },
     {
         "saghen/blink.cmp",
+        version = "0.9.3",
         event = "InsertEnter",
         opts = {
             completion = {
@@ -97,10 +104,6 @@ return {
                 window = {
                     border = "rounded",
                 },
-            },
-            keymap = {
-                ["<Tab>"] = { "select_next", "fallback" },
-                ["<S-Tab>"] = { "select_prev", "fallback" },
             },
         },
     },
