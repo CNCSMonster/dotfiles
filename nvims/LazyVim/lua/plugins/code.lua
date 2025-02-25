@@ -40,7 +40,11 @@ return {
                 },
                 stdin = true,
             },
-            rust = "rustfmt",
+            rust = {
+                cmd = "rustfmt",
+                args = { "--edition", "2024", "--emit", "stdout" },
+                stdin = true,
+            },
             go = "gofmt",
             ["vue,json,javascript,typescript,xml,yaml,html,css,astro"] = "prettier",
             ["jsonc,json5"] = {
@@ -79,6 +83,7 @@ return {
     },
     {
         "saghen/blink.cmp",
+        dependencies = { "xzbdmw/colorful-menu.nvim" },
         event = "InsertEnter",
         opts = {
             completion = {
@@ -87,6 +92,25 @@ return {
                 },
                 menu = {
                     border = "rounded",
+                    draw = {
+                        columns = {
+                            { "kind_icon" },
+                            {
+                                "label",
+                                gap = 1,
+                            },
+                        },
+                        components = {
+                            label = {
+                                text = function(ctx)
+                                    return require("colorful-menu").blink_components_text(ctx)
+                                end,
+                                highlight = function(ctx)
+                                    return require("colorful-menu").blink_components_highlight(ctx)
+                                end,
+                            },
+                        },
+                    },
                 },
                 documentation = {
                     update_delay_ms = 0,
