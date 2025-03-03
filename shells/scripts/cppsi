@@ -8,7 +8,7 @@ fi
 
 # 获取 C++ 文件路径
 cpp_file="$1"
-shift  # 移除第一个参数（cpp文件），剩下的参数作为编译参数
+shift # 移除第一个参数（cpp文件），剩下的参数作为编译参数
 
 # 创建临时目录
 temp_dir=$(mktemp -d)
@@ -28,9 +28,16 @@ $compiler -o "$temp_dir/$filename" "$cpp_file" "$@"
 if [ $? -eq 0 ]; then
   echo "编译成功！正在运行程序..."
   "$temp_dir/$filename"
+  # 检查程序的退出状态
+  exit_status=$?
+  if [ $exit_status -eq 0 ]; then
+    echo "程序正常退出。"
+  else
+    echo "程序退出状态: $exit_status"
+  fi
 else
   echo "编译失败！请检查代码和编译参数。"
-  rm -rf "$temp_dir"  # 清理临时目录
+  rm -rf "$temp_dir" # 清理临时目录
   exit 1
 fi
 
