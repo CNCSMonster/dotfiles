@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# 检查暂存区文件中是否存在 Git 冲突标志
+check_conflicts() {
+    local conflict_files=()
+    local conflict_pattern="<<<<<<<|=======|>>>>>>>"
+    local staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
+
+    for file in $staged_files; do
+        if git diff --cached -- "$file" | grep -E "$conflict_pattern"; then
+            conflict_files+=("$file")
+        fi
+    done
+
+    echo "${conflict_files[@]}"
+}
+
+# 主逻辑
+main() {
+    conflict_files=$(check_conflicts)
+
+    if [[ -n "$conflict_files" ]]; then
+        echo "检测到以下文件中存在 Git 冲突标志："
+        printf "  %s\n" "${conflict_files[@]}"
+
+        while true; do
+            read -p "是否是误检？(y/n): " answer
+            case $answer in
+                [Yy]* )
+                    echo "继续提交..."
+                    break
+                    ;;
+                [Nn]* )
+                    echo "中断提交，请解决冲突后再试。"
+                    exit 1
+                    ;;
+                * )
+                    echo "请输入 y 或 n。"
+                    ;;
+            esac
+        done
+    else
+        echo "未检测到 Git 冲突标志，继续提交。"
+    fi
+}
+
+main "$@"
