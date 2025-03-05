@@ -7,7 +7,7 @@ check_conflicts() {
     local staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
 
     for file in $staged_files; do
-        if git diff --cached -- "$file" | grep -E "$conflict_pattern"; then
+        if git diff --cached -- "$file" | grep -q -E "$conflict_pattern"; then
             conflict_files+=("$file")
         fi
     done
@@ -22,23 +22,8 @@ main() {
     if [[ -n "$conflict_files" ]]; then
         echo "检测到以下文件中存在 Git 冲突标志："
         printf "  %s\n" "${conflict_files[@]}"
-
-        while true; do
-            read -p "是否是误检？(y/n): " answer
-            case $answer in
-                [Yy]* )
-                    echo "继续提交..."
-                    break
-                    ;;
-                [Nn]* )
-                    echo "中断提交，请解决冲突后再试。"
-                    exit 1
-                    ;;
-                * )
-                    echo "请输入 y 或 n。"
-                    ;;
-            esac
-        done
+        echo "中断提交，请解决冲突后再试。"
+        exit 1
     else
         echo "未检测到 Git 冲突标志，继续提交。"
     fi
