@@ -1,3 +1,5 @@
+local LazyVim = require("lazyvim.util")
+
 return {
     {
         "akinsho/bufferline.nvim",
@@ -97,6 +99,39 @@ return {
             { "nvim-lua/plenary.nvim" },
             { "nvim-telescope/telescope.nvim" },
             { "Shatur/neovim-session-manager" },
+        },
+    },
+    {
+        "folke/snacks.nvim",
+        keys = {
+            {
+                "<leader>ff",
+                function()
+                    Snacks.picker.files()
+                end,
+                desc = "Find Files (cwd)",
+            },
+            {
+                "<leader>fF",
+                function()
+                    Snacks.picker.files({ cwd = require("lazyvim.util").root.get() })
+                end,
+                desc = "Find Files (Root Dir)",
+            },
+            {
+                "<leader>sg",
+                function()
+                    Snacks.picker.grep()
+                end,
+                desc = "Grep (cwd)",
+            },
+            {
+                "<leader>sG",
+                function()
+                    Snacks.picker.grep({ cwd = require("lazyvim.util").root.get() })
+                end,
+                desc = "Grep (Root Dir)",
+            },
         },
     },
 }

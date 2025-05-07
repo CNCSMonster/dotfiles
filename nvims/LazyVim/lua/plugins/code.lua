@@ -10,59 +10,73 @@ return {
             { "<leader>lf", "<cmd>Guard fmt<cr>", desc = "异步格式化" },
         },
         opts = {
-            lua = {
-                cmd = "stylua",
-                args = { "--indent-type", "Spaces", "-" },
-                stdin = true,
-            },
-            python = "ruff",
-            toml = "taplo",
-            -- ocaml = {
-            --     cmd = "ocamlformat",
-            --     args = {
-            --         "--enable-outside-detected-project",
-            --         "--name",
-            --         utils.vim.current_buffer_name(),
-            --         "-",
-            --     },
-            --     stdin = true,
-            -- },
-            sh = {
-                cmd = "shfmt",
-                args = { "-i", "4" },
-                stdin = true,
-            },
-            ["c,cpp"] = {
-                cmd = "clang-format",
-                args = {
-                    "--style",
-                    "{IndentWidth: 4}",
+            fmt = {
+                lua = {
+                    cmd = "stylua",
+                    args = { "--indent-type", "Spaces", "-" },
+                    stdin = true,
                 },
-                stdin = true,
+                python = "ruff",
+                toml = "taplo",
+                -- ocaml = {
+                --     cmd = "ocamlformat",
+                --     args = {
+                --         "--enable-outside-detected-project",
+                --         "--name",
+                --         utils.vim.current_buffer_name(),
+                --         "-",
+                --     },
+                --     stdin = true,
+                -- },
+                sh = {
+                    cmd = "shfmt",
+                    args = { "-i", "4" },
+                    stdin = true,
+                },
+                ["c,cpp"] = {
+                    cmd = "clang-format",
+                    args = {
+                        "--style",
+                        "{IndentWidth: 4}",
+                    },
+                    stdin = true,
+                },
+                rust = {
+                    cmd = "rustfmt",
+                    args = { "--edition", "2024", "--emit", "stdout" },
+                    stdin = true,
+                },
+                go = "gofmt",
+                ["json,jsonc,json5,javascript,typescript,javascriptreact,typescriptreact,css"] = {
+                    cmd = "biome",
+                    args = { "format", "--indent-style=space", "--stdin-file-path" },
+                    fname = true,
+                    stdin = true,
+                },
+                ["vue,xml,yaml,html,astro"] = "prettier",
+                typst = {
+                    cmd = "typstyle",
+                    stdin = true,
+                },
+                kotlin = {
+                    cmd = "ktfmt",
+                    args = { "--kotlinlang-style", "-" },
+                    stdin = true,
+                },
             },
-            rust = {
-                cmd = "rustfmt",
-                args = { "--edition", "2024", "--emit", "stdout" },
-                stdin = true,
-            },
-            go = "gofmt",
-            ["vue,json,javascript,typescript,xml,yaml,html,css,astro"] = "prettier",
-            ["jsonc,json5"] = {
-                cmd = "prettier",
-                args = { "--trailing-comma", "none", "--stdin-filepath" },
-                fname = true,
-                stdin = true,
-            },
-            typst = {
-                cmd = "typstyle",
-                stdin = true,
+            lint = {
+                typos = "c,cpp,rust,go,python,lua",
             },
         },
         config = function(_, opts)
             local ft = require("guard.filetype")
 
-            for lang, opt in pairs(opts) do
-                ft(lang):fmt(opt)
+            for lang, opt in pairs(opts.fmt) do
+                local f = ft(lang):fmt(opt)
+
+                if opts.lint.typos:find(lang) then
+                    f:lint("typos")
+                end
             end
 
             vim.g.guard_config = {
@@ -86,12 +100,28 @@ return {
         dependencies = { "xzbdmw/colorful-menu.nvim" },
         event = "InsertEnter",
         opts = {
+            sources = {
+                providers = {
+                    buffer = {
+                        opts = {
+                            -- get all buffers, even ones like neo-tree
+                            get_bufnrs = vim.api.nvim_list_bufs,
+                        },
+                    },
+                },
+            },
             completion = {
+                accept = {
+                    auto_brackets = {
+                        enabled = false,
+                    },
+                },
                 trigger = {
                     show_on_x_blocked_trigger_characters = { "'", '"', "(", "{", "=" },
                 },
                 menu = {
                     border = "rounded",
+                    winblend = 10,
                     draw = {
                         columns = {
                             { "kind_icon" },
@@ -113,7 +143,7 @@ return {
                     },
                 },
                 documentation = {
-                    update_delay_ms = 0,
+                    update_delay_ms = 50,
                     auto_show_delay_ms = 0,
                     window = {
                         border = "rounded",
