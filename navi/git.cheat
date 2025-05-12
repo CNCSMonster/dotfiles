@@ -17,7 +17,7 @@ git log --stat
 
 # 指定diff工具来查看历次提交的详细变化情况
 git log <difftool> --stat -p -W <path>
-$ difftool: printf '\ndifft\ndiff`
+$ difftool: printf '\n--ext-diff'
 
 # 查看某次提交的内容
 git show <opt-name-only> <commit>
