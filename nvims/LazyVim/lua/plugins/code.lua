@@ -1,5 +1,3 @@
-local utils = require("utils")
-
 return {
     {
         "nvimdev/guard.nvim",
@@ -162,6 +160,40 @@ return {
                     border = "rounded",
                 },
             },
+        },
+    },
+    {
+        "nvim-neotest/neotest",
+        opts = function()
+            return {
+                adapters = {
+                    require("rustaceanvim.neotest"),
+                },
+            }
+        end,
+    },
+    {
+        "mistricky/codesnap.nvim",
+        build = "make build_generator",
+        keys = {
+            {
+                "<leader>cs",
+                "<cmd>CodeSnap<cr>",
+                mode = { "x" },
+                desc = "Save selected code snapshot into clipboard",
+            },
+            {
+                "<leader>ca",
+                "<cmd>CodeSnapASCII<cr>",
+                mode = { "x" },
+                desc = "Save selected code ASCII snapshot into clipboard",
+            },
+        },
+        opts = {
+            mac_window_bar = false,
+            bg_x_padding = 10,
+            bg_y_padding = 10,
+            has_line_number = true,
         },
     },
 }

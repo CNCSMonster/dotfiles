@@ -133,3 +133,5 @@ source $SH_COMMON_DIR/alias.sh
 source $SH_COMMON_DIR/inter.sh
 source $SH_COMMON_DIR/fn.sh
 . "$HOME/.cargo/env"
+
+. "$HOME/.local/share/../bin/env"

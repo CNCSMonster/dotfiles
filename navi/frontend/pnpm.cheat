@@ -1,0 +1,5 @@
+% pnpm
+
+
+# 初始化当前空目录为react项目模板
+pnpm create vite . --template react

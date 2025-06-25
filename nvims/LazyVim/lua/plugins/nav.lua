@@ -1,4 +1,5 @@
 local LazyVim = require("lazyvim.util")
+local utils = require("utils")
 
 return {
     {
@@ -102,35 +103,41 @@ return {
         },
     },
     {
-        "folke/snacks.nvim",
+        "MagicDuck/grug-far.nvim",
         keys = {
             {
-                "<leader>ff",
+                "gs",
                 function()
-                    Snacks.picker.files()
+                    local grug = require("grug-far")
+
+                    grug.open({
+                        engine = "astgrep",
+                        transient = true,
+                        prefills = {
+                            filesFilter = utils.path.filename(utils.vim.current_buffer_path()),
+                        },
+                        visualSelectionUsage = "operate-within-range",
+                    })
                 end,
-                desc = "Find Files (cwd)",
+                mode = { "n", "v" },
+                desc = "Search and Replace AST in current file",
             },
             {
-                "<leader>fF",
+                "<leader>sA",
                 function()
-                    Snacks.picker.files({ cwd = require("lazyvim.util").root.get() })
+                    local grug = require("grug-far")
+
+                    local ext = vim.bo.buftype == "" and vim.fn.expand("%:e")
+                    grug.open({
+                        engine = "astgrep",
+                        transient = true,
+                        prefills = {
+                            filesFilter = ext and ext ~= "" and "*." .. ext or nil,
+                        },
+                    })
                 end,
-                desc = "Find Files (Root Dir)",
-            },
-            {
-                "<leader>sg",
-                function()
-                    Snacks.picker.grep()
-                end,
-                desc = "Grep (cwd)",
-            },
-            {
-                "<leader>sG",
-                function()
-                    Snacks.picker.grep({ cwd = require("lazyvim.util").root.get() })
-                end,
-                desc = "Grep (Root Dir)",
+                mode = { "n", "v" },
+                desc = "Search and Replace AST",
             },
         },
     },

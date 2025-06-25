@@ -1,12 +1,37 @@
-[plugin]
-deps = [
-  # { use = "DreamMaoMao/searchjump", commit = "adb0a74" },
-  # { use = "TD-Sky/sudo", rev = "1581cb7" },
-  { use = "yazi-rs/plugins:max-preview", rev = "4fcd737" },
-  { use = "yazi-rs/plugins:hide-preview", rev = "4fcd737" },
-  { use = "Rolv-Apneseth/starship", rev = "77a65f5" },
-  { use = "ndtoan96/ouch", rev = "251da69" },
-]
+[[plugin.deps]]
+use = "DreamMaoMao/searchjump"
+rev = "fe884f4"
+hash = "b4c00ef6899a9563af8d577d0bb46998"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:git"
+rev = "63f9650"
+hash = "bf6f074cd41ee33c3360341d168f9733"
+
+[[plugin.deps]]
+use = "Rolv-Apneseth/starship"
+rev = "6a0f3f7"
+hash = "d5a74d95c2e8194ac352c5e10e81e64f"
+
+[[plugin.deps]]
+use = "TD-Sky/sudo"
+rev = "af70636"
+hash = "a94dcbe9266512806c677138e8591ddb"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:toggle-pane"
+rev = "63f9650"
+hash = "d5d4f3527592da5fbe77fd6f51815f80"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:piper"
+rev = "63f9650"
+hash = "2bdc137505b8d9a0cc867a57d0e99b01"
+
+[[plugin.deps]]
+use = "Lil-Dank/lazygit"
+rev = "7a08a09"
+hash = "a1fa2b3e1826c3a34804ea8c548e9f80"
 
 [flavor]
 deps = []
