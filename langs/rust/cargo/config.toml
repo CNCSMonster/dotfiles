@@ -58,3 +58,6 @@ linker = "clang"    # 无论开不开启使用mold作为链接器,该字段都�
 
 # [build]
 # rustc-wrapper = "/usr/bin/sccache"
+
+[cache]
+auto-clean-frequency = "1 weeks" # 每周清理一次

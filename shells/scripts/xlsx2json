@@ -1,0 +1,13 @@
+#!/usr/bin/env -S nu --stdin
+
+def main [excel: path] {
+    let data = open $excel
+    let names = $data | columns
+    $data
+    | items {|k, v| [$v] | wrap $k }
+    | reduce {|t| merge $t }
+    | update cells -c $names {|value|
+        $value | headers
+    }
+    | save $"($excel | path parse | get stem).json"
+}
