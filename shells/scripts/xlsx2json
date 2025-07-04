@@ -9,5 +9,6 @@ def main [excel: path] {
     | update cells -c $names {|value|
         $value | headers
     }
+    | first
     | save $"($excel | path parse | get stem).json"
 }
