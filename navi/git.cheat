@@ -65,3 +65,6 @@ git submodule deinit <submodule_dir>
 
 # 同步子模块URL
 git submodule sync
+
+# 使用镜像仓库来进行git clone操作
+git clone https://gitclone.com/github.com/<user>/<repo>.git
