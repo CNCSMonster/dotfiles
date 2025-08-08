@@ -21,3 +21,8 @@
     date = iso-strict-local
 [trim]
     bases = develop,master,main
+# 替换url
+[url "https://gitclone.com/github.com/"]
+    insteadOf = https://github.com/
+# [url "git@gitclone.com/github.com:"]
+#    insteadOf = git@github.com:

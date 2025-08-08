@@ -60,3 +60,6 @@ cargo doc --document-private-items --open
 
 # 列印会推送的文件
 cargo package --list
+
+# 格式化use语句
+cargo fmt -- --config imports_granularity="Crate" --config reorder_imports=true --config group_imports="StdExternalCrate"

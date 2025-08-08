@@ -1,0 +1,13 @@
+% vscode 插件开发
+
+# 临时下载工具来引导式创建一个vscode插件项目
+npx --package yo --package generator-code -- yo code
+
+# 下载yo工具，用于创建插件项目, 注意这里一定要用npm下载generator-code
+# 如果用pnpm下载generator-code的话，使用yo的时候它找不到这个模块
+npm installl -g yo generator-code
+
+# 使用本地yo引导式创建vscode插件项目
+yo code
+
+
