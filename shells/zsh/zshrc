@@ -10,3 +10,7 @@ esac
 # pnpm end
 
 . "$HOME/.local/share/../bin/env"
+
+# >>> fishros initialize >>>
+source /opt/ros/humble/setup.zsh
+# <<< fishros initialize <<<

@@ -50,30 +50,30 @@ RUN CARGO_BIN=/root/.cargo/bin && PATH=$CARGO_BIN:$PATH && \
 # Install uv for python-pros
 RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/astral-sh/uv/releases/download/0.4.24/uv-installer.sh | sh
 
-
 COPY . /root/dotfiles
+
 # 使用xdotter程序写入配置
 WORKDIR /root/dotfiles
-RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    xdotter deploy
+RUN /root/.cargo/bin/xdotter deploy
 
-RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo install cargo-binstall parallel-disk-usage bat navi
+RUN /root/.cargo/bin/cargo install cargo-binstall parallel-disk-usage bat navi
 
-RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo install starship eza conceal 
+RUN /root/.cargo/bin/cargo install starship eza conceal 
 
-RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo install zoxide fd-find macchina yazi-fm fnm
+RUN /root/.cargo/bin/cargo install zoxide fd-find macchina yazi-fm fnm
 
-RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo install tree-sitter-cli tokei gen-mdbook-summary
+RUN /root/.cargo/bin/cargo install tree-sitter-cli tokei gen-mdbook-summary
 
-RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo binstall -y kondo jaq bob-nvim
+RUN /root/.cargo/bin/cargo binstall -y kondo jaq bob-nvim
 
-RUN CARGO_BIN=/root/.cargo/bin PATH=$CARGO_BIN:$PATH && \
-    cargo binstall -y rust-script
+RUN /root/.cargo/bin/cargo binstall -y rust-script
+
+# 添加fuzz工具链
+RUN /root/.cargo/bin/rustup component add llvm-tools-preview --toolchain nightly&& \
+    /root/.cargo/bin/cargo install cargo-fuzz grcov
+
+# 添加单元测试覆盖率报告生成工具
+RUN /root/.cargo/bin/cargo install cargo-tarpaulin
 
 # 使用bob-nvim安装nvim, 使用fnm安装node
 RUN PATH=/root/.cargo/bin:$PATH && \
