@@ -1,54 +1,15 @@
 #!/usr/bin/env bash
 
+# 说明, 该脚本应该在部署了dotfiles之后运行, 因为该脚本中会使用dotfiles中配置
+
 set -euxo pipefail
 
 # --------- helpers ---------
 
-ensure_cargo_binstall() {
-  local CARGO_BIN="${HOME}/.cargo/bin/cargo"
-  if ! command -v cargo-binstall >/dev/null 2>&1; then
-    "${CARGO_BIN}" install cargo-binstall
-  fi
-}
-
-try_binstall_then_install() {
-  local crate_name="$1"
-  shift || true
-  local extra_args=("$@")
-  local CARGO_BIN="${HOME}/.cargo/bin/cargo"
-
-  if command -v cargo-binstall >/dev/null 2>&1; then
-    "${CARGO_BIN}" binstall -y "${extra_args[@]}" "${crate_name}" || \
-    "${CARGO_BIN}" install "${extra_args[@]}" "${crate_name}"
-  else
-    "${CARGO_BIN}" install "${extra_args[@]}" "${crate_name}"
-  fi
-}
-
-apt_get() {
-  apt-get update --fix-missing
-  apt-get upgrade -y
-  apt-get install -y --no-install-recommends \
-    apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build \
-    lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip \
-    htop iotop fzf ripgrep net-tools snapd vim tree git delta python3 python3-pip \
-    python3-venv python3-dev python3-setuptools python3-wheel zsh
-}
-
-setup_tsinghua_mirror() {
-  mkdir -p /etc/apt/sources.list.d
-  cp ./tsinghua.list /etc/apt/sources.list.d/tsinghua.list
-}
-
+# 该方法应该在部署了dotfiles之后运行
 setup_llvm_18() {
-  local LLVM_PATH="/usr/lib/llvm-18"
   local LLVM_VERSION="18"
-  wget https://apt.llvm.org/llvm.sh
-  chmod +x llvm.sh
-  ./llvm.sh "${LLVM_VERSION}"
-  rm -f llvm.sh
-  ln -sfn "${LLVM_PATH}" /usr/lib/llvm
-  ln -sfn "${LLVM_PATH}/bin/clang" /usr/local/bin/clang
+  sudo "install-llvm" "${LLVM_VERSION}"
 }
 
 setup_go() {
@@ -62,9 +23,11 @@ setup_go() {
   rm -f go.tar.gz
 
   # 可选：创建符号链接便于全局使用（若希望用 /opt/go 请自行修改路径）
-  ln -sfn "${GO_DST}/go" /usr/local/go
+  sudo ln -sfn "${GO_DST}/go" /usr/local/go
 
-  # 配置环境变量（非持久化，仅对当前 RUN 生效；持久化请写入镜像 ENV 或 shell 配置）
+  # 配置环境变量并持久化
+  echo "export PATH=\"${GO_DST}/go/bin:\$PATH\"" >> "${HOME}/.profile"
+  echo "export GOPROXY=\"https://goproxy.cn,direct\"" >> "${HOME}/.profile"
   export PATH="${GO_DST}/go/bin:${PATH}"
   export GOPROXY="https://goproxy.cn,direct"
 
@@ -84,10 +47,6 @@ setup_rust_nightly() {
 
   rustup default nightly
   rustup component add rustfmt clippy
-
-  # 示例工具：优先用 cargo-binstall，失败回退 cargo install
-  ensure_cargo_binstall
-  try_binstall_then_install xdotool
 }
 
 setup_uv() {
@@ -95,11 +54,13 @@ setup_uv() {
 }
 
 deploy_dotfiles() {
-  mkdir -p /root/dotfiles
-  cp -a . /root/dotfiles
+  sudo mkdir -p /root/dotfiles
+  sudo cp -a . /root/dotfiles
   cd /root/dotfiles || exit 1
-  # 若 xdotool 未在 PATH，可显式使用 ~/.cargo/bin/xdotool
-  ~/.cargo/bin/xdotool deploy
+  # 安装xdotter
+  ensure_cargo_binstall
+  try_binstall_then_install xdotter
+  xdotool deploy
 }
 
 install_rust_app() {
@@ -129,24 +90,23 @@ fuzz_and_coverage() {
 
 install_node_via_fnm() {
   # 确保使用已安装的 fnm
+  echo "export PATH=\"${HOME}/.fnm:\$PATH\"" >> "${HOME}/.profile"
   export PATH="${HOME}/.fnm:${PATH}"
   fnm install v22.2.0
   fnm use v22.2.0
 }
 
 main() {
-  setup_tsinghua_mirror
   export DEBIAN_FRONTEND=noninteractive
   export TZ=Asia/Shanghai
   apt_get
-  setup_llvm_18
-  setup_go
   setup_rust_nightly
-  setup_uv
   deploy_dotfiles
+  setup_llvm_18
   install_rust_app
   fuzz_and_coverage
-  install_node_via_fnm
+  setup_go
+  setup_uv
 }
 
 main "$@"

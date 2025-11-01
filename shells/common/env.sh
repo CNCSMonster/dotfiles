@@ -67,13 +67,8 @@ hash -d cache=$XDG_CACHE_HOME
 # export VIMTEX_OUTPUT_DIRECTORY='./target/tex'
 
 # 默认编辑器
-export EDITOR='nvim'
-# 我的lazyvim在wsl2上总是不能正常工作，先使用裸nvim
-# export EDITOR='lvim'
-
-# nodejs 本体镜像
-export FNM_NODE_DIST_MIRROR='https://npmmirror.com/mirrors/node'
+export EDITOR='lvim'
 
 # # mcfly
-# export MCFLY_FUZZY=2
-# export MCFLY_RESULTS=25
+export MCFLY_FUZZY=2
+export MCFLY_RESULTS=25
