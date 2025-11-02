@@ -42,7 +42,7 @@ function install-rust() {
     if [ -z "$RUST_VERSION" ]; then
         RUST_VERSION="nightly"
     fi
-    rustup install $RUST_VERSION
+    setup-rustup
     rustup default $RUST_VERSION
     rustup component add rustfmt clippy rust-analyzer
 }
