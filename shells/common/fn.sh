@@ -27,8 +27,9 @@ function fj() {
     else
         echo "No target dir selected"
     fi
-
 }
+
+
 
 # 如果调用则载入setup.sh, 获取用于安装各种软件的函数
 function load_setup() {

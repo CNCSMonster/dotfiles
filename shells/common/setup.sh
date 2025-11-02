@@ -2,14 +2,22 @@
 # 各种下载安装的函数
 ########################################################
 
+sudo_run() {
+    # 如果当前用户是root用户, 则直接运行命令
+    if [ "$EUID" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
 
 # 下载基础工具链
 function install-common-tools() {
-    sudo apt-get update --fix-missing
-    sudo apt-get upgrade -y
-    sudo apt-get install -y --no-install-recommends \
+    sudo_run apt-get update --fix-missing
+    sudo_run apt-get upgrade -y
+    sudo_run apt-get install -y --no-install-recommends \
         apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build \
-        lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip add-apt-repository \
+        lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip \
         htop iotop fzf ripgrep net-tools snapd vim tree git delta python3 python3-pip \
         python3-venv python3-dev python3-setuptools python3-wheel zsh
 }
