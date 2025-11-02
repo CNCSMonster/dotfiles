@@ -42,7 +42,14 @@ function install-rust() {
 # 下载比较新版的neovim
 # 因为apt-get源里的版本太老了
 function install-neovim(){
-
+    # get target arch
+    local ARCH=$(uname -m)
+    wget https://github.com/neovim/neovim/releases/download/nightly/nvim-linux-${ARCH}.tar.gz -O /tmp/nvim-linux-${ARCH}.tar.gz
+    tar -xzf /tmp/nvim-linux-${ARCH}.tar.gz -C /tmp
+    # 删除旧版本
+    sudo rm -rf /usr/local/neovim || true
+    sudo mv /tmp/nvim-linux-${ARCH} /usr/local/neovim
+    sudo ln -sf /usr/local/neovim/bin/nvim /usr/local/bin/nvim
 }
 
 ensure_cargo_binstall() {

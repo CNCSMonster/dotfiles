@@ -54,6 +54,14 @@ function install-llvm-version() {
     LLVM_VERSION=$1
     LLVM_PATH="/usr/lib/llvm-${LLVM_VERSION}"
 
+    # 检查是否已安装
+    if [ -d "${LLVM_PATH}" ]; then
+        echo "LLVM ${LLVM_VERSION} 已经安装，跳过安装步骤"
+        echo "如果需要重新安装，请先运行 '$APP_NAME remove ${LLVM_VERSION}'"
+        echo "如果想要切换到该版本，请运行 '$APP_NAME use ${LLVM_VERSION}'"
+        return
+    fi
+
     # 下载脚本到~/.local/install-llvm/llvm.sh并执行
     INSTALL_DIR="${HOME}/.local/install-llvm"
     mkdir -p "${INSTALL_DIR}"

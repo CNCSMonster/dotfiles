@@ -1,3 +1,4 @@
+set +u
 # 用于防止重复初始化， 比如source多次init.zsh
 if [ -z "$INIT_DONE" ]; then
 	INIT_DONE=1
