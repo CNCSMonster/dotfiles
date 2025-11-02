@@ -59,7 +59,7 @@ main() {
   load_setup
   install-common-tools
   install-neovim
-  llvmup install 19
+  llvmup default 19
   install-rust nightly
   install-common-rust-tools
   setup-cargo-fuzz
