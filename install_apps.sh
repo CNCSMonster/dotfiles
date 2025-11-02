@@ -65,7 +65,7 @@ main() {
   setup-cargo-fuzz
   setup-uv
   # setup go,zig,node,pnpm, etc.
-  mise install
+  mise trust && mise install
 }
 
 main "$@"

@@ -2,6 +2,8 @@
 # 各种下载安装的函数
 ########################################################
 
+# 用于确保sudo命令不存在，但是为root用户时也能正常运行
+# 因为很多比较精简的系统可能没有安装sudo
 sudo_run() {
     # 如果当前用户是root用户, 则直接运行命令
     if [ "$EUID" -eq 0 ]; then
@@ -11,6 +13,7 @@ sudo_run() {
     fi
 }
 
+
 # 下载基础工具链
 function install-common-tools() {
     sudo_run apt-get update --fix-missing
@@ -19,7 +22,7 @@ function install-common-tools() {
         apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build vim \
         lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip \
         htop iotop fzf ripgrep net-tools snapd vim tree git delta python3 python3-pip \
-        python3-venv python3-dev python3-setuptools python3-wheel zsh
+        python3-venv python3-dev python3-setuptools python3-wheel zsh sudo
 }
 
 # 确保rustup已安装，如果未安装，则下载并安装
