@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+
+# llvmup list 查看已经安装，并且当前正在使用的llvm版本
+# llvmup use <version> 切换到指定版本的llvm
+# llvmup install <version> 安装指定版本的llvm
+
+set -eo pipefail
+
+APP_NAME="llvmup"
+LLVM_SCRIPT="https://apt.llvm.org/llvm.sh"
+
+function list-llvm-versions() {
+python3 << 'EOF'
+import os
+import sys
+
+def main():
+    # 可以从命令行参数获取路径
+    lib_path = sys.argv[1] if len(sys.argv) > 1 else "/usr/lib"
+    
+    # list files in specified path
+    files = os.listdir(lib_path)
+    # filter files, only retain file matching llvm-<number>
+    files = filter(lambda x: x.startswith("llvm-"), files)
+    # map files to version number
+    versions = list(map(lambda x: x[5:], files))
+    
+    # check if exists /usr/lib/llvm, and if it is a symlink and point to where
+    used = None
+    llvm_link_path = os.path.join(lib_path, "llvm")
+    if os.path.exists(llvm_link_path):
+        if os.path.islink(llvm_link_path):
+            point_to = os.readlink(llvm_link_path)
+            if point_to.startswith(os.path.join(lib_path, "llvm-")):
+                used = point_to[len(os.path.join(lib_path, "llvm-")):]
+    
+    print("Installed LLVM versions:")
+    for version in versions:
+        if used is not None and used == version:
+            print(f"  {version}* (Currently used)")
+        else:
+            print(f"  {version}")
+
+if __name__ == "__main__":
+    main()
+EOF
+}
+
+function install-llvm-version() {
+    if [ -z "$1" ]; then
+        echo "用法: $APP_NAME install <llvm版本号>"
+        exit 1
+    fi
+    LLVM_VERSION=$1
+    LLVM_PATH="/usr/lib/llvm-${LLVM_VERSION}"
+
+    # 下载脚本到~/.local/install-llvm/llvm.sh并执行
+    INSTALL_DIR="${HOME}/.local/install-llvm"
+    mkdir -p "${INSTALL_DIR}"
+    LLVM_SCRIPT_PATH="${INSTALL_DIR}/llvm.sh"
+    wget -O "${LLVM_SCRIPT_PATH}" $LLVM_SCRIPT
+    chmod +x "${LLVM_SCRIPT_PATH}"
+    sudo "${LLVM_SCRIPT_PATH}" "${LLVM_VERSION}"
+
+
+    # 等待安装完成，验证文件存在
+    if [ -f "${LLVM_PATH}/bin/clang" ]; then
+        echo "已成功安装 LLVM ${LLVM_VERSION}"
+    else
+        echo "错误: clang 未找到，安装可能失败" >&2
+        exit 1
+    fi
+}
+
+function remove-llvm-version() {
+    if [ -z "$1" ]; then
+        echo "用法: $APP_NAME remove <llvm版本号>"
+        exit 1
+    fi
+    LLVM_VERSION=$1
+    LLVM_PATH="/usr/lib/llvm-${LLVM_VERSION}"
+
+    if [ -d "${LLVM_PATH}" ]; then
+        sudo rm -rf "${LLVM_PATH}"
+        echo "已删除 LLVM ${LLVM_VERSION}"
+    else
+        echo "错误: LLVM ${LLVM_VERSION} 未安装" >&2
+        exit 1
+    fi
+}
+
+function use-llvm-version() {
+    if [ -z "$1" ]; then
+        echo "用法: $APP_NAME use <llvm版本号>"
+        exit 1
+    fi
+    VERSION=$1
+    sudo rm /usr/lib/llvm || true
+    sudo ln -s /usr/lib/llvm-$VERSION /usr/lib/llvm
+}
+
+function print-usage() {
+    echo "用法: $APP_NAME <list|use [version]|install [version]>"
+    exit 1
+}
+
+# 函数：解析 LLVM 版本模式文件并输出版本号列表
+# 参数: $1 - 文件路径
+# 输出: 版本号列表（每行一个版本号）
+function list-remote-versions() {
+    local file_path="/tmp/llvm_temp.sh"
+
+    wget -O "$file_path" $LLVM_SCRIPT > /dev/null 2>&1
+    
+    # 检查文件是否存在
+    if [ ! -f "$file_path" ]; then
+        echo "错误: 文件不存在: $file_path" >&2
+        return 1
+    fi
+    
+    # 检查文件是否可读
+    if [ ! -r "$file_path" ]; then
+        echo "错误: 文件不可读: $file_path" >&2
+        return 1
+    fi
+    
+    local versions=()
+    
+    # 逐行读取文件并解析
+    while IFS= read -r line; do
+        # 匹配格式: LLVM_VERSION_PATTERNS[数字]=值
+        # 支持可能的空格和前缀（如diff格式中的+号）
+        if [[ "$line" =~ ^[[:space:]]*\+?[[:space:]]*LLVM_VERSION_PATTERNS\[([0-9]+)\]=(.*)$ ]]; then
+            local version_num="${BASH_REMATCH[1]}"
+            local pattern_value="${BASH_REMATCH[2]}"
+            
+            # 只添加有效的版本号（索引9-22，且值不为空）
+            if [ -n "$version_num" ] && [ "$version_num" -ge 9 ] && [ "$version_num" -le 22 ]; then
+                # 如果值不为空，添加到版本列表
+                if [ -n "$pattern_value" ]; then
+                    versions+=("$version_num")
+                fi
+            fi
+        fi
+    done < "$file_path"
+    
+    # 输出版本号列表
+    if [ ${#versions[@]} -eq 0 ]; then
+        echo "未找到有效的 LLVM 版本号" >&2
+        return 1
+    fi
+    
+    # 按数字顺序排序版本号
+    mapfile -t sorted_versions < <(printf "%s\n" "${versions[@]}" | sort -n)
+    
+    # 输出结果
+    printf "%s\n" "${sorted_versions[@]}"
+}
+
+# 如果第一个命令行参数为空，则默认执行list命令 --- IGNORE ---
+COMMAND=${1:-list}
+
+# 如果是ls/list/l子命令，则列出已安装的llvm版本
+if [ "$COMMAND" == "list" ] || [ "$COMMAND" == "ls" ] || [ "$COMMAND" == "l" ]; then
+    list-llvm-versions
+elif [ "$COMMAND" == "ls-remote" ]; then
+    list-remote-versions
+elif [ "$COMMAND" == "use" ]; then
+    use-llvm-version "$2"
+# 如果是install/i子命令, 则安装指定版本的llvm
+elif [ "$COMMAND" == "install" ] || [ "$COMMAND" == "i" ]; then
+    install-llvm-version "$2"
+# 安装然后切换到指定版本 , default 子命令
+elif [ "$COMMAND" == "default" ] || [ "$COMMAND" == "d" ]; then
+    install-llvm-version "$2"
+    use-llvm-version "$2"
+elif [ "$COMMAND" == "remove" ] || [ "$COMMAND" == "rm" ]; then
+    remove-llvm-version "$2"
+else
+    print-usage
+fi
