@@ -77,7 +77,7 @@ function install-common-rust-tools() {
     # 批量安装：先 cargo binstall，再回退 cargo install
     local CRATES=(
         kondo jaq rust-script
-        parallel-disk-usage bat navi
+        parallel-disk-usage bat navi mcfly
         starship eza conceal mise kondo
         zoxide fd-find macchina yazi-fm fnm
         tree-sitter-cli tokei gen-mdbook-summary
