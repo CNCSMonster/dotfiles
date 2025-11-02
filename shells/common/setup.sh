@@ -16,7 +16,7 @@ function install-common-tools() {
     sudo_run apt-get update --fix-missing
     sudo_run apt-get upgrade -y
     sudo_run apt-get install -y --no-install-recommends \
-        apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build \
+        apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build vim \
         lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip \
         htop iotop fzf ripgrep net-tools snapd vim tree git delta python3 python3-pip \
         python3-venv python3-dev python3-setuptools python3-wheel zsh

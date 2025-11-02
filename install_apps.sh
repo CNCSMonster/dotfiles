@@ -58,6 +58,7 @@ main() {
   . ~/.zshrc || true
   load_setup
   install-common-tools
+  install-neovim
   llvmup install 19
   install-rust nightly
   install-common-rust-tools
