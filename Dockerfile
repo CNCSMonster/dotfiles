@@ -15,8 +15,7 @@ WORKDIR /root/dotfiles
 
 
 # 使用仓库脚本一键安装所有依赖、语言环境与工具
-RUN chmod +x ./install_apps.sh && \
-    bash ./install_apps.sh
+RUN chmod +x ./install_apps.sh && ./install_apps.sh
 
 # # 清理apt缓存
 # RUN apt clean

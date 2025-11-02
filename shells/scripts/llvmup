@@ -9,6 +9,23 @@ set -eo pipefail
 APP_NAME="llvmup"
 LLVM_SCRIPT="https://apt.llvm.org/llvm.sh"
 
+function sudo_run(){
+    # 如果当前用户是root用户, 则直接运行命令
+    if [ "$EUID" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+function prepare_for_install(){
+    # 检查lsb_release命令是否存在
+    if ! command -v lsb_release >/dev/null 2>&1; then
+        sudo_run apt-get update
+        sudo_run apt-get install -y lsb-release
+    fi
+}
+
 function list-llvm-versions() {
 python3 << 'EOF'
 import os
@@ -61,6 +78,7 @@ function install-llvm-version() {
         echo "如果想要切换到该版本，请运行 '$APP_NAME use ${LLVM_VERSION}'"
         return
     fi
+    prepare_for_install
 
     # 下载脚本到~/.local/install-llvm/llvm.sh并执行
     INSTALL_DIR="${HOME}/.local/install-llvm"
@@ -68,7 +86,7 @@ function install-llvm-version() {
     LLVM_SCRIPT_PATH="${INSTALL_DIR}/llvm.sh"
     wget -O "${LLVM_SCRIPT_PATH}" $LLVM_SCRIPT
     chmod +x "${LLVM_SCRIPT_PATH}"
-    sudo "${LLVM_SCRIPT_PATH}" "${LLVM_VERSION}"
+    sudo_run "${LLVM_SCRIPT_PATH}" "${LLVM_VERSION}"
 
 
     # 等待安装完成，验证文件存在
@@ -89,7 +107,7 @@ function remove-llvm-version() {
     LLVM_PATH="/usr/lib/llvm-${LLVM_VERSION}"
 
     if [ -d "${LLVM_PATH}" ]; then
-        sudo rm -rf "${LLVM_PATH}"
+        sudo_run rm -rf "${LLVM_PATH}"
         echo "已删除 LLVM ${LLVM_VERSION}"
     else
         echo "错误: LLVM ${LLVM_VERSION} 未安装" >&2
@@ -103,8 +121,8 @@ function use-llvm-version() {
         exit 1
     fi
     VERSION=$1
-    sudo rm /usr/lib/llvm || true
-    sudo ln -s /usr/lib/llvm-$VERSION /usr/lib/llvm
+    sudo_run rm /usr/lib/llvm || true
+    sudo_run ln -s /usr/lib/llvm-$VERSION /usr/lib/llvm
 }
 
 function print-usage() {

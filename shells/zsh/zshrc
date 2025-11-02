@@ -6,3 +6,5 @@ source "$HOME/.config/shells/zsh/init.zsh"
 # # >>> fishros initialize >>>
 # source /opt/ros/humble/setup.zsh
 # # <<< fishros initialize <<<
+
+. "$HOME/.local/share/../bin/env"

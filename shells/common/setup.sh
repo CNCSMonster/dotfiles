@@ -4,12 +4,12 @@
 
 
 # 下载基础工具链
-function setup-common-tools() {
+function install-common-tools() {
     sudo apt-get update --fix-missing
     sudo apt-get upgrade -y
     sudo apt-get install -y --no-install-recommends \
         apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build \
-        lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip \
+        lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip add-apt-repository \
         htop iotop fzf ripgrep net-tools snapd vim tree git delta python3 python3-pip \
         python3-venv python3-dev python3-setuptools python3-wheel zsh
 }
