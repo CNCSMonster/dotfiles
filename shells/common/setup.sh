@@ -55,9 +55,9 @@ function install-neovim(){
     wget https://github.com/neovim/neovim/releases/download/nightly/nvim-linux-${ARCH}.tar.gz -O /tmp/nvim-linux-${ARCH}.tar.gz
     tar -xzf /tmp/nvim-linux-${ARCH}.tar.gz -C /tmp
     # 删除旧版本
-    sudo rm -rf /usr/local/neovim || true
-    sudo mv /tmp/nvim-linux-${ARCH} /usr/local/neovim
-    sudo ln -sf /usr/local/neovim/bin/nvim /usr/local/bin/nvim
+    sudo_run rm -rf /usr/local/neovim || true
+    sudo_run mv /tmp/nvim-linux-${ARCH} /usr/local/neovim
+    sudo_run ln -sf /usr/local/neovim/bin/nvim /usr/local/bin/nvim
 }
 
 ensure_cargo_binstall() {
