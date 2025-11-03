@@ -134,6 +134,25 @@ function print-usage() {
 # 参数: $1 - 文件路径
 # 输出: 版本号列表（每行一个版本号）
 function list-remote-versions() {
+   
+    
+    local versions=()
+    local CACHE_DIR="${HOME}/.local/llvmup"
+    local CACHE_FILE="${CACHE_DIR}/remote_versions"
+    local CACHE_EXPIRATION_SECONDS=7200 # 2小时
+
+    mkdir -p "${CACHE_DIR}"
+
+    # 检查缓存文件是否存在且未过期
+    if [ -f "${CACHE_FILE}" ]; then
+        local file_mod_time=$(stat -c %Y "${CACHE_FILE}")
+        local current_time=$(date +%s)
+        if (( current_time - file_mod_time < CACHE_EXPIRATION_SECONDS )); then
+            cat "${CACHE_FILE}"
+            return 0
+        fi
+    fi
+
     local file_path="/tmp/llvm_temp.sh"
 
     wget -O "$file_path" $LLVM_SCRIPT > /dev/null 2>&1
@@ -149,9 +168,7 @@ function list-remote-versions() {
         echo "错误: 文件不可读: $file_path" >&2
         return 1
     fi
-    
-    local versions=()
-    
+
     # 逐行读取文件并解析
     while IFS= read -r line; do
         # 匹配格式: LLVM_VERSION_PATTERNS[数字]=值
@@ -179,6 +196,9 @@ function list-remote-versions() {
     # 按数字顺序排序版本号
     mapfile -t sorted_versions < <(printf "%s\n" "${versions[@]}" | sort -n)
     
+    # 将版本号写入缓存文件
+    printf "%s\n" "${sorted_versions[@]}" > "${CACHE_FILE}"
+
     # 输出结果
     printf "%s\n" "${sorted_versions[@]}"
 }
