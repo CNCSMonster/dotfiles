@@ -60,11 +60,13 @@ main() {
   install-common-tools
   install-neovim
   llvmup default 19
+  setup-vscode
+  setup-feishu
   install-rust nightly
   install-common-rust-tools
   setup-cargo-fuzz
   setup-uv
-  # setup go,zig,node,pnpm, etc.
+  setup go,zig,node,pnpm, etc.
   mise trust && mise install
 }
 

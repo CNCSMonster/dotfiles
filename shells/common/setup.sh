@@ -121,3 +121,19 @@ function setup-wezterm() {
         sudo_run apt install wezterm -y
     fi
 }
+
+function setup-feishu() {
+    # https://lf9-ug-sign.feishucdn.com/ee-appcenter/e91d15e2/Feishu-linux_x64-7.50.14.deb?lk3s=fb957577&x-expires=1763196497&x-signature=1234WZjq%2F%2BtUCqLdcYDGbEZHUsY%3D
+    local FEISHU_DEB_URL="https://lf9-ug-sign.feishucdn.com/ee-appcenter/e91d15e2/Feishu-linux_x64-7.50.14.deb?lk3s=fb957577&x-expires=1763196497&x-signature=1234WZjq%2F%2BtUCqLdcYDGbEZHUsY%3D"
+    local FEISHU_DEB_PATH="/tmp/feishu.deb"
+    wget -O "${FEISHU_DEB_PATH}" "${FEISHU_DEB_URL}"
+    sudo_run dpkg -i "${FEISHU_DEB_PATH}" || sudo_run apt-get install -f -y
+}
+
+function setup-vscode(){
+    # https://vscode.download.prss.microsoft.com/dbazure/download/stable/ac4cbdf48759c7d8c3eb91ffe6bb04316e263c57/code_1.106.0-1762878362_amd64.deb
+    local VSCODE_DEB_URL="https://vscode.download.prss.microsoft.com/dbazure/download/stable/ac4cbdf48759c7d8c3eb91ffe6bb04316e263c57/code_1.106.0-1762878362_amd64.deb"
+    local VSCODE_DEB_PATH="/tmp/vscode.deb"
+    wget -O "${VSCODE_DEB_PATH}" "${VSCODE_DEB_URL}"
+    sudo_run dpkg -i "${VSCODE_DEB_PATH}" || sudo_run apt-get install -f -y 
+}
