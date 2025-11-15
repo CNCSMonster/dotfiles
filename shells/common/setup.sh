@@ -98,3 +98,26 @@ function setup-cargo-fuzz() {
   cargo binstall cargo-fuzz grcov cargo-tarpaulin -y
 }
 
+# 下载wezterm终端模拟器
+function setup-wezterm() {
+    # check if install nightly
+    nightly=${1:-false}
+     if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        if [ "${ID}" = "ubuntu" ] && [[ "${VERSION_ID}" == 24* ]]; then
+            echo "Detected Ubuntu 24, forcing nightly version for wezterm"
+            nightly=true
+        fi
+    fi
+    curl -fsSL https://apt.fury.io/wez/gpg.key | sudo_run gpg --yes --dearmor -o /usr/share/keyrings/wezterm-fury.gpg
+    echo 'deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *' | sudo_run tee /etc/apt/sources.list.d/wezterm.list
+    sudo_run chmod 644 /usr/share/keyrings/wezterm-fury.gpg
+    sudo_run apt update
+    # 需要注意，现在wezterm在ubuntu 24上只支持nightly版本，修改如下脚本为如果是在ubuntu 24上，即使没有指定nightly也安装nightly版本
+    if [ "$nightly" = true ]; then
+        sudo_run apt install wezterm-nightly -y
+        return
+    else
+        sudo_run apt install wezterm -y
+    fi
+}
