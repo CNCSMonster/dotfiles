@@ -79,12 +79,28 @@ function install-common-rust-tools() {
         kondo jaq rust-script
         parallel-disk-usage bat navi mcfly
         starship eza conceal mise kondo
-        zoxide fd-find macchina yazi-fm fnm
+        zoxide fd-find macchina fnm
         tree-sitter-cli tokei gen-mdbook-summary
     )
     for crate in "${CRATES[@]}"; do
         cargo binstall "${crate}" -y
     done
+
+    setup-yazi
+}
+
+function setup-yazi(){
+    # 该方法还需要屏蔽掉yazi的配置，不知道为什么
+    XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-"$HOME/.config"}
+    echo $XDG_CONFIG_HOME
+    if [ -e "$XDG_CONFIG_HOME/yazi" ]; then
+        mv "$XDG_CONFIG_HOME/yazi" "$XDG_CONFIG_HOME/yazi-back"
+    fi
+    # 对于yazi的下载，当前需要单独处理, 官方没处理好，直接用cargo install从crates.io下载会失败，直接cargo binstall yazi-build也会失败
+    cargo install --force --git https://github.com/sxyazi/yazi.git yazi-build
+    if [ -e "$XDG_CONFIG_HOME/yazi-back" ]; then
+        mv "$XDG_CONFIG_HOME/yazi-back" "$XDG_CONFIG_HOME/yazi"
+    fi
 }
 
 function setup-uv() {

@@ -27,9 +27,11 @@ require("lazy").setup({
         { "LazyVim/LazyVim", import = "lazyvim.plugins" },
         -- import any extras modules here
         { import = "lazyvim.plugins.extras.editor.mini-files" },
+        { import = "lazyvim.plugins.extras.editor.snacks_picker" },
         { import = "lazyvim.plugins.extras.lang.yaml" },
         { import = "lazyvim.plugins.extras.coding.blink" },
         { import = "lazyvim.plugins.extras.test.core" },
+        { import = "lazyvim.plugins.extras.ai.sidekick" },
         -- import/override with your plugins
         { import = "plugins" },
         { import = "plugins.lang" },

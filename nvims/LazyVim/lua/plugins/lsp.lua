@@ -1,40 +1,38 @@
 return {
     {
         "neovim/nvim-lspconfig",
-        event = "LazyFile",
+        event = "BufReadPre",
         opts = {
             codelens = {
                 enabled = true,
             },
             -- LSP Server Settings
             servers = {
-                lua_ls = {},
-                texlab = {},
-                taplo = {},
-                gopls = {},
-                ts_ls = {},
-                volar = {},
-                tinymist = {},
-                bashls = {},
-                jsonls = {
-                    filetypes = { "json", "jsonc", "json5" },
+                "lua_ls",
+                "texlab",
+                "tombi",
+                "gopls",
+                "ts_ls",
+                "volar",
+                "tinymist",
+                "bashls",
+                "jsonls",
+                "slint_lsp",
+                "nushell",
+                "clangd",
+                "basedpyright",
+                "astro",
+            },
+            capabilities = {
+                workspace = {
+                    fileOperations = {
+                        didRename = true,
+                        willRename = true,
+                    },
                 },
-                slint_lsp = {
-                    root_dir = require("lspconfig").util.root_pattern(),
-                },
-                nushell = {},
-                clangd = {},
-                basedpyright = {},
-                astro = {},
             },
         },
-        config = function(_, opts)
-            LazyVim.lsp.setup()
-
-            if vim.g.project_lspconfig ~= nil then
-                opts.servers = vim.tbl_deep_extend("force", opts.servers, vim.g.project_lspconfig)
-            end
-
+        config = vim.schedule_wrap(function(_, opts)
             -- 指定诊断日志的图标
             for severity, icon in pairs(opts.diagnostics.signs.text) do
                 local name = vim.diagnostic.severity[severity]:lower():gsub("^%l", string.upper)
@@ -42,8 +40,9 @@ return {
                 vim.fn.sign_define(name, { text = icon, texthl = name, numhl = "" })
             end
 
+            -- inlay hints
             if opts.inlay_hints.enabled then
-                LazyVim.lsp.on_supports_method("textDocument/inlayHint", function(_, buffer)
+                Snacks.util.lsp.on({ method = "textDocument/inlayHint" }, function(buffer)
                     if
                         vim.api.nvim_buf_is_valid(buffer)
                         and vim.bo[buffer].buftype == ""
@@ -54,8 +53,18 @@ return {
                 end)
             end
 
+            -- folds
+            if opts.folds.enabled then
+                Snacks.util.lsp.on({ method = "textDocument/foldingRange" }, function()
+                    if LazyVim.set_default("foldmethod", "expr") then
+                        LazyVim.set_default("foldexpr", "v:lua.vim.lsp.foldexpr()")
+                    end
+                end)
+            end
+
+            -- code lens
             if opts.codelens.enabled and vim.lsp.codelens then
-                LazyVim.lsp.on_supports_method("textDocument/codeLens", function(_, buffer)
+                Snacks.util.lsp.on({ method = "textDocument/codeLens" }, function(buffer)
                     vim.lsp.codelens.refresh()
                     vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "InsertLeave" }, {
                         buffer = buffer,
@@ -64,22 +73,21 @@ return {
                 end)
             end
 
-            -- 配置诊断
+            -- diagnostics
             vim.diagnostic.config(vim.deepcopy(opts.diagnostics))
 
-            local capabilities = vim.tbl_deep_extend(
-                "force",
-                vim.lsp.protocol.make_client_capabilities(),
-                require("blink.cmp").get_lsp_capabilities(), -- 令 blink.cmp 连接服务器
-                opts.capabilities or {}
-            )
+            local default_lsp_config = {
+                capabilities = vim.tbl_deep_extend(
+                    "force",
+                    vim.lsp.protocol.make_client_capabilities(),
+                    require("blink.cmp").get_lsp_capabilities(), -- 令 blink.cmp 连接服务器
+                    opts.capabilities or {}
+                ),
+            }
+            vim.lsp.config("*", default_lsp_config)
 
-            for server, server_opts in pairs(opts.servers) do
-                server_opts.capabilities = vim.tbl_deep_extend("force", capabilities, server_opts.capabilities or {})
-                -- 如果语言服务器不支持语义化token，高亮就会fallback到treesitter
-                require("lspconfig")[server].setup(server_opts)
-            end
-        end,
+            vim.lsp.enable(opts.servers)
+        end),
     },
     {
         "nvimdev/lspsaga.nvim",
@@ -90,11 +98,6 @@ return {
         event = "LspAttach",
         keys = {
             -- 跳转
-            { "gD", "<cmd>Lspsaga goto_type_definition<cr>", desc = "Goto Type Definition" },
-            { "gd", "<cmd>Telescope lsp_definitions<cr>", desc = "Goto Definition" },
-            { "gI", "<cmd>Telescope lsp_implementations<cr>", desc = "Goto Implementation" },
-            { "gR", "<cmd>Telescope lsp_references<cr>", desc = "References" },
-            { "gr", "<cmd>Lspsaga finder ref<cr>", desc = "Saga References" },
             {
                 "[d",
                 "<cmd>Lspsaga diagnostic_jump_prev<cr>",
@@ -140,13 +143,10 @@ return {
                 desc = "Code Action",
             },
             {
-                "<leader>lA",
-                function()
-                    vim.lsp.buf.code_action({
-                        context = { only = { "source" }, diagnostics = {} },
-                    })
-                end,
-                desc = "Source Action",
+                "<leader>ll",
+                vim.lsp.codelens.run,
+                mode = "n",
+                desc = "Code Lens",
             },
             { "<leader>ls", "<cmd>Lspsaga outline<cr>", desc = "Outline" },
             { "<leader>li", "<cmd>Lspsaga incoming_calls<cr>", desc = "Incoming calls tree" },

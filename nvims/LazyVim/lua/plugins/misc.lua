@@ -14,6 +14,11 @@ return {
         dependencies = { "kkharji/sqlite.lua" },
         build = function()
             require("Trans").install()
+            local trans = vim.fn.stdpath("data") .. "/lazy/Trans.nvim"
+            os.execute(
+                string.format([[sqlite3 %s/ultimate.db 'select word from stardict' > %s/neovim.dict]], trans, trans)
+            )
+            vim.notify("gen dict", vim.log.levels.INFO)
         end,
         keys = {
             { "gl", "<cmd>Translate<cr>", mode = { "n", "x" }, desc = "翻译" },
@@ -37,34 +42,6 @@ return {
         "folke/snacks.nvim",
         keys = {
             {
-                "<leader>ff",
-                function()
-                    Snacks.picker.files()
-                end,
-                desc = "Find Files (cwd)",
-            },
-            {
-                "<leader>fF",
-                function()
-                    Snacks.picker.files({ cwd = require("lazyvim.util").root.get() })
-                end,
-                desc = "Find Files (Root Dir)",
-            },
-            {
-                "<leader>sg",
-                function()
-                    Snacks.picker.grep()
-                end,
-                desc = "Grep (cwd)",
-            },
-            {
-                "<leader>sG",
-                function()
-                    Snacks.picker.grep({ cwd = require("lazyvim.util").root.get() })
-                end,
-                desc = "Grep (Root Dir)",
-            },
-            {
                 "<leader>ft",
                 function()
                     Snacks.terminal()
@@ -74,7 +51,9 @@ return {
             {
                 "<leader>fT",
                 function()
-                    Snacks.terminal(nil, { cwd = require("lazyvim.util").root.get() })
+                    Snacks.terminal(nil, {
+                        cwd = LazyVim.root.get(),
+                    })
                 end,
                 desc = "Terminal (Root Dir)",
             },
@@ -92,6 +71,43 @@ return {
             { "<leader>gs", false },
             { "<leader>gS", false },
             { "<leader>gd", false },
+            -- LSP
+            {
+                "gd",
+                function()
+                    Snacks.picker.lsp_definitions()
+                end,
+                desc = "Goto Definition",
+            },
+            {
+                "gr",
+                function()
+                    Snacks.picker.lsp_references()
+                end,
+                nowait = true,
+                desc = "References",
+            },
+            {
+                "gI",
+                function()
+                    Snacks.picker.lsp_implementations()
+                end,
+                desc = "Goto Implementation",
+            },
+            {
+                "gD",
+                function()
+                    Snacks.picker.lsp_type_definitions()
+                end,
+                desc = "Goto Type Definition",
+            },
+            {
+                "<leader>fe",
+                function()
+                    Snacks.explorer.open()
+                end,
+                desc = "File Tree",
+            },
         },
         opts = function(_, opts)
             -- scroll
@@ -106,13 +122,14 @@ return {
                 icon = " ",
                 key = "p",
                 desc = "Projects",
-                action = "<cmd>Telescope neovim-project history<CR>",
+                action = "<cmd>NeovimProjectHistory<CR>",
             }
+            opts.dashboard.preset.keys[1].action = "<leader>fF"
             table.insert(opts.dashboard.preset.keys, 2, {
                 icon = "",
                 key = "F",
                 desc = "Find Files (Root dir)",
-                action = "<leader>fF",
+                action = "<leader>ff",
             })
 
             -- zen

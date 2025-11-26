@@ -15,7 +15,7 @@ return {
                     stdin = true,
                 },
                 python = "ruff",
-                toml = "taplo",
+                toml = "tombi",
                 -- ocaml = {
                 --     cmd = "ocamlformat",
                 --     args = {
@@ -52,13 +52,15 @@ return {
                     stdin = true,
                 },
                 ["vue,xml,yaml,html,astro"] = "prettier",
-                typst = {
-                    cmd = "typstyle",
-                    stdin = true,
-                },
+                typst = "typstyle",
                 kotlin = {
                     cmd = "ktfmt",
                     args = { "--kotlinlang-style", "-" },
+                    stdin = true,
+                },
+                d2 = {
+                    cmd = "d2",
+                    args = { "fmt", "-" },
                     stdin = true,
                 },
             },
@@ -72,6 +74,10 @@ return {
             for lang, opt in pairs(opts.fmt) do
                 local f = ft(lang):fmt(opt)
 
+                if vim.g.project_config ~= nil and vim.g.project_config.guard_on_fmt ~= nil then
+                    vim.g.project_config.guard_on_fmt(lang, f)
+                end
+
                 if opts.lint.typos:find(lang) then
                     f:lint("typos")
                 end
@@ -79,6 +85,7 @@ return {
 
             vim.g.guard_config = {
                 fmt_on_save = false,
+                always_save = true,
             }
         end,
     },
@@ -95,16 +102,100 @@ return {
     },
     {
         "saghen/blink.cmp",
-        dependencies = { "xzbdmw/colorful-menu.nvim" },
+        dependencies = {
+            "xzbdmw/colorful-menu.nvim",
+            {
+                "bydlw98/blink-cmp-env",
+                lazy = true,
+            },
+            {
+                "mikavilpas/blink-ripgrep.nvim",
+                lazy = true,
+            },
+            -- {
+            --     "Kaiser-Yang/blink-cmp-dictionary",
+            --     dependencies = { "nvim-lua/plenary.nvim" },
+            --     lazy = true,
+            -- },
+        },
         event = "InsertEnter",
         opts = {
+            snippets = {
+                preset = "luasnip",
+            },
             sources = {
+                default = function()
+                    local default = { "lsp", "path", "snippets", "buffer", "ripgrep" }
+                    if vim.tbl_contains({ "bash", "sh", "zsh", "nu" }, vim.bo.ft) then
+                        table.insert(default, "env")
+                    end
+                    return default
+                end,
                 providers = {
+                    lsp = {
+                        fallbacks = {},
+                        score_offset = 0,
+                    },
+                    snippets = {
+                        score_offset = 0,
+                        fallbacks = {},
+                    },
+                    path = {
+                        score_offset = 3,
+                    },
                     buffer = {
                         opts = {
                             -- get all buffers, even ones like neo-tree
                             get_bufnrs = vim.api.nvim_list_bufs,
                         },
+                        fallbacks = {},
+                    },
+                    ripgrep = {
+                        module = "blink-ripgrep",
+                        name = "Ripgrep",
+                        min_keyword_length = 5,
+                        ---@module "blink-ripgrep"
+                        ---@type blink-ripgrep.Options
+                        opts = {
+                            prefix_min_len = 5,
+                            backend = {
+                                context_size = 5,
+                                ripgrep = {
+                                    max_filesize = "1M",
+                                    search_casing = "--smart-case",
+                                },
+                            },
+                        },
+                    },
+                    -- dictionary = {
+                    --     min_keyword_length = 4,
+                    --     name = "Dict",
+                    --     module = "blink-cmp-dictionary",
+                    --     ---@module "blink-cmp-dictionary"
+                    --     ---@type blink-cmp-dictionary.Options
+                    --     opts = {
+                    --         dictionary_files = {
+                    --             vim.fn.stdpath("data") .. "/lazy/Trans.nvim/neovim.dict",
+                    --         },
+                    --         get_documentation = function(item)
+                    --             return {
+                    --                 get_command = "sqlite3",
+                    --                 get_command_args = {
+                    --                     vim.fn.stdpath("data") .. "/lazy/Trans.nvim/ultimate.db",
+                    --                     "select translation from stardict where word = '" .. item .. "';",
+                    --                 },
+                    --                 ---@diagnostic disable-next-line: redefined-local
+                    --                 resolve_documentation = function(output)
+                    --                     return output
+                    --                 end,
+                    --             }
+                    --         end,
+                    --     },
+                    -- },
+                    env = {
+                        name = "Env",
+                        module = "blink-cmp-env",
+                        opts = {},
                     },
                 },
             },
@@ -195,5 +286,62 @@ return {
             bg_y_padding = 10,
             has_line_number = true,
         },
+    },
+    {
+        "L3MON4D3/LuaSnip",
+        version = "v2.*",
+        keys = function()
+            local ls = require("luasnip")
+
+            return {
+                {
+                    "<Tab>",
+                    function()
+                        if ls.expand_or_jumpable() then
+                            ls.jump(1)
+                        else
+                            return "<Tab>"
+                        end
+                    end,
+                    mode = { "i", "s" },
+                    expr = true,
+                },
+                {
+                    "<S-Tab>",
+                    function()
+                        ls.jump(-1)
+                    end,
+                    mode = { "i", "s" },
+                },
+                {
+                    "<C-l>",
+                    function()
+                        if ls.choice_active() then
+                            ls.change_choice(1)
+                        end
+                    end,
+                    mode = { "i", "s" },
+                },
+                {
+                    "<C-h>",
+                    function()
+                        if ls.choice_active() then
+                            ls.change_choice(-1)
+                        end
+                    end,
+                    mode = { "i", "s" },
+                },
+            }
+        end,
+        config = function()
+            require("luasnip.loaders.from_vscode").lazy_load({
+                paths = { vim.fn.stdpath("config") .. "/snippets" },
+            })
+
+            local luasnip = require("luasnip")
+            luasnip.add_snippets("all", require("plugins.snippets.all"))
+            luasnip.add_snippets("rust", require("plugins.snippets.rust"))
+            luasnip.add_snippets("typescriptreact", require("plugins.snippets.tsx"))
+        end,
     },
 }
