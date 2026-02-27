@@ -31,7 +31,7 @@ require("lazy").setup({
         { import = "lazyvim.plugins.extras.lang.yaml" },
         { import = "lazyvim.plugins.extras.coding.blink" },
         { import = "lazyvim.plugins.extras.test.core" },
-        { import = "lazyvim.plugins.extras.ai.sidekick" },
+        -- { import = "lazyvim.plugins.extras.ai.sidekick" }, -- 当前 LazyVim 版本不支持此插件
         -- import/override with your plugins
         { import = "plugins" },
         { import = "plugins.lang" },
