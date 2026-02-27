@@ -10,3 +10,6 @@ build-monitor.log
 
 # Local configuration
 git/ignore
+
+# Build artifacts
+.buildx-cache-new/
