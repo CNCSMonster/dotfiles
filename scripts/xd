@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""
+Minimal dotfiles deploy tool compatible with this repo's xdotter.toml layout.
+
+Supported keys:
+- [links]: source_path -> target_path
+- [dependencies]: name -> relative_dir_with_xdotter_toml
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+from pathlib import Path
+import shutil
+import sys
+import tomllib
+
+
+def log(msg: str, quiet: bool) -> None:
+    if not quiet:
+        print(msg)
+
+
+def ask_yes_no(prompt: str) -> bool:
+    try:
+        answer = input(f"{prompt} [y/N]: ").strip().lower()
+    except EOFError:
+        return False
+    return answer in {"y", "yes"}
+
+
+def resolve_link_target(link_path: Path) -> Path:
+    raw = os.readlink(link_path)
+    raw_path = Path(raw)
+    if raw_path.is_absolute():
+        return raw_path.resolve()
+    return (link_path.parent / raw_path).resolve()
+
+
+def remove_existing_path(dst: Path, quiet: bool, dry_run: bool) -> None:
+    if dry_run:
+        log(f"dry-run: remove existing {dst}", quiet)
+        return
+    if dst.is_symlink() or dst.is_file():
+        dst.unlink()
+    elif dst.is_dir():
+        shutil.rmtree(dst)
+    else:
+        raise RuntimeError(f"unsupported path type: {dst}")
+
+
+def create_symlink(
+    src: Path,
+    dst: Path,
+    quiet: bool,
+    dry_run: bool,
+    force: bool,
+    check: bool,
+    interactive: bool,
+) -> None:
+    if check:
+        if dst.is_symlink():
+            current_target = resolve_link_target(dst)
+            if current_target == src:
+                log(f"ok: {dst} -> {src}", quiet)
+                return
+            raise RuntimeError(f"check failed: {dst} points to {current_target}, expected {src}")
+        raise RuntimeError(f"check failed: {dst} is missing or not a symlink to {src}")
+
+    dst_parent = dst.parent
+    if dry_run:
+        log(f"dry-run: ensure dir {dst_parent}", quiet)
+    else:
+        dst_parent.mkdir(parents=True, exist_ok=True)
+
+    if dst.is_symlink():
+        current_target = resolve_link_target(dst)
+        if current_target == src:
+            log(f"skip: {dst} already points to {src}", quiet)
+            return
+        if not force and not interactive:
+            raise RuntimeError(f"path conflict: {dst} points to {current_target}, expected {src}")
+        if interactive and not force:
+            if not ask_yes_no(f"replace symlink {dst} ({current_target} -> {src})?"):
+                raise RuntimeError(f"user aborted replacing {dst}")
+        log(f"force: replace symlink {dst} ({current_target} -> {src})", quiet)
+        remove_existing_path(dst, quiet, dry_run)
+        if not dry_run:
+            dst.symlink_to(src, target_is_directory=src.is_dir())
+        return
+
+    if dst.exists():
+        if not force and not interactive:
+            raise RuntimeError(f"path conflict: {dst} already exists and is not a symlink")
+        if interactive and not force:
+            if not ask_yes_no(f"replace existing path {dst}?"):
+                raise RuntimeError(f"user aborted replacing {dst}")
+        log(f"force: replace existing path {dst}", quiet)
+        remove_existing_path(dst, quiet, dry_run)
+
+    if dry_run:
+        log(f"dry-run: link {dst} -> {src}", quiet)
+    else:
+        dst.symlink_to(src, target_is_directory=src.is_dir())
+        log(f"link: {dst} -> {src}", quiet)
+
+
+def deploy_on(
+    config_path: Path,
+    quiet: bool,
+    dry_run: bool,
+    force: bool,
+    check: bool,
+    interactive: bool,
+) -> None:
+    if not config_path.exists():
+        raise FileNotFoundError(f"config not found: {config_path}")
+
+    base_dir = config_path.parent.resolve()
+    data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+
+    links = data.get("links", {}) or {}
+    for source, target in links.items():
+        src = (base_dir / source).resolve(strict=True)
+        dst = Path(target).expanduser()
+        create_symlink(src, dst, quiet, dry_run, force, check, interactive)
+
+    dependencies = data.get("dependencies", {}) or {}
+    for dep_name, dep_rel_path in dependencies.items():
+        dep_dir = (base_dir / dep_rel_path).resolve(strict=True)
+        dep_config = dep_dir / "xdotter.toml"
+        log(f"enter dependency {dep_name}: {dep_config}", quiet)
+        deploy_on(dep_config, quiet, dry_run, force, check, interactive)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Deploy dotfiles from xdotter.toml")
+    parser.add_argument(
+        "--config",
+        default="xdotter.toml",
+        help="Path to root xdotter.toml (default: xdotter.toml)",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Reduce output")
+    parser.add_argument("--dry-run", action="store_true", help="Show actions without changing filesystem")
+    parser.add_argument("--force", action="store_true", help="Replace existing conflicting paths")
+    parser.add_argument("--check", action="store_true", help="Only verify all links are in desired state")
+    parser.add_argument("--interactive", action="store_true", help="Ask before replacing conflicting paths")
+    args = parser.parse_args()
+
+    if args.check and (args.force or args.interactive or args.dry_run):
+        print("--check cannot be combined with --force/--interactive/--dry-run", file=sys.stderr)
+        return 2
+    if args.force and args.interactive:
+        print("--force and --interactive are mutually exclusive", file=sys.stderr)
+        return 2
+
+    config = Path(args.config).resolve()
+    try:
+        deploy_on(config, args.quiet, args.dry_run, args.force, args.check, args.interactive)
+    except Exception as exc:  # noqa: BLE001
+        print(f"deploy failed: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

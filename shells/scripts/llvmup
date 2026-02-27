@@ -84,7 +84,7 @@ function install-llvm-version() {
     INSTALL_DIR="${HOME}/.local/install-llvm"
     mkdir -p "${INSTALL_DIR}"
     LLVM_SCRIPT_PATH="${INSTALL_DIR}/llvm.sh"
-    wget -O "${LLVM_SCRIPT_PATH}" $LLVM_SCRIPT
+    wget -O "${LLVM_SCRIPT_PATH}" $LLVM_SCRIPT --tries=5 --timeout=60 --connect-timeout=30
     chmod +x "${LLVM_SCRIPT_PATH}"
     sudo_run "${LLVM_SCRIPT_PATH}" "${LLVM_VERSION}"
 

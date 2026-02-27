@@ -1,6 +1,6 @@
 [tools]
 go = "1.23.4"
-node = "23.3.0"
+node = "latest"
 pnpm = "10.20.0"
 zig = "latest"
 
@@ -9,3 +9,6 @@ experimental = true
 
 [settings.python]
 uv_venv_auto = true
+
+[env]
+QODERCLI_TOKEN = "pt-AyycygyMblU5LzcIqlmffq9G_019c8148-91ce-73cb-87b5-7f4f0801218a"

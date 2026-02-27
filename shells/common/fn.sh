@@ -31,8 +31,8 @@ function fj() {
 
 
 
-# 如果调用则载入setup.sh, 获取用于安装各种软件的函数
+# 如果调用则载入 install-functions.sh, 获取用于安装各种软件的函数
 function load_setup() {
-    source "$HOME/.config/shells/common/setup.sh"
+    source "$HOME/.config/shells/common/install-functions.sh"
 }
 

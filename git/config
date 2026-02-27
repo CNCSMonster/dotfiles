@@ -6,8 +6,6 @@
 [core]
     # pager = delta
     editor = code
-[diff]
-    external = difft
 [interactive]
     diffFilter = delta --color-only
 [delta]

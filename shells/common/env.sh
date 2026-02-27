@@ -17,9 +17,9 @@ if [[ -x "/opt/homebrew/bin/brew" ]]; then
 fi
 
 
-# rust 工具链镜像源
-export RUSTUP_DIST_SERVER='https://mirrors.ustc.edu.cn/rust-static'
-export RUSTUP_UPDATE_ROOT='https://mirrors.ustc.edu.cn/rust-static/rustup'
+# rust 工具链镜像源 (rsproxy.cn - 字节跳动维护)
+export RUSTUP_DIST_SERVER='https://rsproxy.cn'
+export RUSTUP_UPDATE_ROOT='https://rsproxy.cn/rustup'
 
 # go路径
 export GOBIN="$HOME/go/bin"
@@ -27,9 +27,6 @@ export PATH="$GOBIN:$PATH"
 
 # ort crate使用的onnxruntime库路径
 export ORT_LIB_LOCATION=/usr/local/lib/libonnxruntime.a
-
-# nvim 路径
-export PATH="/opt/nvim/bin:$PATH"
 
 # moonbit 路径
 export PATH="$HOME/.moon/bin:$PATH"
@@ -43,13 +40,32 @@ export PATH="$LLVM_BIN_PATH:$PATH"
 export PATH="/snap/bin:$PATH"
 
 # 用户可执行程序目录
-export PATH="$HOME/.cargo/bin:\
+# 将本地目录放在 PATH 前面，优先于系统/WSL Windows PATH
+export PATH="$HOME/.local/bin:\
+$HOME/.cargo/bin:\
 $HOME/.config/shells/scripts:\
 $PATH:\
-$HOME/.local/bin:\
 $HOME/.local/scripts:\
 $XDG_DATA_HOME/JetBrains/Toolbox/scripts:\
 /usr/lib/jvm/default/bin"
+
+# PATH 去重（保留不存在的目录，因为它们可能稍后被创建）
+# 使用 awk 实现，兼容所有 POSIX shell
+cleanup_path() {
+    echo "$1" | tr ':' '\n' | awk '
+    {
+        dir = $0
+        # 跳过空目录
+        if (dir == "") next
+        # 去重
+        if (seen[dir]++) next
+        # 输出
+        if (first++) printf ":"
+        printf "%s", dir
+    }
+    '
+}
+export PATH="$(cleanup_path "$PATH")"
 
 ####################
 # dir alias config #
