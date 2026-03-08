@@ -1,41 +1,17 @@
 local wezterm = require("wezterm")
+local act = wezterm.action
 
--- 三等分布局事件 (竖屏上中下)
+-- 上中下三等分布局
 wezterm.on("split-vertical-thirds", function(window, pane)
-    -- 当前 pane 变成底部 (33%)
-    local bottom = pane:split({
-        direction = "Up",
-        size = 0.333,
-    })
-    -- 原 pane 现在是上部 67%，再分割成中部和顶部
-    local top = pane:split({
-        direction = "Up",
-        size = 0.5, -- 剩余空间的 50%，即总体的 33.3%
-    })
-    -- 最终: top(33%) / pane(33%) / bottom(33%)
+    local bottom = pane:split({ direction = "Up", size = 0.333 })
+    local top = pane:split({ direction = "Up", size = 0.5 })
 end)
 
--- 田字形四等分布局事件
+-- 田字形四等分布局
 wezterm.on("split-quadrants", function(window, pane)
-    -- 先水平分割成左右两半
-    local right = pane:split({
-        direction = "Right",
-        size = 0.5,
-    })
-    -- 左边垂直分割成上下两半
-    local top_left = pane:split({
-        direction = "Up",
-        size = 0.5,
-    })
-    -- 右边垂直分割成上下两半
-    local top_right = right:split({
-        direction = "Up",
-        size = 0.5,
-    })
-    -- 最终布局:
-    -- top_left | top_right
-    -- ---------+----------
-    -- pane     | right
+    local right = pane:split({ direction = "Right", size = 0.5 })
+    local top_left = pane:split({ direction = "Up", size = 0.5 })
+    local top_right = right:split({ direction = "Up", size = 0.5 })
 end)
 
 return {
@@ -65,49 +41,16 @@ return {
     },
     exit_behavior = "Close",
     keys = {
-        -- Tab 移动
-        {
-            key = "{",
-            mods = "SHIFT|ALT",
-            action = wezterm.action.MoveTabRelative(-1),
-        },
-        {
-            key = "}",
-            mods = "SHIFT|ALT",
-            action = wezterm.action.MoveTabRelative(1),
-        },
+        -- 命令面板 (Ctrl+Shift+P)
+        { key = "P", mods = "CTRL|SHIFT", action = act.ActivateCommandPalette },
         -- 分屏跳转 (Alt+hjkl)
-        {
-            key = "h",
-            mods = "ALT",
-            action = wezterm.action.ActivatePaneDirection("Left"),
-        },
-        {
-            key = "j",
-            mods = "ALT",
-            action = wezterm.action.ActivatePaneDirection("Down"),
-        },
-        {
-            key = "k",
-            mods = "ALT",
-            action = wezterm.action.ActivatePaneDirection("Up"),
-        },
-        {
-            key = "l",
-            mods = "ALT",
-            action = wezterm.action.ActivatePaneDirection("Right"),
-        },
-        -- 三等分布局 (Alt+Shift+T)
-        {
-            key = "t",
-            mods = "ALT|SHIFT",
-            action = wezterm.action.EmitEvent("split-vertical-thirds"),
-        },
-        -- 田字形四等分布局 (Alt+Shift+Q)
-        {
-            key = "q",
-            mods = "ALT|SHIFT",
-            action = wezterm.action.EmitEvent("split-quadrants"),
-        },
+        { key = "h", mods = "ALT", action = act.ActivatePaneDirection("Left") },
+        { key = "j", mods = "ALT", action = act.ActivatePaneDirection("Down") },
+        { key = "k", mods = "ALT", action = act.ActivatePaneDirection("Up") },
+        { key = "l", mods = "ALT", action = act.ActivatePaneDirection("Right") },
+        -- 三等分布局 (Ctrl+Shift+F3)
+        { key = "F3", mods = "CTRL|SHIFT", action = act.EmitEvent("split-vertical-thirds") },
+        -- 田字形四等分布局 (Ctrl+Shift+F4)
+        { key = "F4", mods = "CTRL|SHIFT", action = act.EmitEvent("split-quadrants") },
     },
 }

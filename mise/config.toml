@@ -11,4 +11,3 @@ experimental = true
 uv_venv_auto = true
 
 [env]
-QODERCLI_TOKEN = "pt-AyycygyMblU5LzcIqlmffq9G_019c8148-91ce-73cb-87b5-7f4f0801218a"
