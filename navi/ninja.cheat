@@ -1,0 +1,4 @@
+% ninja
+
+# Build with all cores
+ninja -j$(nproc)

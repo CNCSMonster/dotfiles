@@ -1,0 +1,4 @@
+% fastdds
+
+# Configure with Ninja, compile_commands.json and internal thirdparty libs
+cmake -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DTHIRDPARTY=ON <path>
