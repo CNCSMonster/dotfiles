@@ -6,22 +6,31 @@
 CURL_RETRY_OPTS="--retry 5 --retry-delay 3 --connect-timeout 30 --max-time 300"
 WGET_RETRY_OPTS="--tries=5 --timeout=60 --connect-timeout=30"
 
-# GitHub 镜像加速：优先用镜像站下载 GitHub releases，失败再直连
+# GitHub 镜像加速：依次尝试多个镜像站，失败再直连
 # 设置 GITHUB_MIRROR="" 可禁用镜像
-GITHUB_MIRROR="${GITHUB_MIRROR:-https://mirror.ghproxy.com}"
+# 可用镜像站列表（按优先级排序）：
+#   - https://mirror.ghproxy.com (ghproxy)
+#   - https://gh-proxy.com (gh-proxy)
+#   - https://gh.api.99988866.xyz (99988866)
+#   - https://github.moeyy.xyz (moeyy)
+GITHUB_MIRRORS="${GITHUB_MIRRORS:-https://mirror.ghproxy.com https://gh-proxy.com https://gh.api.99988866.xyz https://github.moeyy.xyz}"
 
-# 从 GitHub 下载文件的通用函数（自动尝试镜像站 → 直连）
+# 从 GitHub 下载文件的通用函数（自动尝试多个镜像站 → 直连）
 github_download() {
     local url="$1"
     local output="$2"
-    if [ -n "$GITHUB_MIRROR" ]; then
-        local mirror_url="${GITHUB_MIRROR}/${url}"
+    
+    # 尝试每个镜像站
+    for mirror in $GITHUB_MIRRORS; do
+        local mirror_url="${mirror}/${url}"
         echo "尝试镜像站: ${mirror_url}"
         if wget $WGET_RETRY_OPTS "$mirror_url" -O "$output" 2>/dev/null; then
             return 0
         fi
-        echo "镜像站失败，尝试直连..."
-    fi
+        echo "镜像站 ${mirror} 失败，尝试下一个..."
+    done
+    
+    echo "所有镜像站均失败，尝试直连 GitHub..."
     wget $WGET_RETRY_OPTS "$url" -O "$output"
 }
 
@@ -151,6 +160,7 @@ function install-common-rust-tools() {
         tokei@13.0.0-alpha.9
         gen-mdbook-summary@0.0.6
         mise@2026.2.15
+        uv@0.10.10
     )
     # 策略：先尝试 binstall 下载预编译二进制（禁止 fallback 到源码编译，避免
     # GitHub API 403 rate limit 导致 120s 重试循环后再花几十分钟编译）。
@@ -173,17 +183,12 @@ function install-common-rust-tools() {
 }
 
 function setup-yazi(){
-    # yazi-fm 是 yazi 的主程序包名
+    # yazi-fm 是 yazi 的主程序包名，yazi-cli 是 ya 命令行工具
     # 使用 cargo binstall 下载预编译二进制，速度快且稳定
     # 官方文档：https://yazi-rs.github.io/docs/installation/
-    if ! cargo binstall yazi-fm -y --disable-strategies compile; then
-        cargo install yazi-fm --locked || cargo install yazi-fm
+    if ! cargo binstall yazi-fm yazi-cli -y --disable-strategies compile; then
+        cargo install yazi-fm yazi-cli --locked || cargo install yazi-fm yazi-cli
     fi
-}
-
-function setup-uv() {
-  # On macOS and Linux.
-  curl $CURL_RETRY_OPTS -LsSf https://astral.sh/uv/install.sh | sh
 }
 
 function setup-cargo-fuzz() {

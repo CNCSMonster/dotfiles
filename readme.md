@@ -68,6 +68,10 @@ you can get the final image and run it to experience the final environment:
 docker run -it dotfiles
 ```
 
+## Documentation
+
+- [Rust 工具更新 SOP](./docs/rust-tools-update-sop.md) - 如何检查和更新通过 cargo binstall 安装的 Rust 工具
+
 ## Inspired by 
 
 - https://github.com/TD-Sky/dotfiles

@@ -132,7 +132,6 @@ source $SH_COMMON_DIR/env.sh
 source $SH_COMMON_DIR/alias.sh
 source $SH_COMMON_DIR/inter.sh
 source $SH_COMMON_DIR/fn.sh
-. "$HOME/.cargo/env"
 
-
-. "$HOME/.local/share/../bin/env"
+# 安全 source - 文件不存在时不报错
+[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"

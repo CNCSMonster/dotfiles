@@ -49,13 +49,21 @@ ensure_python3() {
   sudo_run apt-get install -y python3
 }
 
+# 下载 xdotter (供 retry_fn 调用)
+download_xdotter() {
+  curl -sSL --connect-timeout 30 --max-time 120 \
+    https://github.com/cncsmonster/xdotter/releases/latest/download/xd.pyz \
+    -o ~/.local/bin/xd
+}
+
 # 使用 xdotter (github.com/cncsmonster/xdotter) 部署 dotfiles
 deploy_dotfiles(){
   ensure_python3
-  # 安装 xdotter (使用 --break-system-packages 绕过 Ubuntu 24.04+ 的 PEP 668 限制)
-  pip3 install --break-system-packages --user git+https://github.com/cncsmonster/xdotter.git
-  # 使用 xdotter 部署
-  ~/.local/bin/xdotter --config "${SCRIPT_DIR}/xdotter.toml" --quiet --force
+  mkdir -p ~/.local/bin
+  retry_fn 5 "下载 xdotter" download_xdotter
+  chmod +x ~/.local/bin/xd
+  # 使用 xd 部署
+  ~/.local/bin/xd --config "${SCRIPT_DIR}/xdotter.toml" --quiet --force
 }
 
 
@@ -77,7 +85,6 @@ main() {
   retry_fn 5 "安装 Rust" install-rust stable
   retry_fn 3 "安装 Rust 工具" install-common-rust-tools
   retry_fn 3 "安装 cargo-fuzz" setup-cargo-fuzz
-  retry_fn 3 "安装 uv" setup-uv
   # 使用 mise 安装 go, zig, node, pnpm 等工具
   mise trust && mise install
 }

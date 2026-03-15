@@ -36,3 +36,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify installation
+        run: |
+          docker run --rm dotfiles-env:ci /root/dotfiles/scripts/verify-docker-build.sh
+
