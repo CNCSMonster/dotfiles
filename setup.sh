@@ -49,10 +49,13 @@ ensure_python3() {
   sudo_run apt-get install -y python3
 }
 
-# 使用项目内置脚本部署 dotfiles（零第三方依赖）
+# 使用 xdotter (github.com/cncsmonster/xdotter) 部署 dotfiles
 deploy_dotfiles(){
   ensure_python3
-  "${SCRIPT_DIR}/scripts/xd" --config "${SCRIPT_DIR}/xdotter.toml" --quiet --force
+  # 安装 xdotter (使用 --break-system-packages 绕过 Ubuntu 24.04+ 的 PEP 668 限制)
+  pip3 install --break-system-packages --user git+https://github.com/cncsmonster/xdotter.git
+  # 使用 xdotter 部署
+  ~/.local/bin/xdotter --config "${SCRIPT_DIR}/xdotter.toml" --quiet --force
 }
 
 
