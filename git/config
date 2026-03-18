@@ -19,3 +19,9 @@
     date = iso-strict-local
 [trim]
     bases = develop,master,main
+# [http]
+# 	postBuffer = 524288000
+# 	lowSpeedLimit = 0
+# 	lowSpeedTime = 9999
+# [url "https://github.moeyy.xyz/"]
+# 	insteadOf = git://github.com/
