@@ -4,3 +4,6 @@
 [submodule "nvims/nvimdots"]
 	path = nvims/nvimdots
 	url = https://github.com/ayamir/nvimdots
+[submodule "shells/zsh/.zcomet"]
+	path = shells/zsh/.zcomet
+	url = https://github.com/agkozak/zcomet

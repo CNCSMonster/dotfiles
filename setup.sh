@@ -66,12 +66,28 @@ deploy_dotfiles(){
   ~/.local/bin/xd --config "${SCRIPT_DIR}/xdotter.toml" --quiet --force
 }
 
+# 初始化 git submodules (zcomet 等)
+# 即使用户 clone 时没有加 --recursive，也能自动初始化
+init_submodules() {
+  if [[ -d "${SCRIPT_DIR}/.git" ]]; then
+    # 是 git 仓库，尝试初始化 submodule
+    cd "${SCRIPT_DIR}"
+    if git submodule status &>/dev/null; then
+      echo "正在初始化 submodules..."
+      git submodule update --init --recursive 2>/dev/null || true
+    fi
+  fi
+  # 如果不是 git 仓库（如 zip 下载），跳过 submodule 初始化
+  # zcomet 会在首次登录时 fallback 到 git clone
+}
+
 
 main() {
   export DEBIAN_FRONTEND=noninteractive
   export TZ=Asia/Shanghai
   deploy_dotfiles
-  
+  init_submodules
+
   # 直接加载需要的函数定义文件，而不是通过 source bashrc/zshrc
   # 因为 bashrc 在非交互式模式下会在第 8 行 return，导致后面的函数定义无法加载
   export SH_COMMON_DIR="$HOME/.config/shells/common"

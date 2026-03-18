@@ -14,9 +14,10 @@ chmod +x ./setup.sh && ./setup.sh
 
 This will automatically:
 1. Deploy all dotfiles configurations
-2. Install system dependencies
-3. Install development tools (Neovim, LLVM, Rust, etc.)
-4. Install runtime environments (Go, Node, Zig, etc.)
+2. Initialize git submodules (zcomet, etc.)
+3. Install system dependencies
+4. Install development tools (Neovim, LLVM, Rust, etc.)
+5. Install runtime environments (Go, Node, Zig, etc.)
 
 ## Manual Deployment
 
@@ -37,6 +38,10 @@ xd --config ./xdotter.toml
 # Or using the downloaded version
 ~/.local/bin/xd --config ./xdotter.toml
 ```
+
+**Tip**: On first zsh login, zcomet plugin manager installs automatically in background.
+- **Default**: Non-blocking background installation, shell ready immediately
+- **Wait for completion**: `ZCOMET_BG_INSTALL=0 zsh` (blocks for ~10-30 seconds)
 
 ## Quick Experience Using Docker
 you can experience my dotfiles by running the following command:
