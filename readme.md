@@ -25,8 +25,17 @@ If you prefer to deploy dotfiles manually:
 ```bash
 git clone https://github.com/cncsmonster/dotfiles.git
 cd dotfiles
-# deploy dotfiles only
-./scripts/xd --config ./xdotter.toml
+chmod +x ./setup.sh && ./setup.sh  # This will download xdotter automatically
+```
+
+Or if you already have xdotter installed:
+
+```bash
+# Using xdotter from PATH
+xd --config ./xdotter.toml
+
+# Or using the downloaded version
+~/.local/bin/xd --config ./xdotter.toml
 ```
 
 ## Quick Experience Using Docker
