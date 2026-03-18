@@ -16,6 +16,14 @@ if [[ -x "/opt/homebrew/bin/brew" ]]; then
     export PATH=/opt/homebrew/opt/llvm/bin:$PATH
 fi
 
+# 常用系统路径（应对系统默认路径缺失的情况）
+export PATH="/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin"
+
 
 # rust 工具链镜像源 (rsproxy.cn - 字节跳动维护)
 export RUSTUP_DIST_SERVER='https://rsproxy.cn'
@@ -38,14 +46,6 @@ export PATH="$LLVM_BIN_PATH:$PATH"
 
 # snap 路径
 export PATH="/snap/bin:$PATH"
-
-# 常用系统路径（应对系统默认路径缺失的情况）
-export PATH="/usr/local/sbin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin"
 
 # 用户可执行程序目录
 # 将本地目录放在 PATH 前面，优先于系统/WSL Windows PATH
