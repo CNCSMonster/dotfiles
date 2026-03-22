@@ -97,6 +97,7 @@ main() {
   
   install-common-tools
   retry_fn 3 "安装 Neovim" install-neovim
+  retry_fn 3 "安装 Helix" install-helix
   llvmup default 19
   retry_fn 5 "安装 Rust" install-rust stable
   retry_fn 3 "安装 Rust 工具" install-common-rust-tools

@@ -238,16 +238,85 @@ function setup-wezterm() {
 function setup-vscode(){
     # 使用微软官方 APT 仓库安装 VSCode，支持自动更新
     # 官方文档：https://code.visualstudio.com/docs/setup/linux
-    
+
     # 添加 GPG 密钥
     wget $WGET_RETRY_OPTS -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/microsoft.gpg
     sudo_run install -D -o root -g root -m 644 /tmp/microsoft.gpg /usr/share/keyrings/microsoft.gpg
     rm -f /tmp/microsoft.gpg
-    
+
     # 添加仓库
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main" | sudo_run tee /etc/apt/sources.list.d/vscode.list
-    
+
     # 安装
     sudo_run apt-get update
     sudo_run apt-get install -y code
+}
+
+# 安装 Helix 编辑器（固定版本，用户级安装，无需 sudo）
+# Helix 是一个现代化的模态文本编辑器，开箱即用，无需配置
+# 官方文档：https://helix-editor.com/
+# 安装位置：
+#   - 二进制：~/.cargo/bin/hx
+#   - runtime: ~/.config/helix/runtime
+function install-helix() {
+    local ARCH=$(uname -m)
+    local HELIX_ARCH=""
+    case $ARCH in
+        x86_64) HELIX_ARCH="x86_64" ;;
+        aarch64) HELIX_ARCH="aarch64" ;;
+        *)
+            echo "不支持的架构：$ARCH"
+            return 1
+            ;;
+    esac
+
+    # 固定版本号（最新稳定版 2025-07）
+    local HELIX_VERSION="25.07.1"
+    
+    # 用户级路径
+    local HELIX_BIN_DIR="$HOME/.cargo/bin"
+    local HELIX_RUNTIME_DIR="$HOME/.config/helix/runtime"
+    local HELIX_TMP="/tmp/helix-${HELIX_VERSION}"
+
+    # 检查是否已安装相同版本
+    if [ -x "${HELIX_BIN_DIR}/hx" ]; then
+        local INSTALLED_VERSION=$("${HELIX_BIN_DIR}/hx" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+        if [ "$INSTALLED_VERSION" = "$HELIX_VERSION" ]; then
+            echo "Helix $HELIX_VERSION 已安装，跳过"
+            return 0
+        fi
+        echo "发现旧版本 $INSTALLED_VERSION，升级到 $HELIX_VERSION..."
+    fi
+
+    echo "安装 Helix $HELIX_VERSION..."
+
+    # 下载 Helix（使用 GitHub 镜像加速）
+    # 注意：Helix 使用 .tar.xz 格式压缩
+    local HELIX_URL="https://github.com/helix-editor/helix/releases/download/${HELIX_VERSION}/helix-${HELIX_VERSION}-${HELIX_ARCH}-linux.tar.xz"
+    local DEST="/tmp/helix-${HELIX_VERSION}.tar.xz"
+
+    github_download "$HELIX_URL" "$DEST"
+
+    # 解压（目录名为 helix-VERSION-ARCH-linux）
+    local HELIX_TMP="/tmp/helix-${HELIX_VERSION}-${HELIX_ARCH}-linux"
+    tar -xJf "$DEST" -C /tmp
+    
+    # 安装二进制（无需 sudo）
+    mkdir -p "$HELIX_BIN_DIR"
+    cp "${HELIX_TMP}/hx" "$HELIX_BIN_DIR/"
+    
+    # 安装 runtime（无需 sudo）
+    mkdir -p "$HELIX_RUNTIME_DIR"
+    cp -r "${HELIX_TMP}/runtime/"* "$HELIX_RUNTIME_DIR/"
+    
+    # 清理临时文件
+    rm -rf "$HELIX_TMP" "$DEST"
+    
+    # 验证安装
+    if command -v hx >/dev/null 2>&1; then
+        echo "Helix 安装成功：$(hx --version)"
+    else
+        echo "Helix 安装失败"
+        return 1
+    fi
 }
