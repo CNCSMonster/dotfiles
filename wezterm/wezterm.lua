@@ -54,5 +54,9 @@ return {
         { key = "j", mods = "ALT", action = act.ActivatePaneDirection("Down") },
         { key = "k", mods = "ALT", action = act.ActivatePaneDirection("Up") },
         { key = "l", mods = "ALT", action = act.ActivatePaneDirection("Right") },
+        -- 三等分窗口 - 仅命令面板可搜索，使用 F20 虚拟键（不占用常用键）
+        { key = "F20", mods = "NONE", action = act.EmitEvent("SplitVerticallyIntoThirds(Top/Middle/Bottom)") },
+        -- 四等分窗口 - 仅命令面板可搜索，使用 F21 虚拟键（不占用常用键）
+        { key = "F21", mods = "NONE", action = act.EmitEvent("SplitIntoQuadrants(TopLeft/TopRight/BottomLeft/BottomRight)") },
     },
 }

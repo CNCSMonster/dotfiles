@@ -24,12 +24,14 @@
 
 ### 三等分窗口（上/中/下）
 
+**重要说明**: WezTerm 的命令面板只会显示在 `keys` 表中绑定的 actions。如果不绑定任何快捷键，命令面板中将不会显示这些自定义命令。
+
+**解决方案**: 需要绑定一个"虚拟"快捷键（如 F20），使命令面板可以显示这些命令，同时不会占用常用快捷键。
+
 **使用方式**:
 1. 按 `Ctrl+Shift+P` 打开命令面板
-2. 搜索 `Top/Middle/Bottom` 或 `Thirds`
+2. 搜索 `Thirds` 或 `Top/Middle/Bottom`
 3. 选择 `SplitVerticallyIntoThirds(Top/Middle/Bottom)` 命令
-
-> **注意**: 此功能仅通过命令面板触发，未设置快捷键以避免冲突。
 
 ### 四等分窗口（田字形）
 
@@ -37,8 +39,6 @@
 1. 按 `Ctrl+Shift+P` 打开命令面板
 2. 搜索 `Quadrants` 或 `TopLeft`
 3. 选择 `SplitIntoQuadrants(TopLeft/TopRight/BottomLeft/BottomRight)` 命令
-
-> **注意**: 此功能仅通过命令面板触发，未设置快捷键以避免冲突。
 
 ## 其他常用快捷键
 
