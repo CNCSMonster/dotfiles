@@ -3,10 +3,11 @@ local act = wezterm.action
 
 -- 上中下三等分布局 (Top/Middle/Bottom)
 wezterm.on("Split Vertically (Top/Middle/Bottom)", function(window, pane)
-    -- 先向上分割，创建底部区域 (占 1/3)
-    local bottom = pane:split({ direction = "Up", size = 0.333 })
-    -- 再在剩余区域向上分割，创建中部和顶部 (各占 1/3)
-    local top = pane:split({ direction = "Up", size = 0.5 })
+    -- 先向下分割，创建顶部区域 (占 1/3)
+    -- split() 返回新窗格，原 pane 保持在原位置
+    local remainder = pane:split({ direction = "Down", size = 0.333 })
+    -- 再对剩余区域分割，创建中部和底部 (各占剩余区域的 50%，即整体的 1/3)
+    local bottom = remainder:split({ direction = "Down", size = 0.5 })
 end)
 
 -- 田字形四等分布局 (TopLeft/TopRight/BottomLeft/BottomRight)
