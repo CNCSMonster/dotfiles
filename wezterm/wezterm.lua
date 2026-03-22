@@ -2,7 +2,7 @@ local wezterm = require("wezterm")
 local act = wezterm.action
 
 -- 上中下三等分布局 (Top/Middle/Bottom)
-wezterm.on("SplitVerticallyIntoThirds(Top/Middle/Bottom)", function(window, pane)
+wezterm.on("Split Vertically (Top/Middle/Bottom)", function(window, pane)
     -- 先向上分割，创建底部区域 (占 1/3)
     local bottom = pane:split({ direction = "Up", size = 0.333 })
     -- 再在剩余区域向上分割，创建中部和顶部 (各占 1/3)
@@ -10,7 +10,7 @@ wezterm.on("SplitVerticallyIntoThirds(Top/Middle/Bottom)", function(window, pane
 end)
 
 -- 田字形四等分布局 (TopLeft/TopRight/BottomLeft/BottomRight)
-wezterm.on("SplitIntoQuadrants(TopLeft/TopRight/BottomLeft/BottomRight)", function(window, pane)
+wezterm.on("Split (TopLeft/TopRight/BottomLeft/BottomRight)", function(window, pane)
     local right = pane:split({ direction = "Right", size = 0.5 })
     local top_left = pane:split({ direction = "Up", size = 0.5 })
     local top_right = right:split({ direction = "Up", size = 0.5 })
@@ -55,8 +55,8 @@ return {
         { key = "k", mods = "ALT", action = act.ActivatePaneDirection("Up") },
         { key = "l", mods = "ALT", action = act.ActivatePaneDirection("Right") },
         -- 三等分窗口 - 仅命令面板可搜索，使用 F20 虚拟键（不占用常用键）
-        { key = "F20", mods = "NONE", action = act.EmitEvent("SplitVerticallyIntoThirds(Top/Middle/Bottom)") },
+        { key = "F20", mods = "NONE", action = act.EmitEvent("Split Vertically (Top/Middle/Bottom)") },
         -- 四等分窗口 - 仅命令面板可搜索，使用 F21 虚拟键（不占用常用键）
-        { key = "F21", mods = "NONE", action = act.EmitEvent("SplitIntoQuadrants(TopLeft/TopRight/BottomLeft/BottomRight)") },
+        { key = "F21", mods = "NONE", action = act.EmitEvent("Split (TopLeft/TopRight/BottomLeft/BottomRight)") },
     },
 }
