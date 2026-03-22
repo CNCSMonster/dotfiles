@@ -1,0 +1,5 @@
+# Helix Editor Configuration
+
+[editor]
+# Enable soft-wrap for long lines
+soft-wrap.enable = true
