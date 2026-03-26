@@ -5,15 +5,23 @@
 #
 # ## 构建资源限制说明
 #
-# 由于 BuildKit docker-container driver 的限制：
-# - --driver-opt 只限制 BuildKit daemon，不限制构建容器
-# - 构建容器可使用宿主机全部资源
-# - 容器内 /proc/meminfo 显示宿主机内存
+# BuildKit docker-container driver 采用分层架构，资源限制机制如下：
 #
-# 因此需要通过 CARGO_BUILD_JOBS 限制 cargo 编译并行度。
-# 该值由 docker-build-test.sh 根据宿主机可用资源动态计算。
+# 1. BuildKit Daemon 容器（调度层）
+#    - 限制方式：--driver-opt memory=Xg --driver-opt cpu-quota=Y
+#    - 限制效果：✅ 生效（限制调度进程本身）
 #
-# 每个 rustc 进程约需 1-1.5GB 内存，过度并行会导致 OOM。
+# 2. 临时构建容器（执行层，执行 RUN 命令）
+#    - 限制方式：BuildKit docker-container driver 不支持直接限制
+#    - 限制效果：❌ 无限制（可使用宿主机全部资源）
+#    - 风险：容器内 /proc/meminfo 显示的是宿主机内存
+#
+# 3. cargo/rustc 编译进程（应用层）
+#    - 限制方式：CARGO_BUILD_JOBS 环境变量（限制并行 rustc 进程数）
+#    - 限制效果：✅ 生效（**这是唯一有效的内存控制手段**）
+#    - 计算：每个 rustc 进程约需 1-1.5GB，需根据可用内存计算并行度
+#
+# 因此，CARGO_BUILD_JOBS 是防止 OOM 的关键，由 docker-build-test.sh 动态计算。
 # =============================================================================
 
 # 使用中国镜像站作为默认基础镜像来源，降低拉取超时概率

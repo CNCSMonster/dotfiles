@@ -5,9 +5,21 @@ pnpm = "10.20.0"
 zig = "latest"
 
 [settings]
+# 网络重试配置：Docker 构建时网络不稳定，需要重试
+# 默认值为 0，但会导致构建频繁失败，故设置为 3
+http_retries = 3
+# HTTP 请求超时：容器内网络较慢，设置为 60 秒
+# 默认值为 30s，但下载大文件时可能不够
+http_timeout = "60s"
 experimental = true
 
 [settings.python]
 uv_venv_auto = true
+
+[settings.zig]
+# 启用社区镜像源，提高国内下载速度
+# mise 会自动尝试 14 个社区镜像源，失败后回退到官方源
+# 详见：https://ziglang.org/download/community-mirrors/
+use_community_mirrors = true
 
 [env]
