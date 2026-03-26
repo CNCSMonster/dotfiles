@@ -297,6 +297,65 @@ function setup-vscode(){
     sudo_run apt-get install -y code
 }
 
+# 安装 yq（固定版本，用户级安装，无需 sudo）
+# yq 是一个便携式的数据文件处理器，支持 YAML/JSON/XML/TOML 等格式
+# 官方文档：https://mikefarah.gitbook.io/yq/
+# 安装位置：
+#   - 二进制：~/.local/bin/yq
+function install-yq() {
+    local ARCH=$(uname -m)
+    local YQ_ARCH=""
+    case $ARCH in
+        x86_64) YQ_ARCH="amd64" ;;
+        aarch64) YQ_ARCH="arm64" ;;
+        armv7l) YQ_ARCH="arm" ;;
+        *)
+            echo "不支持的架构：$ARCH"
+            return 1
+            ;;
+    esac
+
+    # 固定版本号（最新稳定版）
+    local YQ_VERSION="v4.52.4"
+
+    # 用户级路径
+    local YQ_BIN_DIR="$HOME/.local/bin"
+
+    # 检查是否已安装相同版本
+    if [ -x "${YQ_BIN_DIR}/yq" ]; then
+        local INSTALLED_VERSION=$("${YQ_BIN_DIR}/yq" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+        if [ "$INSTALLED_VERSION" = "${YQ_VERSION#v}" ]; then
+            echo "yq $YQ_VERSION 已安装，跳过"
+            return 0
+        fi
+        echo "发现旧版本 $INSTALLED_VERSION，升级到 $YQ_VERSION..."
+    fi
+
+    echo "安装 yq $YQ_VERSION..."
+
+    # 下载 yq（使用 GitHub 镜像加速）
+    local YQ_URL="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}"
+    local DEST="/tmp/yq_linux_${YQ_ARCH}"
+
+    github_download "$YQ_URL" "$DEST"
+
+    # 安装二进制（无需 sudo）
+    mkdir -p "$YQ_BIN_DIR"
+    cp "$DEST" "$YQ_BIN_DIR/yq"
+    chmod +x "$YQ_BIN_DIR/yq"
+
+    # 清理临时文件
+    rm -f "$DEST"
+
+    # 验证安装
+    if command -v yq >/dev/null 2>&1; then
+        echo "yq 安装成功：$(yq --version)"
+    else
+        echo "yq 安装失败"
+        return 1
+    fi
+}
+
 # 安装 Helix 编辑器（固定版本，用户级安装，无需 sudo）
 # Helix 是一个现代化的模态文本编辑器，开箱即用，无需配置
 # 官方文档：https://helix-editor.com/
