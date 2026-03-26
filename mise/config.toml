@@ -13,6 +13,11 @@ http_retries = 3
 http_timeout = "60s"
 experimental = true
 
+# Go 下载镜像：使用阿里云镜像，国内外都可用
+# 阿里云镜像：https://mirrors.aliyun.com/golang/
+# 国内访问快，海外也可用（阿里云海外节点）
+go_download_mirror = "https://mirrors.aliyun.com/golang"
+
 [settings.python]
 uv_venv_auto = true
 
