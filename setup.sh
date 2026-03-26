@@ -51,7 +51,11 @@ ensure_python3() {
 
 # 下载 xdotter (供 retry_fn 调用)
 download_xdotter() {
-  curl -sSL --connect-timeout 30 --max-time 120 \
+  # --retry 8: curl 内置重试 8 次，处理频繁的小网络波动
+  # --retry-delay 2: 重试间隔 2 秒
+  # -C -: 断点续传，从断开的地方继续下载
+  curl -sSL --retry 8 --retry-delay 2 -C - \
+    --connect-timeout 30 --max-time 120 \
     https://github.com/cncsmonster/xdotter/releases/latest/download/xd.pyz \
     -o ~/.local/bin/xd
 }
@@ -60,41 +64,25 @@ download_xdotter() {
 deploy_dotfiles(){
   ensure_python3
   mkdir -p ~/.local/bin
-  retry_fn 5 "下载 xdotter" download_xdotter
+  # retry_fn 3: 外层重试 3 次，处理持续的大问题（如镜像站全部不可用）
+  retry_fn 3 "下载 xdotter" download_xdotter
   chmod +x ~/.local/bin/xd
   # 使用 xd 部署
   ~/.local/bin/xd --config "${SCRIPT_DIR}/xdotter.toml" --quiet --force
 }
 
-# 初始化 git submodules (zcomet 等)
-# 即使用户 clone 时没有加 --recursive，也能自动初始化
-init_submodules() {
-  if [[ -d "${SCRIPT_DIR}/.git" ]]; then
-    # 是 git 仓库，尝试初始化 submodule
-    cd "${SCRIPT_DIR}"
-    if git submodule status &>/dev/null; then
-      echo "正在初始化 submodules..."
-      git submodule update --init --recursive 2>/dev/null || true
-    fi
-  fi
-  # 如果不是 git 仓库（如 zip 下载），跳过 submodule 初始化
-  # zcomet 会在首次登录时 fallback 到 git clone
-}
-
-
 main() {
   export DEBIAN_FRONTEND=noninteractive
   export TZ=Asia/Shanghai
   deploy_dotfiles
-  init_submodules
 
   # 直接加载需要的函数定义文件，而不是通过 source bashrc/zshrc
   # 因为 bashrc 在非交互式模式下会在第 8 行 return，导致后面的函数定义无法加载
-  export SH_COMMON_DIR="$HOME/.config/shells/common"
-  source "$SH_COMMON_DIR/env.sh"
-  source "$SH_COMMON_DIR/fn.sh"
-  source "$SH_COMMON_DIR/install-functions.sh"
-  
+  # 使用相对路径直接 source 原文件，不依赖 xdotter 部署的 symlink
+  source "${SCRIPT_DIR}/shells/common/env.sh"
+  source "${SCRIPT_DIR}/shells/common/fn.sh"
+  source "${SCRIPT_DIR}/shells/common/install-functions.sh"
+
   install-common-tools
   retry_fn 3 "安装 Neovim" install-neovim
   retry_fn 3 "安装 Helix" install-helix

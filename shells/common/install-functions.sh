@@ -3,8 +3,11 @@
 ########################################################
 
 # 网络波动：curl/wget 统一重试与超时（Docker 构建及本机均生效）
-CURL_RETRY_OPTS="--retry 5 --retry-delay 3 --connect-timeout 30 --max-time 300"
-WGET_RETRY_OPTS="--tries=5 --timeout=60 --connect-timeout=30"
+# curl --retry 8: 内置重试 8 次，处理频繁的小网络波动（每 2 秒重试）
+# wget --tries 8: 内置重试 8 次，处理频繁的小网络波动
+# -C -: 断点续传，从断开的地方继续下载（节省带宽）
+CURL_RETRY_OPTS="--retry 8 --retry-delay 2 --connect-timeout 30 --max-time 300"
+WGET_RETRY_OPTS="--tries=8 --timeout=60 --connect-timeout=30 -c"
 
 # GitHub 镜像加速：依次尝试多个镜像站，失败再直连
 # 设置 GITHUB_MIRROR="" 可禁用镜像
@@ -134,10 +137,40 @@ ensure_cargo_binstall() {
   fi
 }
 
-
-# 下载常用rust的工具
+# 下载常用 rust 的工具
 function install-common-rust-tools() {
+    # 如果 CARGO_BUILD_JOBS 未设置，根据可用内存自动计算
+    # Docker 环境：由 docker-build-test.sh 通过 --build-arg 传入
+    # 本机环境：自动检测可用内存并计算
+    if [ -z "$CARGO_BUILD_JOBS" ]; then
+        local TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
+        local AVAIL_MEM_KB=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}')
+        local AVAIL_MEM_GB=$((AVAIL_MEM_KB / 1024 / 1024))
+        local TOTAL_CPU=$(nproc 2>/dev/null || echo 4)
+        
+        # 预留 2GB 系统开销，每 1.5GB 支持一个编译任务
+        local USABLE_MEM=$((AVAIL_MEM_GB - 2))
+        [ $USABLE_MEM -lt 1 ] && USABLE_MEM=1
+        
+        local BUILD_JOBS=$((USABLE_MEM * 10 / 15))
+        [ $BUILD_JOBS -lt 1 ] && BUILD_JOBS=1
+        
+        # 不超过 CPU 核心数的 50%
+        local MAX_JOBS=$((TOTAL_CPU / 2))
+        [ $MAX_JOBS -lt 1 ] && MAX_JOBS=1
+        [ $BUILD_JOBS -gt $MAX_JOBS ] && BUILD_JOBS=$MAX_JOBS
+        
+        # 最大 8 个并行（超过后收益递减）
+        [ $BUILD_JOBS -gt 8 ] && BUILD_JOBS=8
+        
+        export CARGO_BUILD_JOBS=$BUILD_JOBS
+        echo "自动设置 CARGO_BUILD_JOBS=$BUILD_JOBS (基于可用内存 ${AVAIL_MEM_GB}GB, CPU ${TOTAL_CPU} 核)"
+    else
+        echo "使用已有 CARGO_BUILD_JOBS=$CARGO_BUILD_JOBS"
+    fi
+
     ensure_cargo_binstall
+    
     # 批量安装：cargo binstall 优先下载预编译二进制
     # 固定版本号避免上游更新带来的兼容性问题
     # 最后验证：2026-02-23，Docker Ubuntu 24.04 + Rust stable
@@ -162,26 +195,38 @@ function install-common-rust-tools() {
         mise@2026.2.15
         uv@0.10.10
     )
+    
     # 策略：先尝试 binstall 下载预编译二进制（禁止 fallback 到源码编译，避免
     # GitHub API 403 rate limit 导致 120s 重试循环后再花几十分钟编译）。
     # 下载失败的 crate 收集起来，最后统一 cargo install 从源码编译。
     local FAILED=()
+    local TOTAL=${#CRATES[@]}
+    local COUNT=0
+    
+    echo "开始安装 ${TOTAL} 个 Rust 工具..."
     for crate in "${CRATES[@]}"; do
+        COUNT=$((COUNT + 1))
+        echo "[${COUNT}/${TOTAL}] 正在安装：${crate}"
         if ! cargo binstall "${crate}" -y --disable-strategies compile; then
-            echo "binstall 下载失败: ${crate}，稍后从源码编译"
+            echo "[${COUNT}/${TOTAL}] binstall 下载失败：${crate}，稍后从源码编译"
             FAILED+=("${crate}")
         fi
     done
+    
     if [ ${#FAILED[@]} -gt 0 ]; then
-        echo "以下 crate 无预编译二进制，从源码编译: ${FAILED[*]}"
+        echo ""
+        echo "以下 ${#FAILED[@]} 个 crate 无预编译二进制，开始源码编译："
+        local TOTAL_FAILED=${#FAILED[@]}
+        local FAILED_COUNT=0
         for crate in "${FAILED[@]}"; do
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+            echo "[${FAILED_COUNT}/${TOTAL_FAILED}] 源码编译：${crate}"
             cargo install "${crate}" --locked || cargo install "${crate}"
         done
     fi
 
     setup-yazi
 }
-
 function setup-yazi(){
     # yazi-fm 是 yazi 的主程序包名，yazi-cli 是 ya 命令行工具
     # 使用 cargo binstall 下载预编译二进制，速度快且稳定
