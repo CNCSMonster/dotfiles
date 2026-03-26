@@ -13,10 +13,12 @@ http_retries = 3
 http_timeout = "60s"
 experimental = true
 
-# Go 下载镜像：使用阿里云镜像，国内外都可用
-# 阿里云镜像：https://mirrors.aliyun.com/golang/
-# 国内访问快，海外也可用（阿里云海外节点）
-go_download_mirror = "https://mirrors.aliyun.com/golang"
+# Go 下载配置
+# 阿里云镜像不提供 .sha256 校验文件，会导致 mise 失败
+# 使用官方源 + 重试机制保证稳定性
+go_download_mirror = "https://dl.google.com/go"
+# 跳过 checksum 验证（可选，如果网络非常不稳定）
+# go_skip_checksum = true
 
 [settings.python]
 uv_venv_auto = true
