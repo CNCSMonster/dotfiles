@@ -600,10 +600,8 @@ function install-typescript-lsp() {
 
     echo "安装 typescript-language-server..."
 
-    # 初始化 mise 环境（确保 npm 可用）
-    eval "$(mise env)" >/dev/null 2>&1 || true
-
     # 使用 npm 全局安装
+    # 注意：mise 环境已在 env.sh 中初始化，Docker/CI 环境也可用
     if npm install -g typescript-language-server typescript 2>&1; then
         echo "typescript-language-server 安装成功：$(typescript-language-server --version)"
         return 0

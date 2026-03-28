@@ -106,3 +106,15 @@ export EDITOR='hx'
 # # mcfly
 export MCFLY_FUZZY=2
 export MCFLY_RESULTS=25
+
+# =============================================================================
+# mise 版本管理工具
+# =============================================================================
+# 提供 npm/node/go/zig 等命令的环境变量
+# 注意：这是基础环境配置，交互式和非交互式环境都需要
+# 与 inter.sh 的区别：
+#   - env.sh: 基础环境变量（PATH 等），所有场景都需要
+#   - inter.sh: 交互式特性（prompt、快捷键），仅交互式 shell 需要
+if command -v mise &>/dev/null; then
+    eval "$(mise activate $SH)" 2>/dev/null || true
+fi
