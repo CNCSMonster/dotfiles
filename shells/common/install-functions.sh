@@ -149,7 +149,8 @@ function install-common-tools() {
         lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip \
         htop iotop fzf ripgrep net-tools snapd vim tree git delta python3 python3-pip \
         python3-venv python3-dev python3-setuptools python3-wheel zsh sudo \
-        libssl-dev libgit2-dev
+        libssl-dev libgit2-dev \
+        bubblewrap  # bwrap - 用于安全运行 cargo audit 等工具
 }
 
 # 确保rustup已安装，如果未安装，则下载并安装

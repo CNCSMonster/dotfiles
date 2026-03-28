@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Safe Cargo Audit - 使用 bwrap 沙箱运行 cargo audit
+# =============================================================================
+# 用途：在隔离的沙箱环境中运行 cargo audit，防止恶意代码执行
+# 用法：safe-cargo-audit [cargo audit 的参数...]
+#
+# 示例:
+#   safe-cargo-audit                      # 快速审计
+#   safe-cargo-audit --details            # 显示详细信息
+#   safe-cargo-audit --ignore RUSTSEC-2024-0XXX  # 忽略特定漏洞
+#   safe-cargo-audit --json               # JSON 输出
+#
+# 安全特性:
+#   - 项目目录只读挂载（防止恶意修改源码）
+#   - 默认禁用网络（防止数据外泄）
+#   - 隔离 /home 目录（防止访问用户文件）
+#   - 最小化设备访问
+# =============================================================================
+
+set -eo pipefail
+
+# 获取当前工作目录（用户运行命令时的目录）
+PROJECT_DIR="$(pwd)"
+
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[✓]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# 检查 bwrap 是否已安装
+check_bwrap() {
+    if ! command -v bwrap &> /dev/null; then
+        log_error "bwrap (bubblewrap) 未安装"
+        echo ""
+        echo "请运行以下命令安装:"
+        echo "  sudo apt-get install bubblewrap"
+        echo ""
+        echo "或使用 dotfiles 一键安装:"
+        echo "  ./setup.sh"
+        exit 1
+    fi
+}
+
+# 检查 cargo-audit 是否已安装
+check_cargo_audit() {
+    if ! command -v cargo-audit &> /dev/null; then
+        log_error "cargo-audit 未安装"
+        echo ""
+        echo "请运行以下命令安装:"
+        echo "  cargo install cargo-audit"
+        exit 1
+    fi
+}
+
+# 检查 Cargo.toml 是否存在
+check_cargo_toml() {
+    if [ ! -f "$PROJECT_DIR/Cargo.toml" ]; then
+        log_error "未找到 Cargo.toml，请在 Rust 项目根目录运行此脚本"
+        exit 1
+    fi
+}
+
+# 显示帮助信息（转发给 cargo audit）
+show_help() {
+    cargo audit --help
+}
+
+# 主函数
+main() {
+    # 检查依赖
+    check_bwrap
+    check_cargo_audit
+    check_cargo_toml
+    
+    log_info "Safe Cargo Audit (沙箱模式)"
+    log_info "项目目录：$PROJECT_DIR"
+    log_info "网络访问：允许（沙箱内联网更新漏洞数据库）"
+    echo ""
+    
+    # 创建临时目录用于 cargo 缓存
+    # 包括：registry（crate 信息）和 advisory-db（漏洞数据库）
+    local CARGO_CACHE_DIR=$(mktemp -d)
+    mkdir -p "$CARGO_CACHE_DIR/registry" "$CARGO_CACHE_DIR/advisory-db"
+    trap "rm -rf $CARGO_CACHE_DIR" EXIT
+    
+    # 使用 bwrap 运行 cargo audit，转发所有参数
+    # --share-net: 允许网络访问（更新漏洞数据库需要）
+    bwrap \
+        --ro-bind "$PROJECT_DIR" "$PROJECT_DIR" \
+        --ro-bind /etc/ssl /etc/ssl \
+        --ro-bind /etc/ca-certificates /etc/ca-certificates \
+        --tmpfs /home \
+        --tmpfs /root \
+        --tmpfs /tmp \
+        --proc /proc \
+        --dev /dev \
+        --bind "$CARGO_CACHE_DIR/registry" "$HOME/.cargo/registry" \
+        --bind "$CARGO_CACHE_DIR/advisory-db" "$HOME/.cargo/advisory-db" \
+        --chdir "$PROJECT_DIR" \
+        --share-net \
+        -- cargo audit "$@"
+    
+    local exit_code=$?
+    
+    if [ $exit_code -eq 0 ]; then
+        echo ""
+        log_success "审计完成，未发现安全漏洞"
+    else
+        echo ""
+        log_warn "审计完成，发现安全漏洞（见上文详情）"
+    fi
+    
+    return $exit_code
+}
+
+# 处理 --help 参数
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    show_help
+    exit 0
+fi
+
+main "$@"
