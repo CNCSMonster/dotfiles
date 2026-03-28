@@ -600,14 +600,17 @@ function install-typescript-lsp() {
 
     echo "安装 typescript-language-server..."
 
-    # 使用 pnpm 全局安装（pnpm 由 mise 管理）
-    pnpm add -g typescript-language-server typescript 2>/dev/null || \
-    npm install -g typescript-language-server typescript 2>/dev/null || {
+    # 初始化 mise 环境（确保 npm 可用）
+    eval "$(mise env)" >/dev/null 2>&1 || true
+
+    # 使用 npm 全局安装
+    if npm install -g typescript-language-server typescript 2>&1; then
+        echo "typescript-language-server 安装成功：$(typescript-language-server --version)"
+        return 0
+    else
         echo "typescript-language-server 安装失败"
         return 1
-    }
-
-    echo "typescript-language-server 安装成功：$(typescript-language-server --version)"
+    fi
 }
 
 # 安装 Python 语言服务器 (Pyright)
