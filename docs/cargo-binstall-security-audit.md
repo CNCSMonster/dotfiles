@@ -373,8 +373,98 @@ cargo audit
 | **关键工具** | cargo install | 源码编译，完全可信 |
 | **生产环境** | 手动验证 + 内部镜像 | 最大控制 |
 | **CI/CD** | cargo binstall --only-signed | 平衡速度和安全 |
+| **高安全需求** | CARGO_INSTALL_FROM_SOURCE=1 | 全部源码编译，完全可信 |
 
-### 7.3 最终建议
+### 7.3 配置方式
+
+#### 环境变量控制（推荐）
+
+在 `~/.config/shells/env.sh` 中添加：
+
+```bash
+# 强制从源码编译所有 Rust 工具
+export CARGO_INSTALL_FROM_SOURCE=1
+
+# 严格模式：任何工具安装失败都终止脚本
+export CARGO_INSTALL_STRICT=1
+```
+
+或者临时使用：
+
+```bash
+# 单次安装使用源码编译
+CARGO_INSTALL_FROM_SOURCE=1 ./setup.sh
+
+# 或者
+export CARGO_INSTALL_FROM_SOURCE=1
+cargo install common-rust-tools
+
+# 严格模式（失败即终止）
+CARGO_INSTALL_STRICT=1 ./setup.sh
+```
+
+#### 手动指定
+
+```bash
+# 对单个工具源码编译
+cargo install gitui --locked
+
+# 对单个工具使用 binstall
+cargo binstall gitui
+```
+
+### 7.4 错误处理行为
+
+| 模式 | 环境变量 | 行为 |
+|------|----------|------|
+| **默认模式** | 无 | 部分工具失败会重试 3 次，仍失败则跳过并继续 |
+| **严格模式** | `CARGO_INSTALL_STRICT=1` | 任何工具失败重试 3 次后终止整个脚本 |
+| **源码编译** | `CARGO_INSTALL_FROM_SOURCE=1` | 跳过 binstall，全部使用 cargo install |
+| **组合模式** | 两者都设置 | 严格模式 + 源码编译，最安全但最慢 |
+
+### 7.5 CI/CD 配置
+
+#### GitHub Actions
+
+在 `.github/workflows/docker-build.yml` 中已默认启用严格模式：
+
+```yaml
+jobs:
+  build:
+    env:
+      CARGO_INSTALL_STRICT: 1  # 任何工具失败都终止构建
+    steps:
+      - uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            CARGO_INSTALL_STRICT=1
+```
+
+#### Docker 构建脚本
+
+```bash
+# 默认启用严格模式
+./scripts/docker-build-test.sh
+
+# 禁用严格模式（允许部分工具失败）
+./scripts/docker-build-test.sh --no-strict
+
+# 严格模式 + 源码编译（最安全）
+CARGO_INSTALL_STRICT=1 CARGO_INSTALL_FROM_SOURCE=1 \
+  ./scripts/docker-build-test.sh
+```
+
+#### 直接 Docker 构建
+
+```bash
+# 启用严格模式
+docker buildx build --build-arg CARGO_INSTALL_STRICT=1 .
+
+# 禁用严格模式
+docker buildx build --build-arg CARGO_INSTALL_STRICT=0 .
+```
+
+### 7.6 最终建议
 
 ✅ **推荐使用 cargo binstall**，但需了解：
 
@@ -382,6 +472,8 @@ cargo audit
 2. 签名验证是可选的，不是所有 crate 都配置
 3. 对于关键工具，建议源码编译或手动验证
 4. 定期运行 `cargo audit` 检查依赖漏洞
+5. 高安全场景下，设置 `CARGO_INSTALL_FROM_SOURCE=1` 强制源码编译
+6. CI/CD 场景下，可设置 `CARGO_INSTALL_STRICT=1` 确保安装失败时及时发现问题
 
 ---
 

@@ -44,43 +44,34 @@ xd --config ./xdotter.toml
 - **Wait for completion**: `ZCOMET_BG_INSTALL=0 zsh` (blocks for ~10-30 seconds)
 
 ## Quick Experience Using Docker
-you can experience my dotfiles by running the following command:
 
-### Recommended: Build with Automatic Resource Control
-The build script automatically detects your system resources and sets optimal limits:
+You can build the Docker image locally to experience my dotfiles:
 
 ```bash
-# Automatic resource-limited build (recommended)
+# Build with automatic resource control (recommended)
 ./scripts/docker-build-test.sh
 
-# Without cache
+# Build without cache
 ./scripts/docker-build-test.sh --no-cache
 
 # Retry on network failure (e.g. up to 3 attempts)
 ./scripts/docker-build-test.sh --retry 3
 ```
 
-The script will:
+The build script will:
 - Detect available memory and CPU cores
-- Calculate resource limits dynamically (memory/cpu)
+- Calculate resource limits dynamically
 - Create a BuildKit builder with these limits
 - Build the image without overwhelming your system
 
-For minimal Docker-based `setup.sh` verification steps, see:
-- [`scripts/README.md`](./scripts/README.md)
+After building, run the container:
 
-### Alternative: Basic Build (No Resource Limits)
 ```bash
-# Warning: May consume all available resources
-docker build -t dotfiles -f Dockerfile .
+# Run the container
+docker run -it dotfiles:test zsh
 ```
 
-this Dockerfile uses this repository to validate the final environment setup flow.
-you can get the final image and run it to experience the final environment:
-
-```zsh
-docker run -it dotfiles
-```
+For more details, see [`scripts/README.md`](./scripts/README.md).
 
 ## Documentation
 
