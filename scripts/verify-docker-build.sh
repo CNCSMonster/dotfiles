@@ -167,7 +167,7 @@ echo "=== 7. 符号链接验证 ==="
 check_symlink "$HOME/.zshrc" "~/.zshrc"
 check_dir "$HOME/.config/shells" "~/.config/shells"
 check_dir "$HOME/.config/shells/common" "~/.config/shells/common"
-check_symlink "$HOME/.config/mise/config.toml" "~/.config/mise/config.toml"
+check_symlink "$HOME/.config/mise" "~/.config/mise"
 check_dir "$HOME/.config/yazi" "~/.config/yazi"
 check_dir "$HOME/.config/git" "~/.config/git"
 echo

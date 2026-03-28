@@ -470,11 +470,323 @@ function install-helix() {
     # 清理临时文件
     rm -rf "$HELIX_TMP" "$DEST"
 
+    # 编译 tree-sitter 语法文件
+    echo "编译 Helix tree-sitter 语法..."
+    hx --grammar fetch >/dev/null 2>&1 || true
+    hx --grammar build >/dev/null 2>&1 || true
+
+    # 下载 languages.toml 和 themes（从官方仓库）
+    # 这些文件在官方 tarball 中不包含，需要单独下载
+    echo "下载 Helix languages.toml 和 themes..."
+    local HELIX_RUNTIME_TMP="/tmp/helix-runtime-files"
+    git clone --depth 1 --filter=blob:none --sparse \
+        "https://github.com/helix-editor/helix.git" "$HELIX_RUNTIME_TMP" >/dev/null 2>&1
+    if [ -d "$HELIX_RUNTIME_TMP" ]; then
+        cd "$HELIX_RUNTIME_TMP"
+        git sparse-checkout set runtime/languages.toml runtime/themes >/dev/null 2>&1
+        cp runtime/languages.toml "$HOME/.config/helix/"
+        cp -r runtime/themes "$HELIX_RUNTIME_DIR/"
+        cd - >/dev/null
+        rm -rf "$HELIX_RUNTIME_TMP"
+    fi
+
     # 验证安装
     if command -v hx >/dev/null 2>&1; then
         echo "Helix 安装成功：$(hx --version)"
     else
         echo "Helix 安装失败"
+        return 1
+    fi
+}
+
+# 安装 Marksman（Markdown LSP 服务器）
+# Marksman 是一个 Markdown 语言服务器，提供：
+# - 文档大纲（outline/symbols）
+# - 跨文件引用
+# - 自动补全
+# 官方文档：https://github.com/artempyanykh/marksman
+function install-marksman() {
+    local MARKSMAN_VERSION="2026-02-08"
+    local ARCH=$(uname -m)
+    local MARKSMAN_ARCH=""
+    case $ARCH in
+        x86_64) MARKSMAN_ARCH="x64" ;;
+        aarch64) MARKSMAN_ARCH="arm64" ;;
+        *)
+            echo "不支持的架构：$ARCH"
+            return 1
+            ;;
+    esac
+
+    local MARKSMAN_BIN_DIR="$HOME/.cargo/bin"
+    local MARKSMAN_TMP="/tmp/marksman"
+
+    # 检查是否已安装
+    if [ -x "${MARKSMAN_BIN_DIR}/marksman" ]; then
+        echo "marksman 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 marksman ${MARKSMAN_VERSION}..."
+
+    # 下载预编译二进制
+    local MARKSMAN_URL="https://github.com/artempyanykh/marksman/releases/download/${MARKSMAN_VERSION}/marksman-linux-${MARKSMAN_ARCH}"
+    mkdir -p "$MARKSMAN_TMP"
+    github_download "$MARKSMAN_URL" "${MARKSMAN_TMP}/marksman"
+
+    # 安装
+    chmod +x "${MARKSMAN_TMP}/marksman"
+    mv "${MARKSMAN_TMP}/marksman" "$MARKSMAN_BIN_DIR/"
+
+    # 清理
+    rm -rf "$MARKSMAN_TMP"
+
+    # 验证
+    if command -v marksman >/dev/null 2>&1; then
+        echo "marksman 安装成功：$(marksman --version)"
+    else
+        echo "marksman 安装失败"
+        return 1
+    fi
+}
+
+# ========== LSP 服务器安装函数 ==========
+
+# 安装 TypeScript/JavaScript 语言服务器
+# 实现语言：TypeScript
+# 安装方式：npm (mise 已安装 node 和 pnpm)
+function install-typescript-lsp() {
+    local LSP_BIN_DIR="$HOME/.local/bin/lsp"
+    mkdir -p "$LSP_BIN_DIR"
+
+    # 检查是否已安装
+    if command -v typescript-language-server >/dev/null 2>&1; then
+        echo "typescript-language-server 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 typescript-language-server..."
+
+    # 使用 pnpm 全局安装（pnpm 由 mise 管理）
+    pnpm add -g typescript-language-server typescript 2>/dev/null || \
+    npm install -g typescript-language-server typescript 2>/dev/null || {
+        echo "typescript-language-server 安装失败"
+        return 1
+    }
+
+    echo "typescript-language-server 安装成功：$(typescript-language-server --version)"
+}
+
+# 安装 Python 语言服务器 (Pyright)
+# 实现语言：TypeScript
+# 安装方式：npm (比 pip 版本更新)
+function install-pyright() {
+    # 检查是否已安装
+    if command -v pyright >/dev/null 2>&1; then
+        echo "pyright 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 pyright..."
+
+    # 使用 pnpm 全局安装
+    pnpm add -g pyright 2>/dev/null || \
+    npm install -g pyright 2>/dev/null || {
+        echo "pyright 安装失败"
+        return 1
+    }
+
+    echo "pyright 安装成功：$(pyright --version)"
+}
+
+# 安装 Go 语言服务器 (gopls)
+# 实现语言：Go
+# 安装方式：go install
+function install-gopls() {
+    # 检查是否已安装
+    if command -v gopls >/dev/null 2>&1; then
+        echo "gopls 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 gopls..."
+
+    # 使用 go install 安装
+    export GOPATH="$HOME/.go"
+    export PATH="$GOPATH/bin:$PATH"
+    go install golang.org/x/tools/gopls@latest 2>/dev/null || {
+        echo "gopls 安装失败"
+        return 1
+    }
+
+    # 复制到 cargo bin 目录以便 Helix 找到
+    mkdir -p "$HOME/.cargo/bin"
+    cp "$GOPATH/bin/gopls" "$HOME/.cargo/bin/" 2>/dev/null || true
+
+    echo "gopls 安装成功：$(gopls version)"
+}
+
+# 安装 Zig 语言服务器 (zls)
+# 实现语言：Zig
+# 安装方式：下载预编译二进制
+function install-zls() {
+    local ZLS_VERSION="0.15.1"
+    local ARCH=$(uname -m)
+    local ZLS_ARCH=""
+    case $ARCH in
+        x86_64) ZLS_ARCH="x86_64" ;;
+        aarch64) ZLS_ARCH="aarch64" ;;
+        *)
+            echo "不支持的架构：$ARCH"
+            return 1
+            ;;
+    esac
+
+    local ZLS_BIN_DIR="$HOME/.cargo/bin"
+    local ZLS_TMP="/tmp/zls"
+
+    # 检查是否已安装
+    if command -v zls >/dev/null 2>&1; then
+        echo "zls 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 zls ${ZLS_VERSION}..."
+
+    # 下载预编译二进制
+    local ZLS_URL="https://github.com/zigtools/zls/releases/download/${ZLS_VERSION}/zls-${ZLS_ARCH}-linux.tar.xz"
+    mkdir -p "$ZLS_TMP"
+
+    github_download "$ZLS_URL" "${ZLS_TMP}/zls.tar.xz"
+
+    # 解压
+    tar -xf "${ZLS_TMP}/zls.tar.xz" -C "$ZLS_TMP"
+
+    # 安装
+    mv "${ZLS_TMP}/zls" "$ZLS_BIN_DIR/" 2>/dev/null || {
+        # 如果解压后目录不同，尝试查找
+        find "$ZLS_TMP" -name "zls" -type f -executable -exec mv {} "$ZLS_BIN_DIR/" \;
+    }
+
+    # 清理
+    rm -rf "$ZLS_TMP"
+
+    # 验证
+    if command -v zls >/dev/null 2>&1; then
+        echo "zls 安装成功：$(zls --version)"
+    else
+        echo "zls 安装失败"
+        return 1
+    fi
+}
+
+# 安装 YAML 语言服务器
+# 实现语言：TypeScript
+# 安装方式：npm
+function install-yaml-lsp() {
+    # 检查是否已安装
+    if command -v yaml-language-server >/dev/null 2>&1; then
+        echo "yaml-language-server 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 yaml-language-server..."
+
+    # 使用 pnpm 全局安装
+    pnpm add -g yaml-language-server 2>/dev/null || \
+    npm install -g yaml-language-server 2>/dev/null || {
+        echo "yaml-language-server 安装失败"
+        return 1
+    }
+
+    echo "yaml-language-server 安装成功：$(yaml-language-server --version)"
+}
+
+# 安装 TOML 语言服务器 (taplo)
+# 实现语言：Rust
+# 安装方式：cargo binstall (预编译) 或 cargo install
+function install-taplo() {
+    local TAPLO_BIN_DIR="$HOME/.cargo/bin"
+
+    # 检查是否已安装
+    if command -v taplo >/dev/null 2>&1; then
+        echo "taplo 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 taplo..."
+
+    # 优先使用 cargo binstall (预编译二进制)
+    if command -v cargo-binstall >/dev/null 2>&1; then
+        cargo binstall taplo-cli -y --no-symlinks 2>/dev/null && {
+            mv "$TAPLO_BIN_DIR/taplo-cli" "$TAPLO_BIN_DIR/taplo" 2>/dev/null || true
+            echo "taplo 安装成功 (binstall): $(taplo --version)"
+            return 0
+        }
+    fi
+
+    # 回退到 cargo install
+    cargo install taplo-cli 2>/dev/null || {
+        echo "taplo 安装失败"
+        return 1
+    }
+
+    echo "taplo 安装成功：$(taplo --version)"
+}
+
+# 安装 Lua 语言服务器
+# 实现语言：Lua/C++
+# 安装方式：下载预编译二进制
+function install-lua-lsp() {
+    local LUA_LSP_VERSION="3.17.1"
+    local ARCH=$(uname -m)
+    local LUA_LSP_ARCH=""
+    case $ARCH in
+        x86_64) LUA_LSP_ARCH="x64" ;;
+        aarch64) LUA_LSP_ARCH="arm64" ;;
+        *)
+            echo "不支持的架构：$ARCH"
+            return 1
+            ;;
+    esac
+
+    local LUA_LSP_BIN_DIR="$HOME/.cargo/bin"
+    local LUA_LSP_RUNTIME_DIR="$HOME/.local/share/lua-language-server"
+    local LUA_LSP_TMP="/tmp/lua-language-server"
+
+    # 检查是否已安装
+    if command -v lua-language-server >/dev/null 2>&1; then
+        echo "lua-language-server 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 lua-language-server ${LUA_LSP_VERSION}..."
+
+    # 下载预编译二进制
+    local LUA_LSP_URL="https://github.com/LuaLS/lua-language-server/releases/download/${LUA_LSP_VERSION}/lua-language-server-${LUA_LSP_VERSION}-linux-${LUA_LSP_ARCH}.tar.gz"
+    mkdir -p "$LUA_LSP_TMP"
+    mkdir -p "$LUA_LSP_RUNTIME_DIR"
+
+    github_download "$LUA_LSP_URL" "${LUA_LSP_TMP}/lua-language-server.tar.gz"
+
+    # 解压到运行时目录
+    tar -xzf "${LUA_LSP_TMP}/lua-language-server.tar.gz" -C "$LUA_LSP_RUNTIME_DIR"
+
+    # 创建启动脚本
+    cat > "${LUA_LSP_BIN_DIR}/lua-language-server" << EOF
+#!/bin/bash
+exec "$LUA_LSP_RUNTIME_DIR/bin/lua-language-server" "\$@"
+EOF
+    chmod +x "${LUA_LSP_BIN_DIR}/lua-language-server"
+
+    # 清理
+    rm -rf "$LUA_LSP_TMP"
+
+    # 验证
+    if command -v lua-language-server >/dev/null 2>&1; then
+        echo "lua-language-server 安装成功：$(lua-language-server --version)"
+    else
+        echo "lua-language-server 安装失败"
         return 1
     fi
 }

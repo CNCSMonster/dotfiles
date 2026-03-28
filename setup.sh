@@ -86,6 +86,7 @@ main() {
   install-common-tools
   retry_fn 3 "安装 Neovim" install-neovim
   retry_fn 3 "安装 Helix" install-helix
+  retry_fn 3 "安装 marksman" install-marksman
   retry_fn 3 "安装 yq" install-yq
   llvmup default 19
   retry_fn 5 "安装 Rust" install-rust stable
@@ -93,6 +94,15 @@ main() {
   retry_fn 3 "安装 cargo-fuzz" setup-cargo-fuzz
   # 使用 mise 安装 go, zig, node, pnpm 等工具
   mise trust && mise install
+
+  # 安装 LSP 语言服务器（用于 Helix 编辑器）
+  retry_fn 3 "安装 TypeScript LSP" install-typescript-lsp
+  retry_fn 3 "安装 Pyright" install-pyright
+  retry_fn 3 "安装 gopls" install-gopls
+  retry_fn 3 "安装 zls" install-zls
+  retry_fn 3 "安装 YAML LSP" install-yaml-lsp
+  retry_fn 3 "安装 taplo" install-taplo
+  retry_fn 3 "安装 Lua LSP" install-lua-lsp
 }
 
 main "$@"
