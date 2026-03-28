@@ -49,6 +49,97 @@ sudo_run() {
 }
 
 
+########################################################
+# 通用 Rust/Cargo 工具安装函数
+########################################################
+
+# 统一的 cargo 工具安装函数（推荐模式）
+# 使用 --disable-strategies compile，下载失败后统一 cargo install
+#
+# 优势：
+# 1. 预编译下载和源码编译分离，日志清晰
+# 2. 避免 GitHub API 限流导致的时间浪费（每个无预编译的 crate 等待 120 秒）
+# 3. 可以统一设置 CARGO_BUILD_JOBS 并行编译
+# 4. 使用 --locked 标志，确保可复现性
+#
+# 参数：多个 crate 名称，可带版本号 (例如：bat@0.26.1 eza zoxide@0.9.8)
+# 示例：
+#   cargo_install_common bat@0.26.1 eza
+#   cargo_install_common "gitui@0.28.1"
+function cargo_install_common() {
+    ensure_cargo_binstall
+    
+    local CRATES=("$@")
+    local TOTAL=${#CRATES[@]}
+    local COUNT=0
+    local SUCCESS=0
+    local FAILED=()
+    
+    echo "开始安装 ${TOTAL} 个 Rust 工具..."
+    for crate in "${CRATES[@]}"; do
+        COUNT=$((COUNT + 1))
+        echo "[${COUNT}/${TOTAL}] 正在安装：${crate}"
+        
+        # 只尝试预编译二进制（GitHub Releases + QuickInstall）
+        # 禁用 compile 策略，避免无预编译时浪费 120 秒等待时间
+        if cargo binstall "${crate}" -y --disable-strategies compile 2>/dev/null; then
+            echo "[${COUNT}/${TOTAL}] ✅ 下载成功：${crate} (预编译)"
+            SUCCESS=$((SUCCESS + 1))
+        else
+            echo "[${COUNT}/${TOTAL}] ⚠️ 无预编译：${crate}，稍后源码编译"
+            FAILED+=("${crate}")
+        fi
+    done
+    
+    # 统一编译失败的 crate
+    if [ ${#FAILED[@]} -gt 0 ]; then
+        echo ""
+        echo "=========================================="
+        echo "开始源码编译 ${#FAILED[@]} 个 crate（使用 --locked）..."
+        echo "=========================================="
+        
+        local TOTAL_FAILED=${#FAILED[@]}
+        local FAILED_COUNT=0
+        local COMPILED=0
+        
+        for crate in "${FAILED[@]}"; do
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+            echo "[${FAILED_COUNT}/${TOTAL_FAILED}] 源码编译：${crate}"
+            
+            # 使用 --locked 确保可复现性
+            if cargo install "${crate}" --locked 2>/dev/null; then
+                echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ✅ 编译成功：${crate}"
+                COMPILED=$((COMPILED + 1))
+            else
+                # --locked 失败则尝试不带 --locked（兼容性回退）
+                echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ⚠️ --locked 失败，尝试不带 --locked..."
+                if cargo install "${crate}" 2>/dev/null; then
+                    echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ✅ 编译成功：${crate}"
+                    COMPILED=$((COMPILED + 1))
+                else
+                    echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ❌ 编译失败：${crate}"
+                fi
+            fi
+        done
+        
+        SUCCESS=$((SUCCESS + COMPILED))
+    fi
+    
+    echo ""
+    echo "=========================================="
+    echo "安装完成：${SUCCESS}/${TOTAL} 成功"
+    
+    if [ $SUCCESS -eq $TOTAL ]; then
+        echo "全部成功！"
+        return 0
+    else
+        local FAILED_TOTAL=$((TOTAL - SUCCESS))
+        echo "失败 (${FAILED_TOTAL}): 请手动安装"
+        return 1
+    fi
+}
+
+
 # 下载基础工具链
 function install-common-tools() {
     sudo_run apt-get update --fix-missing
@@ -147,110 +238,73 @@ function install-common-rust-tools() {
         local AVAIL_MEM_KB=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}')
         local AVAIL_MEM_GB=$((AVAIL_MEM_KB / 1024 / 1024))
         local TOTAL_CPU=$(nproc 2>/dev/null || echo 4)
-        
+
         # 预留 2GB 系统开销，每 1.5GB 支持一个编译任务
         local USABLE_MEM=$((AVAIL_MEM_GB - 2))
         [ $USABLE_MEM -lt 1 ] && USABLE_MEM=1
-        
+
         local BUILD_JOBS=$((USABLE_MEM * 10 / 15))
         [ $BUILD_JOBS -lt 1 ] && BUILD_JOBS=1
-        
+
         # 不超过 CPU 核心数的 50%
         local MAX_JOBS=$((TOTAL_CPU / 2))
         [ $MAX_JOBS -lt 1 ] && MAX_JOBS=1
         [ $BUILD_JOBS -gt $MAX_JOBS ] && BUILD_JOBS=$MAX_JOBS
-        
+
         # 最大 8 个并行（超过后收益递减）
         [ $BUILD_JOBS -gt 8 ] && BUILD_JOBS=8
-        
+
         export CARGO_BUILD_JOBS=$BUILD_JOBS
         echo "自动设置 CARGO_BUILD_JOBS=$BUILD_JOBS (基于可用内存 ${AVAIL_MEM_GB}GB, CPU ${TOTAL_CPU} 核)"
     else
         echo "使用已有 CARGO_BUILD_JOBS=$CARGO_BUILD_JOBS"
     fi
 
-    ensure_cargo_binstall
-    
-    # 批量安装：cargo binstall 优先下载预编译二进制
+    # 使用统一的 cargo 安装函数
+    # 策略：--disable-strategies compile，下载失败后统一 cargo install
+    #
+    # 优势：
+    # 1. 预编译下载和源码编译分离，日志清晰
+    # 2. 避免 GitHub API 限流导致的时间浪费
+    # 3. 使用 --locked 标志，确保可复现性
+    #
     # 固定版本号避免上游更新带来的兼容性问题
-    # 最后验证：2026-02-23，Docker Ubuntu 24.04 + Rust stable
-    local CRATES=(
-        kondo@0.9.0
-        jaq@2.3.0
-        rust-script@0.36.0
-        parallel-disk-usage@0.21.1
-        bat@0.26.1
-        navi@2.24.0
-        mcfly@0.9.4
-        starship@1.23.0
-        eza@0.21.0
-        conceal@0.5.1
-        zoxide@0.9.8
-        fd-find@10.2.0
-        macchina@6.0.0
-        fnm@1.38.1
-        tree-sitter-cli@0.25.4
-        tokei@13.0.0-alpha.9
-        gen-mdbook-summary@0.0.6
-        mise@2026.2.15
-        uv@0.10.10
-    )
-    
-    # 策略：先尝试 binstall 下载预编译二进制（禁止 fallback 到源码编译，避免
-    # GitHub API 403 rate limit 导致 120s 重试循环后再花几十分钟编译）。
-    # 下载失败的 crate 收集起来，最后统一 cargo install 从源码编译。
-    local FAILED=()
-    local TOTAL=${#CRATES[@]}
-    local COUNT=0
-    
-    echo "开始安装 ${TOTAL} 个 Rust 工具..."
-    for crate in "${CRATES[@]}"; do
-        COUNT=$((COUNT + 1))
-        echo "[${COUNT}/${TOTAL}] 正在安装：${crate}"
-        if ! cargo binstall "${crate}" -y --disable-strategies compile; then
-            echo "[${COUNT}/${TOTAL}] binstall 下载失败：${crate}，稍后从源码编译"
-            FAILED+=("${crate}")
-        fi
-    done
-    
-    if [ ${#FAILED[@]} -gt 0 ]; then
-        echo ""
-        echo "以下 ${#FAILED[@]} 个 crate 无预编译二进制，开始源码编译："
-        local TOTAL_FAILED=${#FAILED[@]}
-        local FAILED_COUNT=0
-        for crate in "${FAILED[@]}"; do
-            FAILED_COUNT=$((FAILED_COUNT + 1))
-            echo "[${FAILED_COUNT}/${TOTAL_FAILED}] 源码编译：${crate}"
-            cargo install "${crate}" --locked || cargo install "${crate}"
-        done
-    fi
+    # 最后验证：2026-03-28，Docker Ubuntu 24.04 + Rust stable
+    cargo_install_common \
+        kondo@0.9.0 \
+        jaq@2.3.0 \
+        rust-script@0.36.0 \
+        parallel-disk-usage@0.21.1 \
+        bat@0.26.1 \
+        navi@2.24.0 \
+        mcfly@0.9.4 \
+        starship@1.23.0 \
+        eza@0.21.0 \
+        conceal@0.5.1 \
+        zoxide@0.9.8 \
+        fd-find@10.2.0 \
+        macchina@6.0.0 \
+        fnm@1.38.1 \
+        tree-sitter-cli@0.25.4 \
+        tokei@13.0.0-alpha.9 \
+        gen-mdbook-summary@0.0.6 \
+        mise@2026.2.15 \
+        uv@0.10.10 \
+        gitui@0.28.1
 
     setup-yazi
 }
+
 function setup-yazi(){
     # yazi-fm 是 yazi 的主程序包名，yazi-cli 是 ya 命令行工具
-    # 使用 cargo binstall 下载预编译二进制，速度快且稳定
-    # 官方文档：https://yazi-rs.github.io/docs/installation/
-    if ! cargo binstall yazi-fm yazi-cli -y --disable-strategies compile; then
-        cargo install yazi-fm yazi-cli --locked || cargo install yazi-fm yazi-cli
-    fi
+    # 使用统一的 cargo 安装函数
+    cargo_install_common yazi-fm yazi-cli
 }
 
 function setup-cargo-fuzz() {
   rustup component add llvm-tools-preview --toolchain nightly
-  ensure_cargo_binstall
-  local FUZZ_CRATES=(cargo-fuzz grcov cargo-tarpaulin)
-  local FAILED=()
-  for crate in "${FUZZ_CRATES[@]}"; do
-      if ! cargo binstall "${crate}" -y --disable-strategies compile; then
-          FAILED+=("${crate}")
-      fi
-  done
-  if [ ${#FAILED[@]} -gt 0 ]; then
-      for crate in "${FAILED[@]}"; do
-          cargo install "${crate}" --locked || cargo install "${crate}"
-      done
-  fi
+  # 使用统一的 cargo 安装函数
+  cargo_install_common cargo-fuzz grcov cargo-tarpaulin
 }
 
 # 下载wezterm终端模拟器
@@ -425,64 +479,6 @@ function install-helix() {
     fi
 }
 
-# 安装 GitUI（Rust 编写，使用 cargo binstall 安装）
-# GitUI 是一个快速的 Git TUI 客户端，Rust 编写
-# 官方文档：https://github.com/extrawurst/gitui
-# 安装位置：~/.cargo/bin/gitui
-#
-# 策略：
-# 1. 优先 cargo binstall 下载预编译二进制（QuickInstall 提供，快速）
-# 2. 如果失败，则 cargo install 从源码编译（慢但稳定）
-# 3. 支持版本回退（最新版失败则尝试旧版）
-function install-gitui() {
-    ensure_cargo_binstall
-
-    # 检查是否已安装
-    if command -v gitui >/dev/null 2>&1; then
-        local INSTALLED_VERSION=$(gitui --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-        if [ -n "$INSTALLED_VERSION" ]; then
-            echo "GitUI v$INSTALLED_VERSION 已安装，跳过"
-            return 0
-        fi
-    fi
-
-    echo "安装 GitUI..."
-
-    # 尝试安装，支持版本回退
-    # 版本列表：latest -> 0.27.0 -> 0.26.3
-    local VERSIONS=("gitui" "gitui@0.27.0" "gitui@0.26.3")
-    local INSTALLED=false
-
-    for version_spec in "${VERSIONS[@]}"; do
-        echo "尝试安装：$version_spec"
-        
-        # 先尝试 cargo binstall（预编译二进制，快速）
-        echo "  尝试 cargo binstall..."
-        if cargo binstall "$version_spec" -y --disable-strategies compile 2>/dev/null; then
-            if command -v gitui >/dev/null 2>&1; then
-                echo "GitUI 安装成功 (cargo binstall): $(gitui --version)"
-                INSTALLED=true
-                break
-            fi
-        fi
-        
-        # binstall 失败，尝试 cargo install（源码编译，慢但稳定）
-        echo "  cargo binstall 失败，尝试 cargo install..."
-        if cargo install "$version_spec" --locked 2>/dev/null; then
-            if command -v gitui >/dev/null 2>&1; then
-                echo "GitUI 安装成功 (cargo install): $(gitui --version)"
-                INSTALLED=true
-                break
-            fi
-        fi
-        
-        echo "  $version_spec 安装失败，尝试下一个版本..."
-    done
-
-    if [ "$INSTALLED" = true ]; then
-        return 0
-    else
-        echo "GitUI 安装失败：所有版本都失败"
-        return 1
-    fi
-}
+# GitUI 已移动到 install-common-rust-tools 中统一安装
+# 使用固定版本 gitui@0.28.1
+# 如果安装失败，请开发者手动测试合适的版本并更新 install-common-rust-tools
