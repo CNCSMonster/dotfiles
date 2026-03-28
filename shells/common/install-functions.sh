@@ -425,15 +425,15 @@ function install-helix() {
     fi
 }
 
-# 安装 GitUI（Rust 编写，使用 cargo 安装）
+# 安装 GitUI（Rust 编写，使用 cargo binstall 安装）
 # GitUI 是一个快速的 Git TUI 客户端，Rust 编写
 # 官方文档：https://github.com/extrawurst/gitui
 # 安装位置：~/.cargo/bin/gitui
 #
 # 策略：
-# 1. 先尝试 cargo binstall 下载预编译二进制（快速）
+# 1. 优先 cargo binstall 下载预编译二进制（QuickInstall 提供，快速）
 # 2. 如果失败，则 cargo install 从源码编译（慢但稳定）
-# 3. 如果最新版本编译失败，尝试往下找一个版本
+# 3. 支持版本回退（最新版失败则尝试旧版）
 function install-gitui() {
     ensure_cargo_binstall
 
@@ -449,13 +449,15 @@ function install-gitui() {
     echo "安装 GitUI..."
 
     # 尝试安装，支持版本回退
+    # 版本列表：latest -> 0.27.0 -> 0.26.3
     local VERSIONS=("gitui" "gitui@0.27.0" "gitui@0.26.3")
     local INSTALLED=false
 
     for version_spec in "${VERSIONS[@]}"; do
         echo "尝试安装：$version_spec"
         
-        # 先尝试 cargo binstall
+        # 先尝试 cargo binstall（预编译二进制，快速）
+        echo "  尝试 cargo binstall..."
         if cargo binstall "$version_spec" -y --disable-strategies compile 2>/dev/null; then
             if command -v gitui >/dev/null 2>&1; then
                 echo "GitUI 安装成功 (cargo binstall): $(gitui --version)"
@@ -464,8 +466,8 @@ function install-gitui() {
             fi
         fi
         
-        # binstall 失败，尝试 cargo install
-        echo "cargo binstall 失败，尝试 cargo install..."
+        # binstall 失败，尝试 cargo install（源码编译，慢但稳定）
+        echo "  cargo binstall 失败，尝试 cargo install..."
         if cargo install "$version_spec" --locked 2>/dev/null; then
             if command -v gitui >/dev/null 2>&1; then
                 echo "GitUI 安装成功 (cargo install): $(gitui --version)"
@@ -474,7 +476,7 @@ function install-gitui() {
             fi
         fi
         
-        echo "$version_spec 安装失败，尝试下一个版本..."
+        echo "  $version_spec 安装失败，尝试下一个版本..."
     done
 
     if [ "$INSTALLED" = true ]; then
