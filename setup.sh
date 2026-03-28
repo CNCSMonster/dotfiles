@@ -86,6 +86,7 @@ main() {
   install-common-tools
   retry_fn 3 "安装 Neovim" install-neovim
   retry_fn 3 "安装 Helix" install-helix
+  retry_fn 3 "安装 GitUI" install-gitui
   retry_fn 3 "安装 yq" install-yq
   llvmup default 19
   retry_fn 5 "安装 Rust" install-rust stable

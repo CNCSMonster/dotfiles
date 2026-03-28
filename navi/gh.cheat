@@ -1,0 +1,225 @@
+% gh
+
+# 查看当前用户信息
+gh api user | jq '.login, .name, .public_repos'
+
+# 查看当前仓库信息
+gh api repos/:owner/:repo | jq '.name, .stargazers_count, .forks_count'
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ndotfiles'
+
+# 列出所有仓库
+gh repo list --limit 100
+
+# 查看仓库的 issue
+gh issue list --limit 20
+
+# 创建新的 issue
+gh issue create --title '<title>' --body '<body>'
+$ title: echo "Bug report"
+$ body: echo "Describe the bug..."
+
+# 查看 Pull Request 列表
+gh pr list --limit 20
+
+# 创建 Pull Request
+gh pr create --title '<title>' --body '<body>'
+$ title: echo "feat: add new feature"
+$ body: echo "Description of changes..."
+
+# 查看 PR 详情
+gh pr view <pr_number>
+$ pr_number: echo "1"
+
+# 合并 PR (使用 squash merge)
+gh pr merge <pr_number> --squash --delete-branch
+$ pr_number: echo "1"
+
+# 查看 CI 运行状态
+gh run list --limit 10
+
+# 查看特定 workflow 的运行状态
+gh run list --workflow <workflow_name> --limit 10
+$ workflow_name: echo "Dockerfile Build Check"
+
+# 查看运行详情
+gh run view <run_id>
+$ run_id: echo "1234567890"
+
+# 查看运行日志
+gh run view <run_id> --log
+$ run_id: echo "1234567890"
+
+# 重新运行失败的 job
+gh run rerun <run_id> --job <job_id>
+$ run_id: echo "1234567890"
+$ job_id: echo "9876543210"
+
+# 取消正在运行的 workflow
+gh run cancel <run_id>
+$ run_id: echo "1234567890"
+
+# 查看 Release 列表
+gh release list --limit 20
+
+# 创建新的 Release
+gh release create <tag> --title '<title>' --notes '<notes>'
+$ tag: echo "v1.0.0"
+$ title: echo "Release v1.0.0"
+$ notes: echo "Release notes..."
+
+# 上传文件到 Release
+gh release upload <tag> <file>
+$ tag: echo "v1.0.0"
+$ file: echo "./dist/app.tar.gz"
+
+# 下载 Release 文件
+gh release download <tag> --pattern '<pattern>'
+$ tag: echo "v1.0.0"
+$ pattern: echo "*.tar.gz"
+
+# 删除 Release
+gh release delete <tag>
+$ tag: echo "v1.0.0"
+
+# 查看 Actions workflow 列表
+gh workflow list
+
+# 手动触发 workflow
+gh workflow run <workflow_name> --ref <branch>
+$ workflow_name: echo "docker-build.yml"
+$ branch: echo "main"
+
+# 查看 workflow 运行历史
+gh run list --workflow <workflow_name> --branch <branch>
+$ workflow_name: echo "docker-build.yml"
+$ branch: echo "main"
+
+# 查看 Secret 列表（不显示值）
+gh secret list --org <org_name>
+$ org_name: echo "my-org"
+
+# 设置 Secret
+gh secret set <secret_name> --body '<secret_value>'
+$ secret_name: echo "API_KEY"
+$ secret_value: echo "your-secret-value"
+
+# 删除 Secret
+gh secret delete <secret_name>
+$ secret_name: echo "API_KEY"
+
+# 查看 Variable 列表
+gh variable list --org <org_name>
+$ org_name: echo "my-org"
+
+# 设置 Variable
+gh variable set <var_name> --body '<var_value>'
+$ var_name: echo "ENVIRONMENT"
+$ var_value: echo "production"
+
+# 克隆仓库
+gh repo clone <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ndotfiles'
+
+# Fork 仓库
+gh repo fork <owner>/<repo> --clone
+$ owner: printf '\nextrawurst'
+$ repo: printf '\ngitui'
+
+# 创建新仓库
+gh repo create <repo_name> --public --source=. --remote=upstream --push
+$ repo_name: echo "my-new-project"
+
+# 查看仓库的 Star 列表
+gh api repos/:owner/:repo/stargazers | jq '.[].login'
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ndotfiles'
+
+# 给仓库点 Star
+gh api -X PUT user/starred/<owner>/<repo>
+$ owner: printf '\nextrawurst'
+$ repo: printf '\ngitui'
+
+# 取消 Star
+gh api -X DELETE user/starred/<owner>/<repo>
+$ owner: printf '\nextrawurst'
+$ repo: printf '\ngitui'
+
+# 查看通知
+gh api notifications
+
+# 标记所有通知为已读
+gh api -X PATCH notifications
+
+# 搜索 Issue
+gh issue list --search '<query>'
+$ query: echo "is:open is:issue author:cncsmonster"
+
+# 搜索 PR
+gh pr list --search '<query>'
+$ query: echo "is:open is:pr author:cncsmonster"
+
+# 搜索仓库
+gh search repos <query> --limit 20
+$ query: echo "dotfiles language:rust"
+
+# 查看 Gist 列表
+gh gist list --limit 20
+
+# 创建 Gist
+gh gist create <file> --description '<desc>'
+$ file: echo "./snippet.rs"
+$ desc: echo "Rust snippet"
+
+# 查看 Gist
+gh gist view <gist_id>
+$ gist_id: echo "1234567890abcdef"
+
+# 编辑 Gist
+gh gist edit <gist_id>
+$ gist_id: echo "1234567890abcdef"
+
+# 删除 Gist
+gh gist delete <gist_id>
+$ gist_id: echo "1234567890abcdef"
+
+# 认证状态检查
+gh auth status
+
+# 切换账户
+gh auth switch
+
+# 登录新账户
+gh auth login --hostname <hostname>
+$ hostname: echo "github.com"
+
+# 登出账户
+gh auth logout --hostname <hostname>
+$ hostname: echo "github.com"
+
+# 查看扩展列表
+gh extension list
+
+# 安装扩展
+gh extension install <extension_repo>
+$ extension_repo: echo "github/gh-copilot"
+
+# 更新扩展
+gh extension upgrade <extension_name>
+$ extension_name: echo "gh-copilot"
+
+# 删除扩展
+gh extension remove <extension_name>
+$ extension_name: echo "gh-copilot"
+
+# 查看缓存 (Actions cache)
+gh api repos/:owner/:repo/actions/caches | jq '.actions_caches[].key'
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ndotfiles'
+
+# 删除缓存
+gh api -X DELETE repos/:owner/:repo/actions/caches/<cache_id>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ndotfiles'
+$ cache_id: echo "123"

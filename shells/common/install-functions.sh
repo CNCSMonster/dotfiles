@@ -376,7 +376,7 @@ function install-helix() {
 
     # 固定版本号（最新稳定版 2025-07）
     local HELIX_VERSION="25.07.1"
-    
+
     # 用户级路径
     local HELIX_BIN_DIR="$HOME/.cargo/bin"
     local HELIX_RUNTIME_DIR="$HOME/.config/helix/runtime"
@@ -404,23 +404,81 @@ function install-helix() {
     # 解压（目录名为 helix-VERSION-ARCH-linux）
     local HELIX_TMP="/tmp/helix-${HELIX_VERSION}-${HELIX_ARCH}-linux"
     tar -xJf "$DEST" -C /tmp
-    
+
     # 安装二进制（无需 sudo）
     mkdir -p "$HELIX_BIN_DIR"
     cp "${HELIX_TMP}/hx" "$HELIX_BIN_DIR/"
-    
+
     # 安装 runtime（无需 sudo）
     mkdir -p "$HELIX_RUNTIME_DIR"
     cp -r "${HELIX_TMP}/runtime/"* "$HELIX_RUNTIME_DIR/"
-    
+
     # 清理临时文件
     rm -rf "$HELIX_TMP" "$DEST"
-    
+
     # 验证安装
     if command -v hx >/dev/null 2>&1; then
         echo "Helix 安装成功：$(hx --version)"
     else
         echo "Helix 安装失败"
+        return 1
+    fi
+}
+
+# 安装 GitUI（固定版本，用户级安装，无需 sudo）
+# GitUI 是一个快速的 Git TUI 客户端，Rust 编写
+# 官方文档：https://github.com/extrawurst/gitui
+# 安装位置：
+#   - 二进制：~/.local/bin/gitui
+function install-gitui() {
+    local ARCH=$(uname -m)
+    local GITUI_ARCH=""
+    case $ARCH in
+        x86_64) GITUI_ARCH="x86_64-unknown-linux-gnu" ;;
+        aarch64) GITUI_ARCH="aarch64-unknown-linux-gnu" ;;
+        armv7l) GITUI_ARCH="armv7-unknown-linux-gnueabihf" ;;
+        *)
+            echo "不支持的架构：$ARCH"
+            return 1
+            ;;
+    esac
+
+    # 固定版本号（最新稳定版）
+    local GITUI_VERSION="v0.26.1"
+
+    # 用户级路径
+    local GITUI_BIN_DIR="$HOME/.local/bin"
+
+    # 检查是否已安装相同版本
+    if [ -x "${GITUI_BIN_DIR}/gitui" ]; then
+        local INSTALLED_VERSION=$("${GITUI_BIN_DIR}/gitui" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+        if [ "$INSTALLED_VERSION" = "${GITUI_VERSION#v}" ]; then
+            echo "GitUI $GITUI_VERSION 已安装，跳过"
+            return 0
+        fi
+        echo "发现旧版本 $INSTALLED_VERSION，升级到 $GITUI_VERSION..."
+    fi
+
+    echo "安装 GitUI $GITUI_VERSION..."
+
+    # 下载 GitUI（使用 GitHub 镜像加速）
+    local GITUI_URL="https://github.com/extrawurst/gitui/releases/download/${GITUI_VERSION}/gitui-linux-${GITUI_ARCH}.tar.gz"
+    local DEST="/tmp/gitui-linux-${GITUI_ARCH}.tar.gz"
+
+    github_download "$GITUI_URL" "$DEST"
+
+    # 安装二进制（无需 sudo）
+    mkdir -p "$GITUI_BIN_DIR"
+    tar -xzf "$DEST" -C "$GITUI_BIN_DIR" gitui
+
+    # 清理临时文件
+    rm -f "$DEST"
+
+    # 验证安装
+    if command -v gitui >/dev/null 2>&1; then
+        echo "GitUI 安装成功：$(gitui --version)"
+    else
+        echo "GitUI 安装失败"
         return 1
     fi
 }
