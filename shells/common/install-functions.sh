@@ -228,11 +228,16 @@ ensure_cargo_binstall() {
   fi
 }
 
-# 下载常用 rust 的工具
-function install-common-rust-tools() {
-    # 如果 CARGO_BUILD_JOBS 未设置，根据可用内存自动计算
-    # Docker 环境：由 docker-build-test.sh 通过 --build-arg 传入
-    # 本机环境：自动检测可用内存并计算
+# 自动计算 Cargo 编译任务数（基于可用内存和 CPU 核心数）
+# 用法：setup-cargo-build-env
+# 效果：设置 CARGO_BUILD_JOBS 环境变量
+#
+# 计算逻辑：
+# - 预留 2GB 系统开销
+# - 每 1.5GB 内存支持 1 个编译任务
+# - 不超过 CPU 核心数的 50%
+# - 最大不超过 8 个并行（超过后收益递减）
+function setup-cargo-build-env() {
     if [ -z "$CARGO_BUILD_JOBS" ]; then
         local TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
         local AVAIL_MEM_KB=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}')
@@ -259,6 +264,12 @@ function install-common-rust-tools() {
     else
         echo "使用已有 CARGO_BUILD_JOBS=$CARGO_BUILD_JOBS"
     fi
+}
+
+# 下载常用 rust 的工具
+function install-common-rust-tools() {
+    # 设置编译环境（自动计算 CARGO_BUILD_JOBS）
+    setup-cargo-build-env
 
     # 使用统一的 cargo 安装函数
     # 策略：--disable-strategies compile，下载失败后统一 cargo install
@@ -290,21 +301,42 @@ function install-common-rust-tools() {
         gen-mdbook-summary@0.0.6 \
         mise@2026.2.15 \
         uv@0.10.10 \
-        gitui@0.28.1
+        gitui@0.28.1 \
+        cargo-audit
+
+    local MAIN_TOOLS_STATUS=$?
 
     setup-yazi
+    local YAZI_STATUS=$?
+
+    # 如果主工具安装有失败，返回错误（用于 setup.sh 判断）
+    if [ $MAIN_TOOLS_STATUS -ne 0 ]; then
+        echo "⚠️  警告：部分 Rust 主工具安装失败，请手动安装"
+        return 1
+    fi
+
+    # yazi 失败不影响主工具，但记录日志
+    if [ $YAZI_STATUS -ne 0 ]; then
+        echo "⚠️  警告：yazi 安装失败，请手动安装"
+    fi
+
+    return 0
 }
 
 function setup-yazi(){
     # yazi-fm 是 yazi 的主程序包名，yazi-cli 是 ya 命令行工具
     # 使用统一的 cargo 安装函数
     cargo_install_common yazi-fm yazi-cli
+    return $?
 }
 
 function setup-cargo-fuzz() {
   rustup component add llvm-tools-preview --toolchain nightly
+  # 设置编译环境（自动计算 CARGO_BUILD_JOBS）
+  setup-cargo-build-env
   # 使用统一的 cargo 安装函数
   cargo_install_common cargo-fuzz grcov cargo-tarpaulin
+  return $?
 }
 
 # 下载wezterm终端模拟器

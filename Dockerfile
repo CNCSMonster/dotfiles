@@ -76,6 +76,18 @@ WORKDIR /root/dotfiles
 # 匿名访问 GitHub API 限额 60 次/小时，批量安装 Rust 工具易触发 403。
 # 传入 token 后限额提升至 5000 次/小时，大部分 crate 可直接下载预编译二进制。
 # 用法: ./scripts/docker-build-test.sh --gh-token <token>
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# CI 严格模式（默认启用）
+# -----------------------------------------------------------------------------
+# CARGO_INSTALL_STRICT=1 时，任何 Rust 工具安装失败都会终止构建。
+# 禁用方式：./scripts/docker-build-test.sh --no-strict
+#   或：docker buildx build --build-arg CARGO_INSTALL_STRICT=0 ...
+# -----------------------------------------------------------------------------
+ARG CARGO_INSTALL_STRICT=1
+ENV CARGO_INSTALL_STRICT=${CARGO_INSTALL_STRICT}
+
 #   或: docker buildx build --secret id=github_token,env=GITHUB_TOKEN ...
 # 不传则匿名访问，下载失败的 crate 会 fallback 到源码编译。
 # -----------------------------------------------------------------------------

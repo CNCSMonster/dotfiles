@@ -201,6 +201,8 @@ RETRY_BUILD=1
 DOCKERFILE_PATH="Dockerfile"
 IMAGE_TAG="dotfiles:test"
 GH_TOKEN=""
+# CI 默认启用严格模式，任何 Rust 工具安装失败都会终止构建
+CARGO_INSTALL_STRICT="${CARGO_INSTALL_STRICT:-1}"
 
 # 本地缓存目录（与 builder 解耦，支持不同 builder 复用）
 CACHE_DIR=".buildx-cache"

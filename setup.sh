@@ -90,7 +90,17 @@ main() {
   retry_fn 3 "安装 yq" install-yq
   llvmup default 19
   retry_fn 5 "安装 Rust" install-rust stable
-  retry_fn 3 "安装 Rust 工具" install-common-rust-tools
+  
+  # Rust 工具安装
+  # CARGO_INSTALL_STRICT=1 时，失败会终止脚本；否则继续执行
+  if ! retry_fn 3 "安装 Rust 工具" install-common-rust-tools; then
+    if [ "${CARGO_INSTALL_STRICT:-0}" = "1" ]; then
+      echo "❌ 错误：CARGO_INSTALL_STRICT=1，Rust 工具安装失败，终止脚本"
+      exit 1
+    fi
+    echo "⚠️  警告：Rust 工具安装失败，继续执行后续步骤..."
+  fi
+  
   retry_fn 3 "安装 cargo-fuzz" setup-cargo-fuzz
   # 使用 mise 安装 go, zig, node, pnpm 等工具
   mise trust && mise install
