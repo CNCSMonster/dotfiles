@@ -91,7 +91,7 @@ hash -d cache=$XDG_CACHE_HOME
 # export VIMTEX_OUTPUT_DIRECTORY='./target/tex'
 
 # 默认编辑器
-export EDITOR='lvim'
+export EDITOR='hx'
 
 # # mcfly
 export MCFLY_FUZZY=2
