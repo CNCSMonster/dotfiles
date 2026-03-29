@@ -282,6 +282,10 @@ function install-common-rust-tools() {
     #
     # 固定版本号避免上游更新带来的兼容性问题
     # 最后验证：2026-03-28，Docker Ubuntu 24.04 + Rust stable
+    #
+    # 注意：cargo-audit 已移除，改为可选安装
+    #   - 原因：需要源码编译，增加 CI 时间
+    #   - 安装：cargo install cargo-audit (需要 bubblewrap 支持)
     cargo_install_common \
         kondo@0.9.0 \
         jaq@2.3.0 \
@@ -302,8 +306,7 @@ function install-common-rust-tools() {
         gen-mdbook-summary@0.0.6 \
         mise@2026.2.15 \
         uv@0.10.10 \
-        gitui@0.28.1 \
-        cargo-audit
+        gitui@0.28.1
 
     local MAIN_TOOLS_STATUS=$?
 
