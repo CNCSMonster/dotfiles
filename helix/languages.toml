@@ -3,4 +3,5 @@ name = "python"
 language-servers = ["pyright"]
 
 [language-server.pyright]
-command = "pyright"
+command = "pyright-langserver"
+args = ["--stdio"]
