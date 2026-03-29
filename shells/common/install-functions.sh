@@ -602,8 +602,13 @@ function install-typescript-lsp() {
 
     echo "安装 typescript-language-server..."
 
+    # 重新加载 mise 环境，确保 npm 在 PATH 中
+    # mise install 后需要重新激活环境以更新 PATH
+    if command -v mise &>/dev/null; then
+        eval "$(mise activate bash)" 2>/dev/null || true
+    fi
+
     # 使用 npm 全局安装
-    # 注意：mise 环境已在 env.sh 中初始化，Docker/CI 环境也可用
     # 使用 --registry 指定淘宝镜像，提高国内下载速度
     # 重试 3 次，处理网络波动
     local i=1
