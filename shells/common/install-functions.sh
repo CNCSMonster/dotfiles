@@ -832,6 +832,32 @@ EOF
     fi
 }
 
+# ============================================================
+# 按需安装工具（非默认安装）
+# ============================================================
+
+# 安装 Qwen Code (AI 编程助手)
+# 用法：install-qwen-code
+# 注意：这是按需安装工具，不在默认安装列表中
+function install-qwen-code() {
+    echo "安装 qwen-code..."
+
+    # 检查 node 是否可用
+    if ! command -v node >/dev/null 2>&1; then
+        echo "❌ 错误：node 未安装，请先运行 mise install node"
+        return 1
+    fi
+
+    # 使用 npm 全局安装
+    if npm install -g qwen-code 2>&1; then
+        echo "✅ qwen-code 安装成功：$(qwen-code --version 2>/dev/null || echo '已安装')"
+        return 0
+    else
+        echo "❌ qwen-code 安装失败"
+        return 1
+    fi
+}
+
 # GitUI 已移动到 install-common-rust-tools 中统一安装
 # 使用固定版本 gitui@0.28.1
 # 如果安装失败，请开发者手动测试合适的版本并更新 install-common-rust-tools

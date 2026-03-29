@@ -29,7 +29,37 @@ function fj() {
     fi
 }
 
+# ============================================================
+# npm/pnpm 镜像源切换（淘宝镜像）
+# ============================================================
+# 用法 1: npm-cn install <package>  (临时使用)
+# 用法 2: use-npm-mirror 后正常使用 npm (持续生效)
+# 用法 3: use-npm-official 切换回官方源
+# ============================================================
 
+# 临时使用淘宝镜像运行 npm 命令
+function npm-cn() {
+    NPM_CONFIG_REGISTRY=https://registry.npmmirror.com npm "$@"
+}
+
+# 临时使用淘宝镜像运行 pnpm 命令
+function pnpm-cn() {
+    PNPM_CONFIG_REGISTRY=https://registry.npmmirror.com pnpm "$@"
+}
+
+# 切换到淘宝镜像模式（持续生效，直到 use-npm-official）
+function use-npm-mirror() {
+    export NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
+    export PNPM_CONFIG_REGISTRY=https://registry.npmmirror.com
+    echo "✅ 已切换到淘宝镜像模式"
+}
+
+# 切换回官方源
+function use-npm-official() {
+    unset NPM_CONFIG_REGISTRY
+    unset PNPM_CONFIG_REGISTRY
+    echo "✅ 已切换到官方源"
+}
 
 # 如果调用则载入 install-functions.sh, 获取用于安装各种软件的函数
 function load_setup() {
