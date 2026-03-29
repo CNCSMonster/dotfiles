@@ -39,5 +39,21 @@ fi
 # navi - 命令快捷键（Ctrl+N）
 eval "$(navi widget $SH)"
 
+# =============================================================================
+# Yazi - 文件管理器 shell 集成
+# =============================================================================
+# 使用 y 命令启动 yazi，退出后自动 cd 到当前目录
+# 快捷键：
+#   q     - 退出并 cd
+#   Q     - 退出不切换目录
+y() {
+    local tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+    yazi --cwd-file="$tmp"
+    if cwd="$(cat -- "$tmp" 2>/dev/null)" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+        cd -- "$cwd"
+    fi
+    rm -f -- "$tmp"
+}
+
 # 标记已完成加载
 INTER_DONE=1
