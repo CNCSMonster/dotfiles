@@ -4,25 +4,7 @@
 
 ## 安装
 
-### 方式 1：作为可选组件安装（推荐）
-
-`cargo-audit` 已从默认安装列表中移除（减少 CI 构建时间），可以手动安装：
-
-```bash
-# 确保 bubblewrap 已安装
-sudo apt install bubblewrap  # Ubuntu/Debian
-
-# 安装 cargo-audit
-cargo install cargo-audit
-
-# 或者使用 dotfiles 提供的 safe-cargo-audit 脚本
-cd /path/to/dotfiles
-./setup.sh  # 会安装 bubblewrap 和 safe-cargo-audit 脚本
-```
-
-### 方式 2：完整安装（自动包含 cargo-audit）
-
-运行以下命令自动安装：
+`cargo-audit` 已集成到 dotfiles 中，运行以下命令自动安装：
 
 ```bash
 ./setup.sh

@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(mise *)",
-      "Bash(zig *)",
-      "Bash(curl *)"
-    ]
-  }
-}
