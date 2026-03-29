@@ -18,6 +18,7 @@ jobs:
     timeout-minutes: 180
     permissions:
       contents: read
+      # 允许读取仓库内容，用于 GitHub API 认证（避免 mise/cargo-binstall 限流）
     env:
       DOCKER_BUILDKIT: 1
       # 启用 CI 严格模式，任何 Rust 工具安装失败都会终止构建
@@ -42,6 +43,8 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             CARGO_INSTALL_STRICT=1
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify installation
         run: |
