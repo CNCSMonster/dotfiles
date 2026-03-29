@@ -105,15 +105,8 @@ main() {
   # 使用 mise 安装 go, zig, node, pnpm 等工具
   mise trust && mise install
   # 更新 mise 环境变量（Docker 非交互式环境需要手动触发 hook-env）
-  # 根据当前 shell 类型选择正确的 hook-env 参数
-  if [ -n "$ZSH_VERSION" ]; then
-    MISE_SHELL='zsh'
-  elif [ -n "$BASH_VERSION" ]; then
-    MISE_SHELL='bash'
-  else
-    MISE_SHELL='bash'  # 默认
-  fi
-  eval "$(mise hook-env -s $MISE_SHELL)" 2>/dev/null || true
+  # $SH 已在 env.sh 中设置
+  eval "$(mise hook-env -s $SH)" 2>/dev/null || true
 
   # 安装 LSP 语言服务器（用于 Helix 编辑器）
   retry_fn 3 "安装 TypeScript LSP" install-typescript-lsp
