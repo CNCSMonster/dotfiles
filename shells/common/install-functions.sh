@@ -283,9 +283,10 @@ function install-common-rust-tools() {
     # 固定版本号避免上游更新带来的兼容性问题
     # 最后验证：2026-03-28，Docker Ubuntu 24.04 + Rust stable
     #
-    # 注意：cargo-audit 已移除，改为可选安装
-    #   - 原因：需要源码编译，增加 CI 时间
-    #   - 安装：cargo install cargo-audit (需要 bubblewrap 支持)
+    # 注意：以下工具已移除，改为可选安装（减少 CI 构建时间）
+    #   - cargo-audit: 需要源码编译，cargo install cargo-audit
+    #   - tree-sitter-cli: 需要源码编译，cargo install tree-sitter-cli
+    #   - tokei: 需要源码编译，cargo install tokei
     cargo_install_common \
         kondo@0.9.0 \
         jaq@2.3.0 \
@@ -301,8 +302,6 @@ function install-common-rust-tools() {
         fd-find@10.2.0 \
         macchina@6.0.0 \
         fnm@1.38.1 \
-        tree-sitter-cli@0.25.4 \
-        tokei@13.0.0-alpha.9 \
         gen-mdbook-summary@0.0.6 \
         mise@2026.2.15 \
         uv@0.10.10 \
@@ -605,13 +604,21 @@ function install-typescript-lsp() {
 
     # 使用 npm 全局安装
     # 注意：mise 环境已在 env.sh 中初始化，Docker/CI 环境也可用
-    if npm install -g typescript-language-server typescript 2>&1; then
-        echo "typescript-language-server 安装成功：$(typescript-language-server --version)"
-        return 0
-    else
-        echo "typescript-language-server 安装失败"
-        return 1
-    fi
+    # 使用 --registry 指定淘宝镜像，提高国内下载速度
+    # 重试 3 次，处理网络波动
+    local i=1
+    while [ $i -le 3 ]; do
+        if npm install -g typescript-language-server typescript --registry=https://registry.npmmirror.com 2>&1; then
+            echo "typescript-language-server 安装成功：$(typescript-language-server --version)"
+            return 0
+        fi
+        echo "typescript-language-server 安装失败，重试 $i/3..."
+        i=$((i + 1))
+        sleep 5
+    done
+
+    echo "typescript-language-server 安装失败：已达最大重试次数"
+    return 1
 }
 
 # 安装 Python 语言服务器 (Pyright)
