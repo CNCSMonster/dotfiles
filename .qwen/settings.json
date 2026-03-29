@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mise *)",
+      "Bash(zig *)",
+      "Bash(curl *)",
+      "Bash(sleep *)",
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(hx *)",
+      "Bash(cat *)",
+      "Bash(file *)",
+      "Bash(rm *)",
+      "Bash(~/.local/bin/xd *)",
+      "WebFetch(raw.githubusercontent.com)",
+      "Bash(git commit *)",
+      "WebFetch(github.com)",
+      "Bash(strings)",
+      "Bash(xargs *)",
+      "Bash(cargo search *)",
+      "WebFetch(crates.io)",
+      "Bash(find *)"
+    ]
+  },
+  "$version": 3
+}

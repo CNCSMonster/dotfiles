@@ -104,8 +104,8 @@ main() {
   retry_fn 3 "安装 cargo-fuzz" setup-cargo-fuzz
   # 使用 mise 安装 go, zig, node, pnpm 等工具
   mise trust && mise install
-  # 更新 mise shims，确保新安装的工具立即可用
-  mise reshim 2>/dev/null || true
+  # 更新 mise 环境变量（Docker 非交互式环境需要手动触发 hook-env）
+  eval "$(mise hook-env -s bash)" 2>/dev/null || true
 
   # 安装 LSP 语言服务器（用于 Helix 编辑器）
   retry_fn 3 "安装 TypeScript LSP" install-typescript-lsp
