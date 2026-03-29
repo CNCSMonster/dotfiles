@@ -858,6 +858,28 @@ function install-qwen-code() {
     fi
 }
 
+# 安装 Bash Language Server (用于 Helix/Neovim 的 shell 脚本 LSP)
+# 用法：install-bash-lsp
+# 功能：提供 shell 脚本的 outline、跳转、诊断等功能
+function install-bash-lsp() {
+    echo "安装 bash-language-server..."
+
+    # 检查 node 是否可用
+    if ! command -v node >/dev/null 2>&1; then
+        echo "❌ 错误：node 未安装，请先运行 mise install node"
+        return 1
+    fi
+
+    # 使用 npm 全局安装
+    if npm-cn install -g bash-language-server 2>&1; then
+        echo "✅ bash-language-server 安装成功：$(bash-language-server --version 2>/dev/null || echo '已安装')"
+        return 0
+    else
+        echo "❌ bash-language-server 安装失败"
+        return 1
+    fi
+}
+
 # GitUI 已移动到 install-common-rust-tools 中统一安装
 # 使用固定版本 gitui@0.28.1
 # 如果安装失败，请开发者手动测试合适的版本并更新 install-common-rust-tools
