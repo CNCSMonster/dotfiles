@@ -2,6 +2,7 @@
 langs = "langs"
 shells = "shells"
 nvims = "nvims"
+helix = "helix"
 
 
 [links]
@@ -9,8 +10,6 @@ nvims = "nvims"
 "yazi" = "~/.config/yazi"
 "git" = "~/.config/git"
 "gdb" = "~/.config/gdb"
-"helix/config.toml" = "~/.config/helix/config.toml"
-"helix/languages.toml" = "~/.config/helix/languages.toml"
 "macchina" = "~/.config/macchina"
 "gitui" = "~/.config/gitui"
 "kde" = "~/.config/kde"
