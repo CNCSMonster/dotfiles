@@ -595,85 +595,34 @@ function install-marksman() {
 # ========== LSP 服务器安装函数 ==========
 
 # 安装 TypeScript/JavaScript 语言服务器
-# 实现语言：TypeScript
-# 安装方式：npm (mise 已安装 node 和 pnpm)
 function install-typescript-lsp() {
-    local LSP_BIN_DIR="$HOME/.local/bin/lsp"
-    mkdir -p "$LSP_BIN_DIR"
-
-    # 检查是否已安装
     if command -v typescript-language-server >/dev/null 2>&1; then
         echo "typescript-language-server 已安装，跳过"
         return 0
     fi
 
     echo "安装 typescript-language-server..."
-
-    # 使用 npm 全局安装
-    # 使用 --registry 指定淘宝镜像，提高国内下载速度
-    # 重试 3 次，处理网络波动
-    local i=1
-    while [ $i -le 3 ]; do
-        if npm install -g typescript-language-server typescript --registry=https://registry.npmmirror.com 2>&1; then
-            echo "typescript-language-server 安装成功：$(typescript-language-server --version)"
-            return 0
-        fi
-        echo "typescript-language-server 安装失败，重试 $i/3..."
-        i=$((i + 1))
-        sleep 5
-    done
-
-    echo "typescript-language-server 安装失败：已达最大重试次数"
-    return 1
+    npm install -g typescript-language-server typescript --registry=https://registry.npmmirror.com 2>&1 || {
+        echo "typescript-language-server 安装失败"
+        return 1
+    }
+    echo "安装成功：$(typescript-language-server --version)"
 }
 
 # 安装 Python 语言服务器 (Pyright)
-# 实现语言：TypeScript
-# 安装方式：npm (比 pip 版本更新)
 function install-pyright() {
-    # 检查是否已安装
     if command -v pyright >/dev/null 2>&1; then
         echo "pyright 已安装，跳过"
         return 0
     fi
 
     echo "安装 pyright..."
-
-    # 使用 pnpm 全局安装
     pnpm add -g pyright 2>/dev/null || \
     npm install -g pyright 2>/dev/null || {
         echo "pyright 安装失败"
         return 1
     }
-
-    echo "pyright 安装成功：$(pyright --version)"
-}
-
-# 安装 Go 语言服务器 (gopls)
-# 实现语言：Go
-# 安装方式：go install
-function install-gopls() {
-    # 检查是否已安装
-    if command -v gopls >/dev/null 2>&1; then
-        echo "gopls 已安装，跳过"
-        return 0
-    fi
-
-    echo "安装 gopls..."
-
-    # 使用 go install 安装
-    export GOPATH="$HOME/.go"
-    export PATH="$GOPATH/bin:$PATH"
-    go install golang.org/x/tools/gopls@latest 2>/dev/null || {
-        echo "gopls 安装失败"
-        return 1
-    }
-
-    # 复制到 cargo bin 目录以便 Helix 找到
-    mkdir -p "$HOME/.cargo/bin"
-    cp "$GOPATH/bin/gopls" "$HOME/.cargo/bin/" 2>/dev/null || true
-
-    echo "gopls 安装成功：$(gopls version)"
+    echo "安装成功：$(pyright --version)"
 }
 
 # 安装 Zig 语言服务器 (zls)
@@ -731,25 +680,19 @@ function install-zls() {
 }
 
 # 安装 YAML 语言服务器
-# 实现语言：TypeScript
-# 安装方式：npm
 function install-yaml-lsp() {
-    # 检查是否已安装
     if command -v yaml-language-server >/dev/null 2>&1; then
         echo "yaml-language-server 已安装，跳过"
         return 0
     fi
 
     echo "安装 yaml-language-server..."
-
-    # 使用 pnpm 全局安装
     pnpm add -g yaml-language-server 2>/dev/null || \
     npm install -g yaml-language-server 2>/dev/null || {
         echo "yaml-language-server 安装失败"
         return 1
     }
-
-    echo "yaml-language-server 安装成功：$(yaml-language-server --version)"
+    echo "安装成功：$(yaml-language-server --version)"
 }
 
 # 安装 TOML 语言服务器 (taplo)
@@ -785,8 +728,6 @@ function install-taplo() {
 }
 
 # 安装 Lua 语言服务器
-# 实现语言：Lua/C++
-# 安装方式：下载预编译二进制
 function install-lua-lsp() {
     local LUA_LSP_VERSION="3.17.1"
     local ARCH=$(uname -m)
@@ -804,7 +745,6 @@ function install-lua-lsp() {
     local LUA_LSP_RUNTIME_DIR="$HOME/.local/share/lua-language-server"
     local LUA_LSP_TMP="/tmp/lua-language-server"
 
-    # 检查是否已安装
     if command -v lua-language-server >/dev/null 2>&1; then
         echo "lua-language-server 已安装，跳过"
         return 0
@@ -812,31 +752,26 @@ function install-lua-lsp() {
 
     echo "安装 lua-language-server ${LUA_LSP_VERSION}..."
 
-    # 下载预编译二进制
     local LUA_LSP_URL="https://github.com/LuaLS/lua-language-server/releases/download/${LUA_LSP_VERSION}/lua-language-server-${LUA_LSP_VERSION}-linux-${LUA_LSP_ARCH}.tar.gz"
     mkdir -p "$LUA_LSP_TMP"
     mkdir -p "$LUA_LSP_RUNTIME_DIR"
 
     github_download "$LUA_LSP_URL" "${LUA_LSP_TMP}/lua-language-server.tar.gz"
 
-    # 解压到运行时目录
     tar -xzf "${LUA_LSP_TMP}/lua-language-server.tar.gz" -C "$LUA_LSP_RUNTIME_DIR"
 
-    # 创建启动脚本
     cat > "${LUA_LSP_BIN_DIR}/lua-language-server" << EOF
 #!/bin/bash
 exec "$LUA_LSP_RUNTIME_DIR/bin/lua-language-server" "\$@"
 EOF
     chmod +x "${LUA_LSP_BIN_DIR}/lua-language-server"
 
-    # 清理
     rm -rf "$LUA_LSP_TMP"
 
-    # 验证
     if command -v lua-language-server >/dev/null 2>&1; then
-        echo "lua-language-server 安装成功：$(lua-language-server --version)"
+        echo "安装成功：$(lua-language-server --version)"
     else
-        echo "lua-language-server 安装失败"
+        echo "安装失败"
         return 1
     fi
 }
@@ -867,26 +802,144 @@ function install-qwen-code() {
     fi
 }
 
-# 安装 Bash Language Server (用于 Helix/Neovim 的 shell 脚本 LSP)
-# 用法：install-bash-lsp
-# 功能：提供 shell 脚本的 outline、跳转、诊断等功能
+# 安装 Bash Language Server
 function install-bash-lsp() {
-    echo "安装 bash-language-server..."
-
-    # 检查 node 是否可用
-    if ! command -v node >/dev/null 2>&1; then
-        echo "❌ 错误：node 未安装，请先运行 mise install node"
-        return 1
-    fi
-
-    # 使用 npm 全局安装
-    if npm-cn install -g bash-language-server 2>&1; then
-        echo "✅ bash-language-server 安装成功：$(bash-language-server --version 2>/dev/null || echo '已安装')"
+    if command -v bash-language-server >/dev/null 2>&1; then
+        echo "bash-language-server 已安装，跳过"
         return 0
+    fi
+
+    echo "安装 bash-language-server..."
+    npm install -g bash-language-server --registry=https://registry.npmmirror.com 2>&1 || {
+        echo "bash-language-server 安装失败"
+        return 1
+    }
+    echo "安装成功：$(bash-language-server --version)"
+}
+
+# ============================================================
+# Helix LSP 按需安装
+# ============================================================
+
+# 安装 Helix 依赖的所有 LSP（仅安装缺失的）
+# 用法：install-helix-lsp
+# 功能：检查已安装的工具链，只安装缺失的 LSP
+# 示例：
+#   - 已安装 go → 自动安装 gopls
+#   - 已安装 node/pnpm → 自动安装 typescript-language-server, pyright, yaml-language-server
+#   - 已安装 zig → 自动安装 zls
+#   - 已安装 lua → 自动安装 lua-language-server
+function install-helix-lsp() {
+    echo "=========================================="
+    echo "检查并安装 Helix LSP 语言服务器..."
+    echo "=========================================="
+
+    local installed=0
+    local skipped=0
+
+    # TypeScript/JavaScript LSP - 依赖 node
+    if command -v node >/dev/null 2>&1; then
+        if ! command -v typescript-language-server >/dev/null 2>&1; then
+            echo "[安装] typescript-language-server (依赖：node)"
+            install-typescript-lsp && ((installed++)) || ((failed++))
+        else
+            echo "[跳过] typescript-language-server 已安装"
+            ((skipped++))
+        fi
     else
-        echo "❌ bash-language-server 安装失败"
+        echo "[跳过] node 未安装，跳过 typescript-language-server"
+    fi
+
+    # Pyright (Python LSP) - 依赖 node/pnpm
+    if command -v pnpm >/dev/null 2>&1 || command -v npm >/dev/null 2>&1; then
+        if ! command -v pyright >/dev/null 2>&1; then
+            echo "[安装] pyright (依赖：node/pnpm)"
+            install-pyright && ((installed++)) || ((failed++))
+        else
+            echo "[跳过] pyright 已安装"
+            ((skipped++))
+        fi
+    else
+        echo "[跳过] node/pnpm 未安装，跳过 pyright"
+    fi
+
+    # gopls - mise 已安装 (go:golang.org/x/tools/gopls)
+    if ! command -v gopls >/dev/null 2>&1; then
+        echo "[跳过] gopls 应由 mise 安装，运行 mise install 即可"
+    else
+        echo "[跳过] gopls 已安装"
+        ((skipped++))
+    fi
+
+    # zls - 依赖 zig
+    if command -v zig >/dev/null 2>&1; then
+        if ! command -v zls >/dev/null 2>&1; then
+            echo "[安装] zls (依赖：zig)"
+            install-zls && ((installed++)) || ((failed++))
+        else
+            echo "[跳过] zls 已安装"
+            ((skipped++))
+        fi
+    else
+        echo "[跳过] zig 未安装，跳过 zls"
+    fi
+
+    # yaml-language-server - 依赖 node/pnpm
+    if command -v pnpm >/dev/null 2>&1 || command -v npm >/dev/null 2>&1; then
+        if ! command -v yaml-language-server >/dev/null 2>&1; then
+            echo "[安装] yaml-language-server (依赖：node/pnpm)"
+            install-yaml-lsp && ((installed++)) || ((failed++))
+        else
+            echo "[跳过] yaml-language-server 已安装"
+            ((skipped++))
+        fi
+    else
+        echo "[跳过] node/pnpm 未安装，跳过 yaml-language-server"
+    fi
+
+    # taplo (TOML LSP) - Rust 工具，总是安装
+    if ! command -v taplo >/dev/null 2>&1; then
+        echo "[安装] taplo (Rust 工具)"
+        install-taplo && ((installed++)) || ((failed++))
+    else
+        echo "[跳过] taplo 已安装"
+        ((skipped++))
+    fi
+
+    # lua-language-server - 依赖 lua (可选，如果没有 lua 也安装，因为 Helix 可能需要)
+    if ! command -v lua-language-server >/dev/null 2>&1; then
+        echo "[安装] lua-language-server"
+        install-lua-lsp && ((installed++)) || ((failed++))
+    else
+        echo "[跳过] lua-language-server 已安装"
+        ((skipped++))
+    fi
+
+    # bash-language-server - 依赖 node
+    if command -v node >/dev/null 2>&1; then
+        if ! command -v bash-language-server >/dev/null 2>&1; then
+            echo "[安装] bash-language-server (依赖：node)"
+            install-bash-lsp && ((installed++)) || ((failed++))
+        else
+            echo "[跳过] bash-language-server 已安装"
+            ((skipped++))
+        fi
+    else
+        echo "[跳过] node 未安装，跳过 bash-language-server"
+    fi
+
+    echo ""
+    echo "=========================================="
+    echo "Helix LSP 安装完成"
+    echo "  新安装：${installed}"
+    echo "  已存在：${skipped}"
+    echo "=========================================="
+
+    if [ "${failed:-0}" -gt 0 ]; then
+        echo "警告：${failed} 个 LSP 安装失败"
         return 1
     fi
+    return 0
 }
 
 # GitUI 已移动到 install-common-rust-tools 中统一安装

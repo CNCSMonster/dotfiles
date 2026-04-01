@@ -108,6 +108,9 @@ main() {
   # $SH 已在 env.sh 中设置
   eval "$(mise hook-env -s $SH)" 2>/dev/null || true
 
+  # 安装 Helix LSP 语言服务器（智能检测，只安装缺失的）
+  retry_fn 3 "安装 Helix LSP" install-helix-lsp
+
   # 安装 LSP 语言服务器（用于 Helix 编辑器）
   retry_fn 3 "安装 TypeScript LSP" install-typescript-lsp
   retry_fn 3 "安装 Pyright" install-pyright
