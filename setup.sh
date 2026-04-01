@@ -116,6 +116,9 @@ main() {
   retry_fn 3 "安装 YAML LSP" install-yaml-lsp
   retry_fn 3 "安装 taplo" install-taplo
   retry_fn 3 "安装 Lua LSP" install-lua-lsp
+
+  # 安装 Yazi 插件
+  retry_fn 3 "安装 Yazi 插件" install-yazi-plugins
 }
 
 main "$@"

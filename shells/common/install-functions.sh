@@ -331,6 +331,15 @@ function setup-yazi(){
     return $?
 }
 
+function install-yazi-plugins(){
+    # 安装 yazi 插件（如果 yazi 配置目录存在）
+    if [ -d "${HOME}/.config/yazi" ] && command -v ya &> /dev/null; then
+        cd "${HOME}/.config/yazi" && ya pkg install
+        return $?
+    fi
+    return 0
+}
+
 function setup-cargo-fuzz() {
   rustup component add llvm-tools-preview --toolchain nightly
   # 设置编译环境（自动计算 CARGO_BUILD_JOBS）
