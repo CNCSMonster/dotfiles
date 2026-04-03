@@ -6,7 +6,7 @@ hash = "b4c00ef6899a9563af8d577d0bb46998"
 [[plugin.deps]]
 use = "yazi-rs/plugins:git"
 rev = "6f50636"
-hash = "4bb76e7d88473bb9a3c7c44570f98ff0"
+hash = "270915fa8282a19908449530ff66f7e2"
 
 [[plugin.deps]]
 use = "Rolv-Apneseth/starship"
