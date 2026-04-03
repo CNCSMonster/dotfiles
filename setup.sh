@@ -111,15 +111,6 @@ main() {
   # 安装 Helix LSP 语言服务器（智能检测，只安装缺失的）
   retry_fn 3 "安装 Helix LSP" install-helix-lsp
 
-  # 安装 LSP 语言服务器（用于 Helix 编辑器）
-  retry_fn 3 "安装 TypeScript LSP" install-typescript-lsp
-  retry_fn 3 "安装 Pyright" install-pyright
-  retry_fn 3 "安装 gopls" install-gopls
-  retry_fn 3 "安装 zls" install-zls
-  retry_fn 3 "安装 YAML LSP" install-yaml-lsp
-  retry_fn 3 "安装 taplo" install-taplo
-  retry_fn 3 "安装 Lua LSP" install-lua-lsp
-
   # 安装 Yazi 插件
   retry_fn 3 "安装 Yazi 插件" install-yazi-plugins
 }
