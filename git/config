@@ -14,7 +14,9 @@
     line-numbers-right-format = "│ "
     syntax-theme = Nord
 [credential]
-    helper = store
+    # 使用内存缓存（1 小时过期），避免明文存储密码
+    # 如需持久化存储，建议使用 git-credential-libsecret（加密存储）
+    helper = cache --timeout=3600
 [log]
     date = iso-strict-local
 [trim]

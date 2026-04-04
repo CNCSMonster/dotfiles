@@ -9,14 +9,12 @@
 CURL_RETRY_OPTS="--retry 8 --retry-delay 2 --connect-timeout 30 --max-time 300"
 WGET_RETRY_OPTS="--tries=8 --timeout=60 --connect-timeout=30 -c"
 
-# GitHub 镜像加速：依次尝试多个镜像站，失败再直连
-# 设置 GITHUB_MIRROR="" 可禁用镜像
-# 可用镜像站列表（按优先级排序）：
-#   - https://mirror.ghproxy.com (ghproxy)
-#   - https://gh-proxy.com (gh-proxy)
-#   - https://gh.api.99988866.xyz (99988866)
-#   - https://github.moeyy.xyz (moeyy)
-GITHUB_MIRRORS="${GITHUB_MIRRORS:-https://mirror.ghproxy.com https://gh-proxy.com https://gh.api.99988866.xyz https://github.moeyy.xyz}"
+# GitHub 镜像加速：仅使用相对可信的 ghproxy.com
+# 设置 GITHUB_MIRROR="" 可禁用镜像，直连 GitHub
+# 镜像站说明：
+#   - https://mirror.ghproxy.com (ghproxy) - 相对知名，较可信
+# 注意：使用第三方镜像站存在供应链攻击风险，如可直接访问 GitHub，建议禁用镜像
+GITHUB_MIRRORS="${GITHUB_MIRRORS:-https://mirror.ghproxy.com}"
 
 # 从 GitHub 下载文件的通用函数（自动尝试多个镜像站 → 直连）
 github_download() {
@@ -153,25 +151,63 @@ function install-common-tools() {
         bubblewrap  # bwrap - 用于安全运行 cargo audit 等工具
 }
 
-# 确保rustup已安装，如果未安装，则下载并安装
+# 确保 rustup 已安装，如果未安装，则下载并安装
+# 安全增强：使用静态二进制而非 shell 脚本，降低供应链攻击风险
 function setup-rustup() {
     local RUSTUP_HOME="${HOME}/.rustup"
     local CARGO_HOME="${HOME}/.cargo"
     if ! command -v rustup >/dev/null 2>&1; then
-        # rsproxy.cn 提供 rustup 国内镜像
+        # rsproxy.cn 提供 rustup 国内镜像（字节跳动维护，相对可信）
+        # 为增强安全性，下载 rustup-init 静态二进制而非 shell 脚本
+        # 静态二进制更稳定，且可通过 SHA256 校验完整性
         export RUSTUP_DIST_SERVER="https://rsproxy.cn"
         export RUSTUP_UPDATE_ROOT="https://rsproxy.cn/rustup"
-        curl $CURL_RETRY_OPTS --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh | sh -s -- -y
+        
+        local ARCH=$(uname -m)
+        local RUSTUP_BIN="/tmp/rustup-init-$(date +%s)"
+        
+        # 根据架构选择下载链接
+        local RUSTUP_URL=""
+        case $ARCH in
+            x86_64) RUSTUP_URL="https://rsproxy.cn/rustup/dist/x86_64-unknown-linux-gnu/rustup-init" ;;
+            aarch64) RUSTUP_URL="https://rsproxy.cn/rustup/dist/aarch64-unknown-linux-gnu/rustup-init" ;;
+            *)
+                echo "⚠️  未知架构 $ARCH，回退到 shell 脚本方式"
+                curl $CURL_RETRY_OPTS --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh | sh -s -- -y
+                source "${CARGO_HOME}/env"
+                return 0
+                ;;
+        esac
+        
+        # 下载静态二进制
+        echo "下载 rustup-init ($ARCH)..."
+        if ! curl $CURL_RETRY_OPTS --proto '=https' --tlsv1.2 -fsSL "$RUSTUP_URL" -o "$RUSTUP_BIN"; then
+            echo "❌ 下载 rustup-init 失败，回退到 shell 脚本方式"
+            curl $CURL_RETRY_OPTS --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh | sh -s -- -y
+            source "${CARGO_HOME}/env"
+            return 0
+        fi
+        
+        chmod +x "$RUSTUP_BIN"
+        
+        # 注意：rsproxy 不提供 .sha256 校验文件，无法进行完整性校验
+        # 当前依赖 rsproxy（字节跳动）的信任链
+        # 如需更高安全性，可从官方源下载并校验：
+        #   curl -fsSL https://static.rust-lang.org/rustup/dist/${ARCH}-unknown-linux-gnu/rustup-init.sha256
+        
+        echo "安装 rustup..."
+        if ! "$RUSTUP_BIN" -y; then
+            echo "❌ 安装 rustup 失败"
+            rm -f "$RUSTUP_BIN"
+            return 1
+        fi
+        
+        rm -f "$RUSTUP_BIN"
         source "${CARGO_HOME}/env"
+        echo "✅ rustup 安装成功"
     fi
 }
 
-# 根据命令行参数指定版本号下载rust
-# 如果没有指定，默认下载 stable 版本
-# 例如: 
-# install-rust           - 安装最新 stable
-# install-rust nightly   - 安装最新 nightly
-# install-rust 1.80.0    - 安装指定版本
 function install-rust() {
     local RUST_VERSION=${1:-stable}
     setup-rustup
