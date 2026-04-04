@@ -458,6 +458,11 @@ function install-yq() {
 # 安装位置：
 #   - 二进制：~/.cargo/bin/hx
 #   - runtime: ~/.config/helix/runtime (由 install-helix-runtime 单独安装)
+#
+# 安全实践：
+#   - 固定版本号，避免意外升级
+#   - SHA256 校验下载完整性，防止中间人攻击和文件篡改
+#   - 从官方 GitHub Releases 下载
 function install-helix() {
     local ARCH=$(uname -m)
     local HELIX_ARCH=""
@@ -471,7 +476,11 @@ function install-helix() {
     esac
 
     # 固定版本号（最新稳定版 2025-07）
+    # 更新版本时，请从 https://github.com/helix-editor/helix/releases 获取最新 SHA256
     local HELIX_VERSION="25.07.1"
+    # SHA256 校验和 - 用于验证下载文件的完整性和真实性
+    # 获取方式：curl -sL <release-url> | sha256sum
+    local HELIX_SHA256="3f08e63ecd388fff657ad39722f88bb03dcf326f1f2da2700d99e1dc40ab2e8b"
 
     # 用户级路径
     local HELIX_BIN_DIR="$HOME/.cargo/bin"
@@ -495,6 +504,19 @@ function install-helix() {
     local DEST="/tmp/helix-${HELIX_VERSION}.tar.xz"
 
     github_download "$HELIX_URL" "$DEST"
+
+    # SHA256 校验 - 防止中间人攻击和文件篡改
+    echo "验证 SHA256 校验和..."
+    local ACTUAL_SHA256=$(sha256sum "$DEST" | cut -d' ' -f1)
+    if [ "$ACTUAL_SHA256" != "$HELIX_SHA256" ]; then
+        echo "错误：SHA256 校验失败!"
+        echo "  期望：$HELIX_SHA256"
+        echo "  实际：$ACTUAL_SHA256"
+        echo "可能原因：文件被篡改、网络传输错误、或版本已更新"
+        rm -f "$DEST"
+        return 1
+    fi
+    echo "SHA256 校验通过"
 
     # 解压（目录名为 helix-VERSION-ARCH-linux）
     local HELIX_TMP="/tmp/helix-${HELIX_VERSION}-${HELIX_ARCH}-linux"

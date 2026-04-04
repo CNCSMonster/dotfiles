@@ -75,7 +75,10 @@ For more details, see [`scripts/README.md`](./scripts/README.md).
 
 ## Documentation
 
+- [安全实践](./docs/security-practices.md) - SHA256 校验、不依赖外部插件仓库、固定版本号等安全设计
 - [Rust 工具更新 SOP](./docs/rust-tools-update-sop.md) - 如何检查和更新通过 cargo binstall 安装的 Rust 工具
+- [Shell 配置架构](./docs/shell-config-architecture.md) - Shell 配置文件的设计和加载顺序
+- [Cargo Audit 安全实践](./docs/safe-cargo-audit.md) - 如何安全地运行 cargo audit
 
 ## Inspired by 
 
