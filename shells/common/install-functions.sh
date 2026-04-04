@@ -457,7 +457,7 @@ function install-yq() {
 # 官方文档：https://helix-editor.com/
 # 安装位置：
 #   - 二进制：~/.cargo/bin/hx
-#   - runtime: ~/.config/helix/runtime
+#   - runtime: ~/.config/helix/runtime (由 install-helix-runtime 单独安装)
 function install-helix() {
     local ARCH=$(uname -m)
     local HELIX_ARCH=""
@@ -475,7 +475,6 @@ function install-helix() {
 
     # 用户级路径
     local HELIX_BIN_DIR="$HOME/.cargo/bin"
-    local HELIX_RUNTIME_DIR="$HOME/.config/helix/runtime"
     local HELIX_TMP="/tmp/helix-${HELIX_VERSION}"
 
     # 检查是否已安装相同版本
@@ -505,38 +504,86 @@ function install-helix() {
     mkdir -p "$HELIX_BIN_DIR"
     cp "${HELIX_TMP}/hx" "$HELIX_BIN_DIR/"
 
-    # 安装 runtime（无需 sudo）
-    mkdir -p "$HELIX_RUNTIME_DIR"
-    cp -r "${HELIX_TMP}/runtime/"* "$HELIX_RUNTIME_DIR/"
-
     # 清理临时文件
     rm -rf "$HELIX_TMP" "$DEST"
 
-    # 编译 tree-sitter 语法文件
-    echo "编译 Helix tree-sitter 语法..."
-    hx --grammar fetch >/dev/null 2>&1 || true
-    hx --grammar build >/dev/null 2>&1 || true
+    # 验证安装
+    if command -v hx >/dev/null 2>&1; then
+        echo "Helix 二进制安装成功：$(hx --version)"
+    else
+        echo "Helix 安装失败"
+        return 1
+    fi
+}
 
-    # 下载 languages.toml 和 themes（从官方仓库）
-    # 这些文件在官方 tarball 中不包含，需要单独下载
-    echo "下载 Helix languages.toml 和 themes..."
+# 安装 Helix Runtime（主题、语法查询、教程等）
+# 可选组件，如不需要可跳过
+# 安装位置：
+#   - themes: ~/.config/helix/runtime/themes
+#   - queries: ~/.config/helix/runtime/queries
+#   - tutor: ~/.config/helix/runtime/tutor
+#   - languages.toml: ~/.config/helix/languages.toml (如果不存在)
+#   - grammars: ~/.config/helix/runtime/grammars (本地编译生成)
+function install-helix-runtime() {
+    local HELIX_RUNTIME_DIR="$HOME/.config/helix/runtime"
     local HELIX_RUNTIME_TMP="/tmp/helix-runtime-files"
+
+    echo "安装 Helix Runtime..."
+
+    # 检查 runtime 是否已存在
+    if [ -d "$HELIX_RUNTIME_DIR/themes" ] && [ -d "$HELIX_RUNTIME_DIR/queries" ]; then
+        echo "Helix runtime 已存在，跳过"
+        return 0
+    fi
+
+    # 创建目录
+    mkdir -p "$HELIX_RUNTIME_DIR"
+
+    # 从官方仓库下载 runtime（使用 sparse checkout 只下载 runtime 目录）
+    echo "从官方仓库下载 Helix runtime..."
     git clone --depth 1 --filter=blob:none --sparse \
         "https://github.com/helix-editor/helix.git" "$HELIX_RUNTIME_TMP" >/dev/null 2>&1
+    
     if [ -d "$HELIX_RUNTIME_TMP" ]; then
         cd "$HELIX_RUNTIME_TMP"
-        git sparse-checkout set runtime/languages.toml runtime/themes >/dev/null 2>&1
-        cp runtime/languages.toml "$HOME/.config/helix/"
+        git sparse-checkout set runtime >/dev/null 2>&1
+        
+        # 复制 runtime 内容
         cp -r runtime/themes "$HELIX_RUNTIME_DIR/"
+        cp -r runtime/queries "$HELIX_RUNTIME_DIR/"
+        cp runtime/tutor "$HELIX_RUNTIME_DIR/" 2>/dev/null || true
+        cp runtime/languages.toml "$HELIX_RUNTIME_DIR/" 2>/dev/null || true
+        
+        # 创建 grammars 目录（空目录，等待本地编译）
+        mkdir -p "$HELIX_RUNTIME_DIR/grammars"
+        touch "$HELIX_RUNTIME_DIR/grammars/.gitkeep"
+        
         cd - >/dev/null
         rm -rf "$HELIX_RUNTIME_TMP"
+        
+        echo "Helix runtime 部署完成"
+    else
+        echo "Helix runtime 下载失败"
+        return 1
+    fi
+
+    # 编译 tree-sitter 语法文件（架构相关，必须本地编译）
+    echo "编译 Helix tree-sitter 语法（可能需要几分钟）..."
+    if command -v hx >/dev/null 2>&1; then
+        hx --grammar fetch >/dev/null 2>&1 || true
+        hx --grammar build >/dev/null 2>&1 || true
+        echo "Tree-sitter 语法编译完成"
+    else
+        echo "警告：hx 未安装，跳过语法编译"
     fi
 
     # 验证安装
-    if command -v hx >/dev/null 2>&1; then
-        echo "Helix 安装成功：$(hx --version)"
+    if [ -d "$HELIX_RUNTIME_DIR/themes" ] && [ -d "$HELIX_RUNTIME_DIR/queries" ]; then
+        local THEME_COUNT=$(ls -1 "$HELIX_RUNTIME_DIR/themes" | wc -l)
+        local QUERY_COUNT=$(ls -1 "$HELIX_RUNTIME_DIR/queries" | wc -l)
+        echo "Helix runtime 安装成功：$THEME_COUNT 个主题，$QUERY_COUNT 个语言查询"
     else
-        echo "Helix 安装失败"
+        echo "Helix runtime 安装失败"
         return 1
     fi
 }
