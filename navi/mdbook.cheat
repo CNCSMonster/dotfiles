@@ -1,0 +1,42 @@
+% mdbook
+
+; mdbook 文档工具相关
+
+# 初始化 mdbook 项目
+mdbook init <dir>
+$ dir: printf '\nmy-book'
+
+# 为项目安装 mermaid 支持
+mdbook-mermaid install <dir>
+$ dir: printf '\n.'
+
+# 构建 mdbook (带 mermaid 支持)
+mdbook build <dir>
+$ dir: printf '\n.'
+
+# 实时预览 mdbook (带 mermaid 支持)
+mdbook serve <dir> --open
+$ dir: printf '\n.'
+
+# 清理构建产物
+mdbook clean <dir>
+$ dir: printf '\n.'
+
+# 更新 mermaid 资源文件
+mdbook-mermaid install <dir>
+$ dir: printf '\n.'
+
+% mdbook-mermaid
+
+; mdbook-mermaid 图表预处理器
+
+# 查看版本
+mdbook-mermaid --version
+
+# 检查是否支持 mermaid
+mdbook-mermaid supports <book>
+$ book: printf '\n.'
+
+# 手动初始化 mermaid 资源
+mdbook-mermaid init <book>
+$ book: printf '\n.'

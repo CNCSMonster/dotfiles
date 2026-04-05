@@ -336,6 +336,8 @@ function install-common-rust-tools() {
         tree-sitter-cli@0.25.4 \
         tokei@13.0.0-alpha.9 \
         gen-mdbook-summary@0.0.6 \
+        mdbook@0.4.40 \
+        mdbook-mermaid@0.14.1 \
         mise@2026.2.15 \
         uv@0.10.10 \
         gitui@0.28.1 \
