@@ -712,6 +712,7 @@ function install-typescript-lsp() {
         return 1
     }
     echo "安装成功：$(typescript-language-server --version)"
+    return 0
 }
 
 # 安装 Python 语言服务器 (Pyright)
@@ -728,6 +729,7 @@ function install-pyright() {
         return 1
     }
     echo "安装成功：$(pyright --version)"
+    return 0
 }
 
 # 安装 Zig 语言服务器 (zls)
@@ -778,6 +780,7 @@ function install-zls() {
     # 验证
     if command -v zls >/dev/null 2>&1; then
         echo "zls 安装成功：$(zls --version)"
+        return 0
     else
         echo "zls 安装失败"
         return 1
@@ -798,6 +801,7 @@ function install-yaml-lsp() {
         return 1
     }
     echo "安装成功：$(yaml-language-server --version)"
+    return 0
 }
 
 # 安装 TOML 语言服务器 (taplo)
@@ -830,6 +834,7 @@ function install-taplo() {
     }
 
     echo "taplo 安装成功：$(taplo --version)"
+    return 0
 }
 
 # 安装 Lua 语言服务器
@@ -875,6 +880,7 @@ EOF
 
     if command -v lua-language-server >/dev/null 2>&1; then
         echo "安装成功：$(lua-language-server --version)"
+        return 0
     else
         echo "安装失败"
         return 1
@@ -920,6 +926,7 @@ function install-bash-lsp() {
         return 1
     }
     echo "安装成功：$(bash-language-server --version)"
+    return 0
 }
 
 # ============================================================
