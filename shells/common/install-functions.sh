@@ -953,7 +953,7 @@ function install-helix-lsp() {
     if command -v node >/dev/null 2>&1; then
         if ! command -v typescript-language-server >/dev/null 2>&1; then
             echo "[安装] typescript-language-server (依赖：node)"
-            install-typescript-lsp && ((installed++)) || ((failed++))
+            install-typescript-lsp && ((installed++)) || { ((failed++)); true; }
         else
             echo "[跳过] typescript-language-server 已安装"
             ((skipped++))
@@ -966,7 +966,7 @@ function install-helix-lsp() {
     if command -v pnpm >/dev/null 2>&1 || command -v npm >/dev/null 2>&1; then
         if ! command -v pyright >/dev/null 2>&1; then
             echo "[安装] pyright (依赖：node/pnpm)"
-            install-pyright && ((installed++)) || ((failed++))
+            install-pyright && ((installed++)) || { ((failed++)); true; }
         else
             echo "[跳过] pyright 已安装"
             ((skipped++))
@@ -987,7 +987,7 @@ function install-helix-lsp() {
     if command -v zig >/dev/null 2>&1; then
         if ! command -v zls >/dev/null 2>&1; then
             echo "[安装] zls (依赖：zig)"
-            install-zls && ((installed++)) || ((failed++))
+            install-zls && ((installed++)) || { ((failed++)); true; }
         else
             echo "[跳过] zls 已安装"
             ((skipped++))
@@ -1000,7 +1000,7 @@ function install-helix-lsp() {
     if command -v pnpm >/dev/null 2>&1 || command -v npm >/dev/null 2>&1; then
         if ! command -v yaml-language-server >/dev/null 2>&1; then
             echo "[安装] yaml-language-server (依赖：node/pnpm)"
-            install-yaml-lsp && ((installed++)) || ((failed++))
+            install-yaml-lsp && ((installed++)) || { ((failed++)); true; }
         else
             echo "[跳过] yaml-language-server 已安装"
             ((skipped++))
@@ -1012,7 +1012,7 @@ function install-helix-lsp() {
     # taplo (TOML LSP) - Rust 工具，总是安装
     if ! command -v taplo >/dev/null 2>&1; then
         echo "[安装] taplo (Rust 工具)"
-        install-taplo && ((installed++)) || ((failed++))
+        install-taplo && ((installed++)) || { ((failed++)); true; }
     else
         echo "[跳过] taplo 已安装"
         ((skipped++))
@@ -1021,7 +1021,7 @@ function install-helix-lsp() {
     # lua-language-server - 依赖 lua (可选，如果没有 lua 也安装，因为 Helix 可能需要)
     if ! command -v lua-language-server >/dev/null 2>&1; then
         echo "[安装] lua-language-server"
-        install-lua-lsp && ((installed++)) || ((failed++))
+        install-lua-lsp && ((installed++)) || { ((failed++)); true; }
     else
         echo "[跳过] lua-language-server 已安装"
         ((skipped++))
@@ -1031,7 +1031,7 @@ function install-helix-lsp() {
     if command -v node >/dev/null 2>&1; then
         if ! command -v bash-language-server >/dev/null 2>&1; then
             echo "[安装] bash-language-server (依赖：node)"
-            install-bash-lsp && ((installed++)) || ((failed++))
+            install-bash-lsp && ((installed++)) || { ((failed++)); true; }
         else
             echo "[跳过] bash-language-server 已安装"
             ((skipped++))
