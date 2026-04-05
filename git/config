@@ -7,7 +7,7 @@
     # pager = delta
     editor = code
     # 全局忽略文件（不纳入版本控制的本地文件）
-    excludesFile = ~/.gitignore_global
+    excludesFile = ~/.config/git/.gitignore_global
 [interactive]
     diffFilter = delta --color-only
 [delta]
