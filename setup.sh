@@ -54,9 +54,11 @@ download_xdotter() {
   # --retry 8: curl 内置重试 8 次，处理频繁的小网络波动
   # --retry-delay 2: 重试间隔 2 秒
   # -C -: 断点续传，从断开的地方继续下载
+  # 使用环境变量 XDOTTER_VERSION 指定版本，避免破坏性变更
+  local version="${XDOTTER_VERSION:-v0.3.4}"
   curl -sSL --retry 8 --retry-delay 2 -C - \
     --connect-timeout 30 --max-time 120 \
-    https://github.com/cncsmonster/xdotter/releases/latest/download/xd.pyz \
+    "https://github.com/cncsmonster/xdotter/releases/download/${version}/xd.pyz" \
     -o ~/.local/bin/xd
 }
 
@@ -67,8 +69,8 @@ deploy_dotfiles(){
   # retry_fn 3: 外层重试 3 次，处理持续的大问题（如镜像站全部不可用）
   retry_fn 3 "下载 xdotter" download_xdotter
   chmod +x ~/.local/bin/xd
-  # 使用 xd 部署
-  ~/.local/bin/xd --config "${SCRIPT_DIR}/xdotter.toml" --quiet --force
+  # 使用 xd 部署 (xdotter v0.3.4+ 移除了 --config 参数，需 cd 到配置目录执行)
+  cd "${SCRIPT_DIR}" && ~/.local/bin/xd deploy --quiet --force
 }
 
 main() {

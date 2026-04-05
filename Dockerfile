@@ -88,6 +88,12 @@ WORKDIR /root/dotfiles
 ARG CARGO_INSTALL_STRICT=1
 ENV CARGO_INSTALL_STRICT=${CARGO_INSTALL_STRICT}
 
+# -----------------------------------------------------------------------------
+# xdotter 版本（固定版本，避免破坏性变更）
+# -----------------------------------------------------------------------------
+ARG XDOTTER_VERSION=v0.3.4
+ENV XDOTTER_VERSION=${XDOTTER_VERSION}
+
 #   或: docker buildx build --secret id=github_token,env=GITHUB_TOKEN ...
 # 不传则匿名访问，下载失败的 crate 会 fallback 到源码编译。
 # -----------------------------------------------------------------------------
