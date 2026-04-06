@@ -236,8 +236,14 @@ ensure_cargo_binstall() {
   if command -v cargo-binstall >/dev/null 2>&1; then
     return 0
   fi
-  
-  # 优先使用官方脚本下载预编译二进制，避免从源码编译
+
+  # 固定 cargo-binstall 版本，确保可复现性
+  # 最新版本查询：gh release view --repo cargo-bins/cargo-binstall --json tagName
+  # 注意：GitHub Release 使用 v1.17.9 格式，cargo install 使用 1.17.9 格式
+  local CARGO_BINSTALL_VERSION="v1.17.9"
+  local CARGO_BINSTALL_VERSION_CARGO="1.17.9"
+
+  # 优先使用官方预编译二进制，避免从源码编译
   # 官方文档：https://github.com/cargo-bins/cargo-binstall
   local ARCH=$(uname -m)
   local TARGET=""
@@ -245,23 +251,23 @@ ensure_cargo_binstall() {
     x86_64) TARGET="x86_64-unknown-linux-musl" ;;
     aarch64) TARGET="aarch64-unknown-linux-musl" ;;
     armv7l) TARGET="armv7-unknown-linux-musleabihf" ;;
-    *) 
+    *)
       echo "Unsupported architecture: $ARCH, falling back to cargo install"
-      cargo install cargo-binstall
+      cargo install cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
       return
       ;;
   esac
-  
-  local URL="https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-${TARGET}.tgz"
+
+  local URL="https://github.com/cargo-bins/cargo-binstall/releases/download/${CARGO_BINSTALL_VERSION}/cargo-binstall-${TARGET}.tgz"
   mkdir -p "${HOME}/.cargo/bin"
   local TMP_TGZ="/tmp/cargo-binstall-${TARGET}.tgz"
-  
+
   if github_download "$URL" "$TMP_TGZ" && tar -xzf "$TMP_TGZ" -C "${HOME}/.cargo/bin" 2>/dev/null; then
-    echo "cargo-binstall installed successfully via precompiled binary"
+    echo "cargo-binstall ${CARGO_BINSTALL_VERSION} installed successfully via precompiled binary"
     rm -f "$TMP_TGZ"
   else
     echo "Failed to download precompiled binary, falling back to cargo install"
-    cargo install cargo-binstall
+    cargo install cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
   fi
 }
 
