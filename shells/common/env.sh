@@ -30,11 +30,6 @@ export RUSTUP_DIST_SERVER='https://rsproxy.cn'
 export RUSTUP_UPDATE_ROOT='https://rsproxy.cn/rustup'
 
 
-# Rust 工具安装方式控制
-# CARGO_INSTALL_FROM_SOURCE=1 时，强制从源码编译所有 Rust 工具（使用 cargo install）
-# 默认值为 0，优先使用 cargo binstall 下载预编译二进制
-# export CARGO_INSTALL_FROM_SOURCE=1
-
 # Rust 工具安装失败控制
 # CARGO_INSTALL_STRICT=1 时，任何工具安装失败都会终止整个 setup.sh 脚本
 # 默认值为 0，允许部分工具失败，继续安装后续工具
