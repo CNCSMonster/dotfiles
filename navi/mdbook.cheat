@@ -30,13 +30,7 @@ $ dir: printf '\n.'
 
 ; mdbook-mermaid 图表预处理器
 
-# 查看版本
-mdbook-mermaid --version
-
-# 检查是否支持 mermaid
-mdbook-mermaid supports <book>
-$ book: printf '\n.'
-
-# 手动初始化 mermaid 资源
-mdbook-mermaid init <book>
+# 为项目安装/更新 mermaid 支持
+# 会自动修改 book.toml 并复制 mermaid.min.js 和 mermaid-init.js
+mdbook-mermaid install <book>
 $ book: printf '\n.'
