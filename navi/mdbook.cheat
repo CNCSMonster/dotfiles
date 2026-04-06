@@ -7,20 +7,16 @@ mdbook init <dir>
 $ dir: printf '\nmy-book'
 
 # 构建 mdbook
-mdbook build <dir>
-$ dir: printf '\n.'
+mdbook build <path>
+$ path: printf '\n.'
 
 # 实时预览 mdbook（自动重载）
-mdbook serve <dir> --open
-$ dir: printf '\n.'
+mdbook serve <path> --open
+$ path: printf '\n.'
 
 # 清理构建产物
-mdbook clean <dir>
-$ dir: printf '\n.'
-
-# 为项目安装/更新 mermaid 支持
-mdbook-mermaid install <dir>
-$ dir: printf '\n.'
+mdbook clean <path>
+$ path: printf '\n.'
 
 % mdbook-mermaid
 
@@ -28,5 +24,5 @@ $ dir: printf '\n.'
 
 # 为项目安装/更新 mermaid 支持
 # 会自动修改 book.toml 并复制 mermaid.min.js 和 mermaid-init.js
-mdbook-mermaid install <book>
-$ book: printf '\n.'
+mdbook-mermaid install <path>
+$ path: printf '\n.'
