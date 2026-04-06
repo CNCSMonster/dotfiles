@@ -6,15 +6,11 @@
 mdbook init <dir>
 $ dir: printf '\nmy-book'
 
-# 为项目安装 mermaid 支持
-mdbook-mermaid install <dir>
-$ dir: printf '\n.'
-
-# 构建 mdbook (带 mermaid 支持)
+# 构建 mdbook
 mdbook build <dir>
 $ dir: printf '\n.'
 
-# 实时预览 mdbook (带 mermaid 支持)
+# 实时预览 mdbook（自动重载）
 mdbook serve <dir> --open
 $ dir: printf '\n.'
 
@@ -22,7 +18,7 @@ $ dir: printf '\n.'
 mdbook clean <dir>
 $ dir: printf '\n.'
 
-# 更新 mermaid 资源文件
+# 为项目安装/更新 mermaid 支持
 mdbook-mermaid install <dir>
 $ dir: printf '\n.'
 
