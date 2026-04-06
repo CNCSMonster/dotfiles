@@ -359,6 +359,17 @@ function install-common-rust-tools() {
         echo "⚠️  警告：yazi 安装失败，请手动安装"
     fi
 
+    # 安装 zola（静态网站生成器，需要从 git 源安装）
+    echo ""
+    echo "=========================================="
+    echo "安装 zola (静态网站生成器)..."
+    echo "=========================================="
+    if cargo install --locked --git https://github.com/getzola/zola --tag v0.22.1 2>/dev/null; then
+        echo "✅ zola 安装成功：$(zola --version)"
+    else
+        echo "⚠️  警告：zola 安装失败，请手动安装"
+    fi
+
     return 0
 }
 

@@ -1,0 +1,13 @@
+% zola
+
+; Zola 静态网站生成器
+
+# 初始化新项目
+zola init <path>
+$ path: printf '\nmy-site'
+
+# 本地预览站点（实时重载）
+zola serve
+
+# 构建静态站点
+zola build
