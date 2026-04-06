@@ -89,7 +89,7 @@ safe-cargo-audit --help
 | 特性 | cargo audit | safe-cargo-audit |
 |------|-------------|------------------|
 | **文件系统** | 完全访问 | 只读项目目录 |
-| **网络访问** | 完全访问 | 禁用 |
+| **网络访问** | 完全访问 | ✅ 允许（更新漏洞数据库需要） |
 | **/home 访问** | 完全访问 | 隔离（tmpfs） |
 | **缓存持久化** | 持久化 | 临时（退出清理） |
 | **安全性** | 🟡 中等 | 🟢 高 |
@@ -107,14 +107,13 @@ safe-cargo-audit --help
 
 ### ⚠️ 完全禁用网络（可选）
 
-如果你希望在**完全离线**环境下审计（更安全），可以手动修改脚本：
+如果你希望在**完全离线**环境下审计（更安全），可以手动修改脚本移除 `--share-net`：
 
 ```bash
 # 编辑脚本，移除 --share-net 行
-sed -i '/--share-net/d' ~/.local/bin/safe-cargo-audit
-
-# 或者使用前先更新数据库
+# 注意：需要先更新漏洞数据库才能在离线模式下使用
 cargo audit --db --update  # 在沙箱外更新
+# 然后编辑 ~/.local/bin/safe-cargo-audit，删除 --share-net 行
 safe-cargo-audit           # 在沙箱内使用本地缓存
 ```
 

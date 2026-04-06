@@ -98,15 +98,18 @@ eval "$(mise activate $SH)"     # 应该在 env.sh
 **加载时机：** 需要时手动 source
 
 **包含内容：**
-- 工具函数（字符串处理、文件操作）
-- 辅助函数（日志输出、重试逻辑）
+- 工具函数（fzf 跳转）
+- npm/pnpm 镜像源切换函数
 
 **示例：**
 ```bash
 # fn.sh 提供通用函数
-function log_info() { echo "[INFO] $1"; }
-function retry_fn() { ... }  # 重试函数
+function fj() { ... }           # fzf 跳转目录
+function npm-cn() { ... }       # 使用淘宝镜像运行 npm
+function use-npm-mirror() { ... }  # 切换到淘宝镜像
 ```
+
+**注意：** `retry_fn` 重试函数定义在 `setup.sh` 中，不在 fn.sh 中。
 
 ---
 
