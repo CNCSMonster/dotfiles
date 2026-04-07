@@ -18,31 +18,16 @@ cd dotfiles
 nvim --version
 rustc --version
 go version
-node --version
 ```
 
 ---
 
-## 其他部署方式
+## 部署方式
 
 | 场景 | 命令 |
 |------|------|
-| 只部署配置（不安装工具） | `xd deploy` |
-| Docker 体验 | `docker run -it dotfiles:test` |
-
----
-
-## Docker 构建
-
-```bash
-# 构建镜像
-./scripts/docker-build-test.sh
-
-# 运行容器
-docker run -it dotfiles:test
-```
-
-详情见 [`scripts/README.md`](./scripts/README.md)。
+| 完整安装（推荐） | `./setup.sh` |
+| 只部署配置 | `xd deploy` |
 
 ---
 
@@ -57,8 +42,25 @@ docker run -it dotfiles:test
 
 ---
 
+## For Developers
+
+### Docker 构建验证
+
+用于验证 `setup.sh` 在干净环境中可正常执行：
+
+```bash
+# 构建镜像
+./scripts/docker-build-test.sh
+
+# 运行容器
+docker run -it dotfiles:test
+```
+
+详情见 [`scripts/README.md`](./scripts/README.md)。
+
+---
+
 ## Inspired by
 
 - https://github.com/TD-Sky/dotfiles
 - https://github.com/SuperCuber/dotter
-- https://github.com/5eqn/nvim-config
