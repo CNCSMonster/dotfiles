@@ -223,3 +223,103 @@ gh api -X DELETE repos/:owner/:repo/actions/caches/<cache_id>
 $ owner: printf '\ncncsmonster'
 $ repo: printf '\ndotfiles'
 $ cache_id: echo "123"
+
+# ==================== Release 管理 ====================
+
+# 查看所有 Release 列表
+gh release list --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+
+# 查看 Draft Release
+gh release list --repo <owner>/<repo> | grep Draft
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+
+# 查看特定 Release 详情
+gh release view <tag> --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
+
+# 发布 Draft Release
+gh release edit <tag> --draft=false --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
+
+# 设置 Release 为 Latest 版本
+gh release edit <tag> --latest --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
+
+# 创建新的 Release (直接发布)
+gh release create <tag> --title '<title>' --generate-notes --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.11"
+$ title: echo "Release v0.0.11"
+
+# 创建 Draft Release
+gh release create <tag> --draft --title '<title>' --generate-notes --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.11"
+$ title: echo "Release v0.0.11"
+
+# 上传文件到 Release
+gh release upload <tag> <file> --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
+$ file: echo "./gen-mdbook-summary-x86_64-unknown-linux-gnu.tar.gz"
+
+# 下载 Release 中的所有文件
+gh release download <tag> --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
+
+# 下载 Release 中匹配模式的文件
+gh release download <tag> --pattern '<pattern>' --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
+$ pattern: echo "*.tar.gz"
+
+# 删除 Release (保留 tag)
+gh release delete <tag> --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
+
+# 完全删除 Release (包括 tag)
+gh release delete <tag> --cleanup-tag --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
+
+# 编辑 Release 标题和说明
+gh release edit <tag> --title '<title>' --notes '<notes>' --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
+$ title: echo "Release v0.0.10"
+$ notes: echo "Release notes..."
+
+# 快速发布最新 tag 的 Release
+gh release create $(git describe --tags --abbrev=0) --generate-notes --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+
+# 批量发布所有 Draft Release
+gh release list --repo <owner>/<repo> | grep Draft | awk '{print $3}' | xargs -I {} gh release edit {} --draft=false --repo <owner>/<repo>
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+
+# 查看 Release 的资产文件列表
+gh release view <tag> --repo <owner>/<repo> | grep -A 100 "Assets"
+$ owner: printf '\ncncsmonster'
+$ repo: printf '\ngen-mdbook-summary'
+$ tag: echo "v0.0.10"
