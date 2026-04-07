@@ -31,6 +31,17 @@ go version
 
 ---
 
+## zcomet 插件管理器
+
+首次 zsh 登录时，zcomet 会在后台自动安装：
+
+- **默认**：后台安装，shell 立即可用
+- **等待完成**：`ZCOMET_BG_INSTALL=0 zsh`（阻塞约 10-30 秒）
+
+安装完成后重启 shell 即可使用插件系统。
+
+---
+
 ## 文档
 
 | 主题 | 文档 |
@@ -42,21 +53,9 @@ go version
 
 ---
 
-## For Developers
+## For Contributors
 
-### Docker 构建验证
-
-用于验证 `setup.sh` 在干净环境中可正常执行：
-
-```bash
-# 构建镜像
-./scripts/docker-build-test.sh
-
-# 运行容器
-docker run -it dotfiles:test
-```
-
-详情见 [`scripts/README.md`](./scripts/README.md)。
+想要验证或修改此项目？见 [Contributing Guide](./CONTRIBUTING.md)。
 
 ---
 
