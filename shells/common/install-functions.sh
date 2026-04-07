@@ -341,7 +341,7 @@ function install-common-rust-tools() {
         fnm@1.39.0 \
         tree-sitter-cli@0.26.8 \
         tokei@14.0.0 \
-        gen-mdbook-summary@0.0.8 \
+        gen-mdbook-summary@0.0.10 \
         mdbook@0.5.2 \
         mdbook-mermaid@0.17.0 \
         mise@2026.4.5 \
