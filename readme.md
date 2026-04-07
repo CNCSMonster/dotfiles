@@ -15,10 +15,11 @@ cd dotfiles
 ### 验证安装
 
 ```bash
-nvim --version
-rustc --version
-go version
+# 验证 xdotter 是否正确部署配置（本项目独有）
+ls -la ~/.zshrc ~/.config/mise ~/.config/yazi
 ```
+
+预期输出：`~/.zshrc` 等应为符号链接，指向 `~/.config/shells/` 下的配置。
 
 ---
 
