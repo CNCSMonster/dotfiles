@@ -323,29 +323,29 @@ function install-common-rust-tools() {
     # 3. 使用 --locked 标志，确保可复现性
     #
     # 固定版本号避免上游更新带来的兼容性问题
-    # 最后验证：2026-03-28，Docker Ubuntu 24.04 + Rust stable
+    # 最后验证：2026-04-06，Docker Ubuntu 24.04 + Rust stable
     cargo_install_common \
         kondo@0.9.0 \
-        jaq@2.3.0 \
+        jaq@3.0.0 \
         rust-script@0.36.0 \
-        parallel-disk-usage@0.21.1 \
+        parallel-disk-usage@0.22.0 \
         bat@0.26.1 \
         navi@2.24.0 \
         mcfly@0.9.4 \
-        starship@1.23.0 \
-        eza@0.21.0 \
-        conceal@0.5.1 \
-        zoxide@0.9.8 \
-        fd-find@10.2.0 \
-        macchina@6.0.0 \
-        fnm@1.38.1 \
-        tree-sitter-cli@0.25.4 \
-        tokei@13.0.0-alpha.9 \
-        gen-mdbook-summary@0.0.6 \
-        mdbook@0.4.40 \
-        mdbook-mermaid@0.14.1 \
-        mise@2026.2.15 \
-        uv@0.10.10 \
+        starship@1.24.2 \
+        eza@0.23.4 \
+        conceal@0.7.0 \
+        zoxide@0.9.9 \
+        fd-find@10.4.2 \
+        macchina@6.4.0 \
+        fnm@1.39.0 \
+        tree-sitter-cli@0.26.8 \
+        tokei@14.0.0 \
+        gen-mdbook-summary@0.0.9 \
+        mdbook@0.5.2 \
+        mdbook-mermaid@0.17.0 \
+        mise@2026.4.5 \
+        uv@0.11.3 \
         gitui@0.28.1 \
         cargo-audit@0.22.1
 

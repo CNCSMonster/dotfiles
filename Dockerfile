@@ -108,6 +108,10 @@ RUN --mount=type=secret,id=github_token,required=false \
     fi && \
     chmod +x ./setup.sh && ./setup.sh
 
+# 清理 cargo 缓存（registry、git 依赖、编译中间文件），只保留安装的二进制
+RUN rm -rf ~/.cargo/registry/src ~/.cargo/registry/cache ~/.cargo/git ~/.cargo/.package-cache && \
+    find ~/.cargo/bin -type f -name '*.crate' -delete 2>/dev/null || true
+
 WORKDIR /root
 
 CMD [ "/usr/bin/zsh" ]
