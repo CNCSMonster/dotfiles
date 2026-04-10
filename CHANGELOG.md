@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Zellij**: Add terminal multiplexer configuration with search-first workflow
+  - `zellij/config.kdl` based on TD-Sky/dotfiles scheme
+  - `Alt + /` bound to `ToggleCommandPalette` (search-first layout switching)
+  - `Ctrl + Alt + h/j/k/l` for pane focus (avoids WezTerm `Alt + h/j/k/l` conflict)
+  - 4 custom layouts: `horizontal`, `vertical`, `three-vertical`, `four-grid`
+
 ### Fixed
 - **CI Build**: Fixed Dockerfile build check failures
   - Fixed xdotter deployment command (v0.3.4 removed `--config` parameter)

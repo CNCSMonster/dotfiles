@@ -1,0 +1,9 @@
+// 两水平分屏
+layout {
+    tab name="default" focus=true {
+        pane split_direction="horizontal" {
+            pane { }
+            pane { }
+        }
+    }
+}

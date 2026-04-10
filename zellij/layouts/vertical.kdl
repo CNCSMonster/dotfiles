@@ -1,0 +1,9 @@
+// 两垂直分屏
+layout {
+    tab name="default" focus=true {
+        pane split_direction="vertical" {
+            pane { }
+            pane { }
+        }
+    }
+}

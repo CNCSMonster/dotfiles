@@ -1,0 +1,15 @@
+// 四分屏（2x2 网格）
+layout {
+    tab name="default" focus=true {
+        pane split_direction="vertical" {
+            pane split_direction="horizontal" {
+                pane { }
+                pane { }
+            }
+            pane split_direction="horizontal" {
+                pane { }
+                pane { }
+            }
+        }
+    }
+}
