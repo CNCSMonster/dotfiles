@@ -197,11 +197,10 @@ keybinds clear-defaults=true {
         bind "Alt p" { TogglePaneInGroup; }
         bind "Alt Shift p" { ToggleGroupMarking; }
 
-        // 命令面板：Alt + / 打开搜索（搜索优先操作布局）
-        bind "Alt /" { ToggleCommandPalette; }
+        // Alt + /: 快速切换下一个布局（搜索优先的替代：按 Alt+/ 循环切换）
+        bind "Alt /" { NextSwapLayout; }
 
-        // Zellij 内部跳转：Ctrl+Alt+hjkl
-        // 避免与 WezTerm 原生 Alt+hjkl 冲突
+        // Ctrl+Alt+hjkl: Zellij 内部跳转（避免与 WezTerm Alt+hjkl 冲突）
         bind "Ctrl Alt h" "Ctrl Alt Left" { MoveFocus "Left"; }
         bind "Ctrl Alt l" "Ctrl Alt Right" { MoveFocus "Right"; }
         bind "Ctrl Alt j" "Ctrl Alt Down" { MoveFocus "Down"; }
