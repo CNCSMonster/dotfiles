@@ -735,15 +735,26 @@ function install-typescript-lsp() {
 }
 
 # 安装 Python 语言服务器 (Pyright)
+# 使用 uv tool install 安装，优势：
+# - 无需 Node.js 依赖，只需 Python 环境
+# - 安装速度更快（uv 用 Rust 实现）
+# - 每个工具独立虚拟环境，避免依赖冲突
+# - 磁盘占用更小（共享缓存 + 硬链接）
+# 官方文档：https://docs.astral.sh/uv/guides/tools/
 function install-pyright() {
     if command -v pyright >/dev/null 2>&1; then
         echo "pyright 已安装，跳过"
         return 0
     fi
 
-    echo "安装 pyright..."
-    pnpm add -g pyright 2>/dev/null || \
-    npm install -g pyright 2>/dev/null || {
+    # 检查 uv 是否已安装
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "❌ 错误：uv 未安装，请先安装 uv（cargo install uv 或 mise install uv）"
+        return 1
+    fi
+
+    echo "安装 pyright (via uv tool)..."
+    uv tool install pyright 2>&1 || {
         echo "pyright 安装失败"
         return 1
     }
@@ -957,7 +968,8 @@ function install-bash-lsp() {
 # 功能：检查已安装的工具链，只安装缺失的 LSP
 # 示例：
 #   - 已安装 go → 自动安装 gopls
-#   - 已安装 node/pnpm → 自动安装 typescript-language-server, pyright, yaml-language-server
+#   - 已安装 node/pnpm → 自动安装 typescript-language-server, yaml-language-server
+#   - 已安装 python3/uv → 自动安装 pyright
 #   - 已安装 zig → 自动安装 zls
 #   - 已安装 lua → 自动安装 lua-language-server
 function install-helix-lsp() {
@@ -981,17 +993,17 @@ function install-helix-lsp() {
         echo "[跳过] node 未安装，跳过 typescript-language-server"
     fi
 
-    # Pyright (Python LSP) - 依赖 node/pnpm
-    if command -v pnpm >/dev/null 2>&1 || command -v npm >/dev/null 2>&1; then
+    # Pyright (Python LSP) - 使用 uv tool install，依赖 uv
+    if command -v uv >/dev/null 2>&1; then
         if ! command -v pyright >/dev/null 2>&1; then
-            echo "[安装] pyright (依赖：node/pnpm)"
+            echo "[安装] pyright (依赖：uv)"
             install-pyright && { ((++installed)); true; } || { ((failed++)); true; }
         else
             echo "[跳过] pyright 已安装"
             ((skipped++))
         fi
     else
-        echo "[跳过] node/pnpm 未安装，跳过 pyright"
+        echo "[跳过] uv 未安装，跳过 pyright"
     fi
 
     # gopls - mise 已安装 (go:golang.org/x/tools/gopls)
