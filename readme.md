@@ -1,6 +1,6 @@
 # My Dotfiles
 
-基于 **xdotter** 的 Ubuntu 开发环境配置，为 Ubuntu 22.04/24.04 提供一键部署。
+笔者的开发环境配置文件合集, 用于快速配置新环境，与多机器配置统一环境。项目main 分支版本主要支持 Ubuntu 22 和 24, 项目不同分支中的版本为分支名对应环境的适配版本。
 
 ## 快速开始
 
@@ -29,6 +29,8 @@ ls -la ~/.zshrc ~/.config/mise ~/.config/yazi
 |------|------|
 | 完整安装（推荐） | `./setup.sh` |
 | 只部署配置 | `xd deploy` |
+
+> xd 为 xdotter 项目提供的可执行文件，可以参考 https://github.com/CNCSMonster/xdotter 项目文档安装
 
 ---
 
