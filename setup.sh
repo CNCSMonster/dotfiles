@@ -114,6 +114,9 @@ main() {
   # 安装 Helix LSP 语言服务器（智能检测，只安装缺失的）
   retry_fn 3 "安装 Helix LSP" install-helix-lsp
 
+  # 安装 Zellij 终端复用器
+  retry_fn 3 "安装 Zellij" install-zellij
+
   # 安装 Yazi 插件
   retry_fn 3 "安装 Yazi 插件" install-yazi-plugins
 }

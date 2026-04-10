@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
   - `Alt + /` bound to `ToggleCommandPalette` (search-first layout switching)
   - `Ctrl + Alt + h/j/k/l` for pane focus (avoids WezTerm `Alt + h/j/k/l` conflict)
   - 4 custom layouts: `horizontal`, `vertical`, `three-vertical`, `four-grid`
+  - Add `install-zellij` function to `install-functions.sh`
+  - Add zellij to `setup.sh` installation flow
+  - Add zellij to `xdotter.toml` for config deployment
 
 ### Fixed
 - **CI Build**: Fixed Dockerfile build check failures

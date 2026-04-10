@@ -1088,3 +1088,68 @@ function install-helix-lsp() {
 # GitUI 已移动到 install-common-rust-tools 中统一安装
 # 使用固定版本 gitui@0.28.1
 # 如果安装失败，请开发者手动测试合适的版本并更新 install-common-rust-tools
+
+
+########################################################
+# Zellij - 终端复用器
+########################################################
+function install-zellij() {
+    local ARCH=$(uname -m)
+    local ZELLIJ_ARCH=""
+    case $ARCH in
+        x86_64) ZELLIJ_ARCH="x86_64-unknown-linux-musl" ;;
+        aarch64) ZELLIJ_ARCH="aarch64-unknown-linux-musl" ;;
+        *)
+            echo "不支持的架构：$ARCH"
+            return 1
+            ;;
+    esac
+
+    # 固定版本号
+    # 更新版本时，请从 https://github.com/zellij-org/zellij/releases 获取最新版本
+    local ZELLIJ_VERSION="0.44.1"
+
+    # 用户级路径
+    local ZELLIJ_BIN_DIR="$HOME/.cargo/bin"
+
+    # 检查是否已安装相同版本
+    if [ -x "${ZELLIJ_BIN_DIR}/zellij" ]; then
+        local INSTALLED_VERSION=$("${ZELLIJ_BIN_DIR}/zellij" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+        if [ "$INSTALLED_VERSION" = "$ZELLIJ_VERSION" ]; then
+            echo "Zellij $ZELLIJ_VERSION 已安装，跳过"
+            return 0
+        fi
+        echo "发现旧版本 $INSTALLED_VERSION，升级到 $ZELLIJ_VERSION..."
+    fi
+
+    echo "安装 Zellij $ZELLIJ_VERSION..."
+
+    # 下载 Zellij
+    local ZELLIJ_URL="https://github.com/zellij-org/zellij/releases/download/v${ZELLIJ_VERSION}/zellij-${ZELLIJ_ARCH}.tar.gz"
+    local DEST="/tmp/zellij-${ZELLIJ_VERSION}.tar.gz"
+
+    github_download "$ZELLIJ_URL" "$DEST"
+
+    # 解压并安装
+    echo "解压并安装到 $ZELLIJ_BIN_DIR..."
+    mkdir -p "$ZELLIJ_BIN_DIR"
+
+    # tar.gz 内只有一个 zellij 二进制文件
+    tar -xzf "$DEST" -C /tmp zellij 2>/dev/null && {
+        mv /tmp/zellij "$ZELLIJ_BIN_DIR/"
+        chmod +x "$ZELLIJ_BIN_DIR/zellij"
+    } || {
+        # 备选：直接解压到目标目录
+        tar -xzf "$DEST" -C "$ZELLIJ_BIN_DIR" --strip-components=1
+    }
+
+    rm -f "$DEST"
+
+    if [ -x "${ZELLIJ_BIN_DIR}/zellij" ]; then
+        echo "Zellij $ZELLIJ_VERSION 安装成功"
+        return 0
+    else
+        echo "Zellij 安装失败"
+        return 1
+    fi
+}

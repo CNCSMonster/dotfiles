@@ -3,6 +3,7 @@ langs = "langs"
 shells = "shells"
 nvims = "nvims"
 helix = "helix"
+zellij = "zellij"
 
 
 [links]
@@ -16,3 +17,4 @@ helix = "helix"
 "wezterm" = "~/.config/wezterm"
 "mise" = "~/.config/mise"
 "pip" = "~/.config/pip"
+"zellij" = "~/.config/zellij"
