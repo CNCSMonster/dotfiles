@@ -61,8 +61,9 @@ COPY ./tsinghua.list /etc/apt/sources.list
 RUN rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null; true
 
 # 安装基础工具（此后 apt 均走清华源，同样带重试）
+# 包含 gcc/build-essential，用于编译需要 C 编译器的 Rust 工具（如 tree-sitter-cli）
 RUN for i in 1 2 3 4 5; do \
-      apt-get update && apt-get install -y --no-install-recommends wget git curl && break; \
+      apt-get update && apt-get install -y --no-install-recommends wget git curl gcc build-essential && break; \
       [ "$i" -eq 5 ] && exit 1; echo "apt 失败，15s 后重试 $i/5"; sleep 15; \
     done
 
