@@ -51,13 +51,41 @@ index = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
 git-fetch-with-cli = true
 
 [target.x86_64-unknown-linux-gnu]
-linker = "clang"    # 无论开不开启使用mold作为链接器,该字段都需要存在,它用来指定用什么来提供参数来驱动设计的linker(lld/mold/...)
-# rustflags= ["-Clink-arg=-fuse-ld=/usr/lib/llvm/bin/ld.lld","-Clink-arg=-Wl,--no-rosegment"] # 这个注释是为了让flamegraph.rs能够正常追踪调用栈
-# linker = "/usr/local/bin/clang"
-# rustflags = ["-C", "link-arg=--ld-path=/usr/bin/mold"]
+linker = "clang"
+rustflags = ["-C", "link-arg=--ld-path=wild"]
 
-# [build]
-# rustc-wrapper = "/usr/bin/sccache"
+# ========== 编译加速 ==========
+
+[build]
+rustc-wrapper = "sccache"
+
+# ========== Profile 优化 ==========
+
+[profile.dev]
+debug = "line-tables-only"
+split-debuginfo = "unpacked"
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.bench]
+debug = "line-tables-only"
+split-debuginfo = "unpacked"
+
+[profile.full-debug]
+inherits = "dev"
+debug = "full"
+
+[profile.product]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+
+# ========== 环境变量 ==========
+
+[env]
+RUST_BACKTRACE = "1"
+RUST_LIB_BACKTRACE = "1"
 
 [cache]
 auto-clean-frequency = "1 weeks" # 每周清理一次

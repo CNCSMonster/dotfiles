@@ -1153,3 +1153,94 @@ function install-zellij() {
         return 1
     fi
 }
+
+
+########################################################
+# sccache - Rust 编译缓存加速工具
+########################################################
+function install-sccache() {
+    local SCCACHE_VERSION="0.14.0"
+    local ARCH=$(uname -m)
+    local SCCACHE_ARCH=""
+    case $ARCH in
+        x86_64) SCCACHE_ARCH="x86_64-unknown-linux-musl" ;;
+        aarch64) SCCACHE_ARCH="aarch64-unknown-linux-musl" ;;
+        *)
+            echo "不支持的架构：$ARCH"
+            return 1
+            ;;
+    esac
+
+    local SCCACHE_BIN_DIR="$HOME/.local/bin"
+    local SCCACHE_BIN="$SCCACHE_BIN_DIR/sccache"
+
+    # 检查是否已安装
+    if [ -x "$SCCACHE_BIN" ]; then
+        local INSTALLED_VERSION=$("$SCCACHE_BIN" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        if [ "$INSTALLED_VERSION" = "$SCCACHE_VERSION" ]; then
+            echo "sccache $SCCACHE_VERSION 已安装，跳过"
+            return 0
+        fi
+        echo "发现旧版本 $INSTALLED_VERSION，升级到 $SCCACHE_VERSION..."
+    fi
+
+    echo "安装 sccache $SCCACHE_VERSION..."
+
+    local SCCACHE_URL="https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-${SCCACHE_ARCH}.tar.gz"
+    local DEST="/tmp/sccache-${SCCACHE_VERSION}.tar.gz"
+
+    github_download "$SCCACHE_URL" "$DEST"
+
+    mkdir -p "$SCCACHE_BIN_DIR"
+    tar -xzf "$DEST" -C /tmp --strip-components=1 sccache-v${SCCACHE_VERSION}-${SCCACHE_ARCH}/sccache 2>/dev/null && {
+        mv /tmp/sccache "$SCCACHE_BIN/"
+        chmod +x "$SCCACHE_BIN"
+    } || {
+        # 备选：直接解压到 bin 目录
+        tar -xzf "$DEST" -C "$SCCACHE_BIN_DIR" --strip-components=1 */sccache 2>/dev/null || {
+            echo "sccache 解压失败"
+            rm -f "$DEST"
+            return 1
+        }
+    }
+
+    rm -f "$DEST"
+
+    if [ -x "$SCCACHE_BIN" ]; then
+        echo "sccache $SCCACHE_VERSION 安装成功"
+        return 0
+    else
+        echo "sccache 安装失败"
+        return 1
+    fi
+}
+
+
+########################################################
+# wild - 快速 Rust 链接器
+########################################################
+function install-wild() {
+    local WILD_BIN="$HOME/.cargo/bin/wild"
+
+    # 检查是否已安装
+    if [ -x "$WILD_BIN" ]; then
+        echo "wild 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 wild (快速链接器)..."
+
+    # 通过 cargo install 安装
+    if command -v cargo &>/dev/null; then
+        cargo install --git https://github.com/davidlattimore/wild.git --bin wild wild-linker 2>/dev/null && {
+            echo "wild 安装成功"
+            return 0
+        } || {
+            echo "wild cargo install 失败"
+            return 1
+        }
+    else
+        echo "cargo 未安装，无法安装 wild"
+        return 1
+    fi
+}

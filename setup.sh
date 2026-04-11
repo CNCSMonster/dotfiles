@@ -103,7 +103,11 @@ main() {
     fi
     echo "⚠️  警告：Rust 工具安装失败，继续执行后续步骤..."
   fi
-  
+
+  # Cargo 开发工具：编译加速
+  retry_fn 3 "安装 sccache" install-sccache
+  retry_fn 3 "安装 wild" install-wild
+
   retry_fn 3 "安装 cargo-fuzz" setup-cargo-fuzz
   # 使用 mise 安装 go, zig, node, pnpm 等工具
   mise trust && mise install

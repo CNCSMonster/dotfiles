@@ -14,6 +14,15 @@ All notable changes to this project will be documented in this file.
   - Add zellij to `setup.sh` installation flow
   - Add zellij to `xdotter.toml` for config deployment
 
+- **Cargo Dev Profile**: Add compile acceleration configuration
+  - Add `[profile.dev]` with line-tables-only debug + split-debuginfo
+  - Add `[profile.dev.package."*"]` debug=false for dependency optimization
+  - Add `[profile.full-debug]` and `[profile.product]` profiles
+  - Enable sccache via `[build] rustc-wrapper`
+  - Switch linker from mold to wild via `rustflags = --ld-path=wild`
+  - Add `RUST_BACKTRACE` and `RUST_LIB_BACKTRACE` env vars
+  - Add `install-sccache` and `install-wild` functions to `install-functions.sh`
+
 ### Fixed
 - **CI Build**: Fixed Dockerfile build check failures
   - Fixed xdotter deployment command (v0.3.4 removed `--config` parameter)
