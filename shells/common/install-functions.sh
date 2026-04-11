@@ -1192,8 +1192,8 @@ function install-sccache() {
 
     mkdir -p "$SCCACHE_BIN_DIR"
     tar -xzf "$DEST" -C /tmp --strip-components=1 sccache-v${SCCACHE_VERSION}-${SCCACHE_ARCH}/sccache 2>/dev/null && {
-        mv /tmp/sccache "$SCCACHE_BIN/"
-        chmod +x "$SCCACHE_BIN"
+        cp /tmp/sccache "$SCCACHE_BIN/"
+        chmod +x "$SCCACHE_BIN/sccache"
     } || {
         # 备选：直接解压到 bin 目录
         tar -xzf "$DEST" -C "$SCCACHE_BIN_DIR" --strip-components=1 */sccache 2>/dev/null || {
