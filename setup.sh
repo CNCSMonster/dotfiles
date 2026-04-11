@@ -45,6 +45,12 @@ ensure_python3() {
   if command -v python3 >/dev/null 2>&1; then
     return 0
   fi
+  # macOS 不自动安装 python3，提示用户手动安装
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "Python3 未安装，请先安装 Python3"
+    echo "推荐使用 Homebrew: brew install python3"
+    return 1
+  fi
   sudo_run apt-get update
   sudo_run apt-get install -y python3
 }
