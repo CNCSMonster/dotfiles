@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- **Zellij**: Add terminal multiplexer configuration with search-first workflow
+- **Zellij**: Add terminal multiplexer configuration and installation
   - `zellij/config.kdl` based on TD-Sky/dotfiles scheme
-  - `Alt + /` bound to `ToggleCommandPalette` (search-first layout switching)
-  - `Ctrl + Alt + h/j/k/l` for pane focus (avoids WezTerm `Alt + h/j/k/l` conflict)
   - 4 custom layouts: `horizontal`, `vertical`, `three-vertical`, `four-grid`
+  - `Alt + [` / `Alt + ]` cycle through layouts
+  - `Ctrl + p` → Pane mode → `h/j/k/l` for pane navigation
   - Add `install-zellij` function to `install-functions.sh`
   - Add zellij to `setup.sh` installation flow
   - Add zellij to `xdotter.toml` for config deployment
