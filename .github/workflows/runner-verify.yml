@@ -1,0 +1,102 @@
+name: Setup Verification (Runner Direct)
+
+# 直接在 GitHub runner 上运行 setup.sh，无需 Docker 构建
+# 目的：快速验证 setup.sh 在干净 Ubuntu 环境中能正常执行
+#
+# 对比 Docker 构建方式：
+#   - Docker 构建平均耗时：~32 分钟（成功）/ ~6 分钟（失败）
+#   - Runner 直接运行预计：~15-20 分钟（跳过镜像构建，runner 已有基础工具）
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify setup.sh on ubuntu-latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      # 启用 CI 严格模式，任何 Rust 工具安装失败都会终止构建
+      CARGO_INSTALL_STRICT: 1
+      # GitHub Token，避免 cargo-binstall 触发 API 限流
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 限制 cargo 编译并行度，runner 通常 2 核心
+      CARGO_BUILD_JOBS: 2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup environment (runner 预装工具不足时补充)
+        run: |
+          # ubuntu-latest 已预装 git, curl, wget, ca-certificates
+          # 补充 setup.sh 可能需要的额外工具
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            software-properties-common \
+            gnupg \
+            jq \
+            file \
+            unzip \
+            xz-utils \
+            zstd \
+            libssl-dev \
+            pkg-config \
+            2>/dev/null || true
+
+      - name: Override cargo mirrors for runner (use official sources)
+        run: |
+          # Runner is in US, Chinese mirrors (rsproxy.cn) are slow/timeout.
+          # Override to use official crates.io directly. This does NOT affect local configs.
+          # Also use default linker (bfd) since runner clang may not support --ld-path=wild
+          cat > langs/rust/cargo/config.toml << 'EOF'
+          [net]
+          git-fetch-with-cli = true
+
+          [target.x86_64-unknown-linux-gnu]
+          linker = "clang"
+
+          [build]
+          rustc-wrapper = "sccache"
+
+          [env]
+          RUST_BACKTRACE = "1"
+          RUST_LIB_BACKTRACE = "1"
+
+          [cache]
+          auto-clean-frequency = "1 weeks"
+          EOF
+
+      - name: Run setup.sh
+        run: |
+          chmod +x ./setup.sh
+          ./setup.sh
+
+      - name: Verify installation
+        run: |
+          # 加载 dotfiles 环境变量（setup.sh 已部署符号链接）
+          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+
+          if [ -f "./scripts/verify-docker-build.sh" ]; then
+            chmod +x ./scripts/verify-docker-build.sh
+            ./scripts/verify-docker-build.sh
+          else
+            echo "⚠️  验证脚本不存在，执行基本检查"
+            for tool in zsh nvim hx yazi zellij starship mise navi fd rg; do
+              if command -v $tool &>/dev/null; then
+                echo "✅ $tool"
+              else
+                echo "❌ $tool 未安装"
+                exit 1
+              fi
+            done
+          fi
