@@ -339,7 +339,6 @@ function install-common-rust-tools() {
         fd-find@10.4.2 \
         macchina@6.4.0 \
         fnm@1.39.0 \
-        tree-sitter-cli@0.26.8 \
         tokei@14.0.0 \
         gen-mdbook-summary@0.0.10 \
         mdbook@0.5.2 \
