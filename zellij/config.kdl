@@ -197,14 +197,8 @@ keybinds clear-defaults=true {
         bind "Alt p" { TogglePaneInGroup; }
         bind "Alt Shift p" { ToggleGroupMarking; }
 
-        // Alt + /: 快速切换下一个布局（搜索优先的替代：按 Alt+/ 循环切换）
-        bind "Alt /" { NextSwapLayout; }
-
-        // Ctrl+Alt+hjkl: Zellij 内部跳转（避免与 WezTerm Alt+hjkl 冲突）
-        bind "Ctrl Alt h" "Ctrl Alt Left" { MoveFocus "Left"; }
-        bind "Ctrl Alt l" "Ctrl Alt Right" { MoveFocus "Right"; }
-        bind "Ctrl Alt j" "Ctrl Alt Down" { MoveFocus "Down"; }
-        bind "Ctrl Alt k" "Ctrl Alt Up" { MoveFocus "Up"; }
+        // Ctrl+p → Pane 模式 → h/j/k/l 跳转（已足够使用）
+        // WezTerm 侧保留 Alt+hjkl 用于 WezTerm 原生分屏跳转
     }
     shared_except "normal" "locked" {
         bind "Enter" "Esc" { SwitchToMode "Normal"; }
