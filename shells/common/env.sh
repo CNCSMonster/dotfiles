@@ -17,12 +17,16 @@ if [[ -x "/opt/homebrew/bin/brew" ]]; then
 fi
 
 # 常用系统路径（应对系统默认路径缺失的情况）
-export PATH="/usr/local/sbin:\
+# 使用追加方式而非直接赋值，保留 WSL 原有的 Windows PATH（/mnt/c/Windows/...）
+# 确保 WSL 互操作性不受影响
+if [[ "$PATH" != *"/usr/local/sbin"* ]]; then
+    export PATH="/usr/local/sbin:\
 /usr/local/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin"
+/bin${PATH:+:$PATH}"
+fi
 
 
 # rust 工具链镜像源 (rsproxy.cn - 字节跳动维护)
