@@ -105,13 +105,13 @@ function cargo_install_common() {
             echo "[${FAILED_COUNT}/${TOTAL_FAILED}] 源码编译：${crate}"
             
             # 使用 --locked 确保可复现性
-            if cargo install "${crate}" --locked 2>/dev/null; then
+            if cargo install "${crate}" --locked; then
                 echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ✅ 编译成功：${crate}"
                 COMPILED=$((COMPILED + 1))
             else
                 # --locked 失败则尝试不带 --locked（兼容性回退）
                 echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ⚠️ --locked 失败，尝试不带 --locked..."
-                if cargo install "${crate}" 2>/dev/null; then
+                if cargo install "${crate}"; then
                     echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ✅ 编译成功：${crate}"
                     COMPILED=$((COMPILED + 1))
                 else
