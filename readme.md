@@ -28,9 +28,10 @@ ls -la ~/.zshrc ~/.config/mise ~/.config/yazi
 | 场景 | 命令 |
 |------|------|
 | 完整安装（推荐） | `./setup.sh` |
-| 只部署配置 | `xd deploy` |
+| 只部署配置 | `./setup.sh --deploy` |
+| 只安装工具 | `./setup.sh --install` |
 
-> xd 为 xdotter 项目提供的可执行文件，可以参考 https://github.com/CNCSMonster/xdotter 项目文档安装
+> `xd deploy` 仍可独立使用，详见 [xdotter](https://github.com/CNCSMonster/xdotter) 文档
 
 ---
 
