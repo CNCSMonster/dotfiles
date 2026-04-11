@@ -1165,12 +1165,14 @@ function install-sccache() {
     fi
 
     echo "安装 sccache..."
-    cargo binstall sccache -y 2>/dev/null && {
+    # 注意：cargo config 中 rustc-wrapper = "sccache"，
+    # 安装 sccache 本身时需要临时禁用 wrapper，否则 cargo 找不到 sccache 会失败
+    RUSTC_WRAPPER="" cargo binstall sccache -y 2>/dev/null && {
         echo "sccache 安装成功（binstall）"
         return 0
     } || {
         echo "sccache binstall 失败，尝试 cargo install..."
-        cargo install sccache --locked 2>/dev/null && {
+        RUSTC_WRAPPER="" cargo install sccache --locked 2>/dev/null && {
             echo "sccache 安装成功（cargo install）"
             return 0
         } || {
