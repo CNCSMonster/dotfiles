@@ -105,14 +105,16 @@ function cargo_install_common() {
             echo "[${FAILED_COUNT}/${TOTAL_FAILED}] 源码编译：${crate}"
             
             # 使用 --locked 确保可复现性
-            # 注意：临时禁用 RUSTC_WRAPPER，因为 sccache 可能还没安装
-            if RUSTC_WRAPPER="" cargo install "${crate}" --locked; then
+            # 注意：
+            # 1. 临时禁用 RUSTC_WRAPPER，因为 sccache 可能还没安装
+            # 2. 临时移除 --ld-path=wild，因为 wild 还没安装（在 install-common-rust-tools 之后）
+            if RUSTC_WRAPPER="" RUSTFLAGS="-C linker=clang" cargo install "${crate}" --locked; then
                 echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ✅ 编译成功：${crate}"
                 COMPILED=$((COMPILED + 1))
             else
                 # --locked 失败则尝试不带 --locked（兼容性回退）
                 echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ⚠️ --locked 失败，尝试不带 --locked..."
-                if RUSTC_WRAPPER="" cargo install "${crate}"; then
+                if RUSTC_WRAPPER="" RUSTFLAGS="-C linker=clang" cargo install "${crate}"; then
                     echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ✅ 编译成功：${crate}"
                     COMPILED=$((COMPILED + 1))
                 else

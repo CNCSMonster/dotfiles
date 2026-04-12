@@ -65,6 +65,36 @@ deploy_dotfiles(){
   retry_fn 3 "下载 xdotter" download_xdotter
   chmod +x ~/.local/bin/xd
   cd "${SCRIPT_DIR}" && ~/.local/bin/xd deploy --quiet --force
+
+  # CI 环境自适应：GitHub Actions runner 位于国外，rsproxy.cn 反而慢
+  # 检测 CI 环境，覆盖 cargo 配置直连 crates.io
+  apply_cargo_mirror_override
+}
+
+apply_cargo_mirror_override() {
+  # 检测是否在 GitHub Actions CI 环境
+  if [ -z "$GITHUB_ACTIONS" ] && [ -z "$CI" ]; then
+    return 0  # 非 CI 环境，无需覆盖
+  fi
+
+  echo "🌐 检测到 CI 环境，配置 cargo 直连 crates.io（跳过 rsproxy）"
+
+  # 生成覆盖配置到 ~/.cargo/config.toml（替换 xdotter 创建的 symlink）
+  local cargo_config="$HOME/.cargo/config.toml"
+  local original_target
+  original_target=$(readlink -f "$cargo_config" 2>/dev/null || echo "")
+
+  if [ -n "$original_target" ]; then
+    # 读取原配置内容，修改 source 部分
+    # 使用 sed 注释掉 replace-with 行
+    sed 's/^replace-with = "rsproxy-sparse"/# replace-with = "rsproxy-sparse"  # disabled in CI/' \
+      "$original_target" > "$cargo_config.tmp" && \
+      mv "$cargo_config.tmp" "$cargo_config"
+
+    echo "✅ Cargo 配置已切换为 CI 模式（直连 crates.io）"
+  else
+    echo "⚠️  未找到 ~/.cargo/config.toml，跳过 cargo 配置覆盖"
+  fi
 }
 
 load_install_functions() {
