@@ -81,16 +81,19 @@ install-fonts() {
   echo "安装字体..."
   echo "=========================================="
 
-  # 通过 apt 安装开源字体包
+  # 通过 apt 安装 fontconfig（提供 fc-list/fc-cache）和字体包
   sudo_run apt-get update
   sudo_run apt-get install -y --no-install-recommends \
+    fontconfig \
     fonts-noto-cjk \
     fonts-noto-color-emoji \
     fonts-jetbrains-mono \
     fonts-dejavu-core
 
   # 安装 FiraCode Nerd Font（带图标支持，apt 无此包，从 GitHub 下载）
-  if ! fc-list | grep -qi "FiraCode.*Nerd"; then
+  if [ -x "$(command -v fc-list)" ] && fc-list | grep -qi "FiraCode.*Nerd"; then
+    echo "FiraCode Nerd Font 已安装，跳过"
+  else
     echo "安装 FiraCode Nerd Font..."
     local FIRACODE_VERSION="7.0.0"
     local FIRACODE_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v${FIRACODE_VERSION}/FiraCode.zip"
@@ -114,13 +117,13 @@ install-fonts() {
     else
       echo "⚠️  FiraCode Nerd Font 下载失败，跳过"
     fi
-  else
-    echo "FiraCode Nerd Font 已安装，跳过"
   fi
 
   # 刷新字体缓存
-  echo "刷新字体缓存..."
-  sudo_run fc-cache -f
+  if [ -x "$(command -v fc-cache)" ]; then
+    echo "刷新字体缓存..."
+    sudo_run fc-cache -f
+  fi
   echo "✅ 字体安装完成"
 }
 
