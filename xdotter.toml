@@ -4,6 +4,7 @@ shells = "shells"
 nvims = "nvims"
 helix = "helix"
 zellij = "zellij"
+fontconfig = "fontconfig"
 
 
 [links]
@@ -18,3 +19,4 @@ zellij = "zellij"
 "mise" = "~/.config/mise"
 "pip" = "~/.config/pip"
 "zellij" = "~/.config/zellij"
+"fontconfig" = "~/.config/fontconfig"

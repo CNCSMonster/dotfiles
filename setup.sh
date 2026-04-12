@@ -66,9 +66,62 @@ deploy_dotfiles(){
   chmod +x ~/.local/bin/xd
   cd "${SCRIPT_DIR}" && ~/.local/bin/xd deploy --quiet --force
 
+  # 部署字体配置后刷新缓存
+  install-fonts
+
   # CI 环境自适应：GitHub Actions runner 位于国外，rsproxy.cn 反而慢
   # 检测 CI 环境，覆盖 cargo 配置直连 crates.io
   apply_cargo_mirror_override
+}
+
+# ========== 字体安装函数 ==========
+# 安装 wezterm 配置的字体及 Nerd Font 图标支持
+install-fonts() {
+  echo "=========================================="
+  echo "安装字体..."
+  echo "=========================================="
+
+  # 通过 apt 安装开源字体包
+  sudo_run apt-get update
+  sudo_run apt-get install -y --no-install-recommends \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
+    fonts-jetbrains-mono \
+    fonts-dejavu-core
+
+  # 安装 FiraCode Nerd Font（带图标支持，apt 无此包，从 GitHub 下载）
+  if ! fc-list | grep -qi "FiraCode.*Nerd"; then
+    echo "安装 FiraCode Nerd Font..."
+    local FIRACODE_VERSION="7.0.0"
+    local FIRACODE_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v${FIRACODE_VERSION}/FiraCode.zip"
+    local FIRACODE_DEST="/tmp/FiraCode-Nerd-Font.zip"
+
+    echo "下载 FiraCode Nerd Font..."
+    if wget --tries=3 --timeout=30 --connect-timeout=15 "$FIRACODE_URL" -O "$FIRACODE_DEST" 2>/dev/null; then
+      local FIRACODE_DIR="/usr/local/share/fonts/FiraCode-Nerd-Font"
+      sudo_run mkdir -p "$FIRACODE_DIR"
+
+      # 解压到系统字体目录
+      if command -v unzip >/dev/null 2>&1; then
+        sudo_run unzip -o "$FIRACODE_DEST" -d "$FIRACODE_DIR"
+      else
+        sudo_run apt-get install -y unzip
+        sudo_run unzip -o "$FIRACODE_DEST" -d "$FIRACODE_DIR"
+      fi
+
+      rm -f "$FIRACODE_DEST"
+      echo "FiraCode Nerd Font 安装完成"
+    else
+      echo "⚠️  FiraCode Nerd Font 下载失败，跳过"
+    fi
+  else
+    echo "FiraCode Nerd Font 已安装，跳过"
+  fi
+
+  # 刷新字体缓存
+  echo "刷新字体缓存..."
+  sudo_run fc-cache -f
+  echo "✅ 字体安装完成"
 }
 
 apply_cargo_mirror_override() {
