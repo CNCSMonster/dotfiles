@@ -102,8 +102,10 @@ ENV XDOTTER_VERSION=${XDOTTER_VERSION}
 # 执行一键配置脚本
 # 此步骤会安装所有依赖、语言环境与工具
 # cargo 编译受 CARGO_BUILD_JOBS 限制，避免内存耗尽
+# CI=true: 触发 setup.sh 中的 rsproxy 自适应（Docker 构建在 GitHub runner 上，位于国外）
 # --mount=secret: token 仅在本层可见，不会写入镜像层
 RUN --mount=type=secret,id=github_token,required=false \
+    export CI=true && \
     if [ -f /run/secrets/github_token ]; then \
       export GITHUB_TOKEN=$(cat /run/secrets/github_token); \
     fi && \
