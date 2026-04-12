@@ -95,29 +95,6 @@ ENV CARGO_INSTALL_STRICT=${CARGO_INSTALL_STRICT}
 ARG XDOTTER_VERSION=v0.3.4
 ENV XDOTTER_VERSION=${XDOTTER_VERSION}
 
-# -----------------------------------------------------------------------------
-# Override cargo config for Docker build (same as runner-verify workflow)
-# - Remove Chinese mirrors (Docker runner is in US, rsproxy.cn is slow)
-# - Remove --ld-path=wild (Docker clang doesn't support it)
-# -----------------------------------------------------------------------------
-COPY <<EOF /root/dotfiles/langs/rust/cargo/config.toml
-[net]
-git-fetch-with-cli = true
-
-[target.x86_64-unknown-linux-gnu]
-linker = "clang"
-
-[build]
-rustc-wrapper = "sccache"
-
-[env]
-RUST_BACKTRACE = "1"
-RUST_LIB_BACKTRACE = "1"
-
-[cache]
-auto-clean-frequency = "1 weeks"
-EOF
-
 #   或: docker buildx build --secret id=github_token,env=GITHUB_TOKEN ...
 # 不传则匿名访问，下载失败的 crate 会 fallback 到源码编译。
 # -----------------------------------------------------------------------------
