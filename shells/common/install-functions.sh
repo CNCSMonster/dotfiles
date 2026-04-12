@@ -1112,9 +1112,9 @@ function install-zellij() {
     # 更新版本时，请从 https://github.com/zellij-org/zellij/releases 获取最新版本和 SHA256
     local ZELLIJ_VERSION="0.44.1"
     # SHA256 校验和 - 用于验证下载文件的完整性和真实性
-    # 获取方式：gh release download vVERSION --repo zellij-org/zellij --pattern 'zellij-ARCH-unknown-linux-musl.sha256sum'
-    local ZELLIJ_SHA256_X86_64="8b65f939e396e1da7718fb62e2305438e2e2da1dee1d6ba92887499df720ea85"
-    local ZELLIJ_SHA256_AARCH64="d3e87f35a4426d837346a69882e36f4bf21f117612c28c1dede915e5c599d8f4"
+    # 获取方式：下载 .tar.gz 后运行 sha256sum
+    local ZELLIJ_SHA256_X86_64="669825021d529fca5d939888263c9d2a90762145191fa07581a15250e8af2b49"
+    local ZELLIJ_SHA256_AARCH64="6f028bb569d29be968c961249c5f80d5336ad4ad4b3cd79af8e32afab57b0948"
 
     # 用户级路径
     local ZELLIJ_BIN_DIR="$HOME/.cargo/bin"
