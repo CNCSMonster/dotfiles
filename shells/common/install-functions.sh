@@ -1109,8 +1109,12 @@ function install-zellij() {
     esac
 
     # 固定版本号
-    # 更新版本时，请从 https://github.com/zellij-org/zellij/releases 获取最新版本
+    # 更新版本时，请从 https://github.com/zellij-org/zellij/releases 获取最新版本和 SHA256
     local ZELLIJ_VERSION="0.44.1"
+    # SHA256 校验和 - 用于验证下载文件的完整性和真实性
+    # 获取方式：gh release download vVERSION --repo zellij-org/zellij --pattern 'zellij-ARCH-unknown-linux-musl.sha256sum'
+    local ZELLIJ_SHA256_X86_64="8b65f939e396e1da7718fb62e2305438e2e2da1dee1d6ba92887499df720ea85"
+    local ZELLIJ_SHA256_AARCH64="d3e87f35a4426d837346a69882e36f4bf21f117612c28c1dede915e5c599d8f4"
 
     # 用户级路径
     local ZELLIJ_BIN_DIR="$HOME/.cargo/bin"
@@ -1132,6 +1136,24 @@ function install-zellij() {
     local DEST="/tmp/zellij-${ZELLIJ_VERSION}.tar.gz"
 
     github_download "$ZELLIJ_URL" "$DEST"
+
+    # SHA256 校验 - 防止中间人攻击和文件篡改
+    echo "验证 SHA256 校验和..."
+    local EXPECTED_SHA256=""
+    case $ARCH in
+        x86_64) EXPECTED_SHA256="$ZELLIJ_SHA256_X86_64" ;;
+        aarch64) EXPECTED_SHA256="$ZELLIJ_SHA256_AARCH64" ;;
+    esac
+    local ACTUAL_SHA256=$(sha256sum "$DEST" | awk '{print $1}')
+    if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+        echo "错误：SHA256 校验失败!"
+        echo "  期望：$EXPECTED_SHA256"
+        echo "  实际：$ACTUAL_SHA256"
+        echo "可能原因：文件被篡改、网络传输错误、或版本已更新"
+        rm -f "$DEST"
+        return 1
+    fi
+    echo "SHA256 校验通过"
 
     # 解压并安装
     echo "解压并安装到 $ZELLIJ_BIN_DIR..."
