@@ -52,19 +52,45 @@ ensure_python3() {
 }
 
 download_xdotter() {
-  local version="${XDOTTER_VERSION:-v0.3.4}"
-  curl -sSL --retry 8 --retry-delay 2 -C - \
+  local version="${XDOTTER_VERSION:-v0.4.0}"
+  local arch
+  arch=$(uname -m)
+
+  local binary_name="xd-${arch}-unknown-linux-gnu"
+  local url="https://github.com/cncsmonster/xdotter/releases/download/${version}/${binary_name}"
+  local dest="/tmp/${binary_name}"
+
+  curl -sSL --retry 3 --retry-delay 2 \
     --connect-timeout 30 --max-time 120 \
-    "https://github.com/cncsmonster/xdotter/releases/download/${version}/xd.pyz" \
-    -o ~/.local/bin/xd
+    "$url" -o "$dest"
+
+  # SHA256 校验
+  local EXPECTED_SHA256=""
+  case "$arch" in
+    x86_64) EXPECTED_SHA256="4600c3d855a54fba50dde15adc0156fdc042cef8649eb28e0a6bf6a0d1489430" ;;
+    *) echo "⚠️  不支持的架构: $arch，跳过 SHA256 校验";;
+  esac
+
+  if [ -n "$EXPECTED_SHA256" ]; then
+    local ACTUAL_SHA256
+    ACTUAL_SHA256=$(sha256sum "$dest" | awk '{print $1}')
+    if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+      echo "❌ xdotter SHA256 校验失败!"
+      echo "  期望: $EXPECTED_SHA256"
+      echo "  实际: $ACTUAL_SHA256"
+      rm -f "$dest"
+      return 1
+    fi
+  fi
+
+  mv "$dest" ~/.cargo/bin/xd
+  chmod +x ~/.cargo/bin/xd
 }
 
 deploy_dotfiles(){
-  ensure_python3
-  mkdir -p ~/.local/bin
+  mkdir -p ~/.cargo/bin
   retry_fn 3 "下载 xdotter" download_xdotter
-  chmod +x ~/.local/bin/xd
-  cd "${SCRIPT_DIR}" && ~/.local/bin/xd deploy --quiet --force
+  cd "${SCRIPT_DIR}" && ~/.cargo/bin/xd deploy --quiet --force
 
   # 部署字体配置后刷新缓存
   install-fonts
