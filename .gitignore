@@ -19,3 +19,4 @@ git/ignore
 
 # Yazi plugins (managed by ya pkg install, not version control)
 yazi/plugins/
+.tmp/
