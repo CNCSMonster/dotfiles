@@ -51,6 +51,38 @@ sudo_run() {
 # 通用 Rust/Cargo 工具安装函数
 ########################################################
 
+# 从源码安装 Rust 项目（统一入口）
+# 自动按需处理 sccache/wild 依赖，避免其未安装时 cargo install 失败
+#
+# 参数：与 cargo install 完全一致，原样透传
+# 示例：
+#   cargo_install_from_source bat --locked
+#   cargo_install_from_source --git https://github.com/getzola/zola --tag v0.22.1
+#   cargo_install_from_source taplo-cli
+#
+# 按需处理逻辑：
+# - sccache 已装 → 沿用 config.toml 的 rustc-wrapper = "sccache"
+# - sccache 未装 → RUSTC_WRAPPER="" 覆盖，避免 cargo 报错
+# - wild 已装    → 沿用 config.toml 的 --ld-path=wild
+# - wild 未装    → RUSTFLAGS="-C linker=clang" 覆盖，清掉 --ld-path=wild
+function cargo_install_from_source() {
+    local -a env_prefix=()
+
+    if ! command -v sccache &>/dev/null; then
+        env_prefix+=("RUSTC_WRAPPER=")
+    fi
+
+    if ! command -v wild &>/dev/null; then
+        env_prefix+=("RUSTFLAGS=-C linker=clang")
+    fi
+
+    if [ ${#env_prefix[@]} -eq 0 ]; then
+        cargo install "$@"
+    else
+        env "${env_prefix[@]}" cargo install "$@"
+    fi
+}
+
 # 统一的 cargo 工具安装函数（推荐模式）
 # 使用 --disable-strategies compile，下载失败后统一 cargo install
 #
@@ -105,16 +137,14 @@ function cargo_install_common() {
             echo "[${FAILED_COUNT}/${TOTAL_FAILED}] 源码编译：${crate}"
             
             # 使用 --locked 确保可复现性
-            # 注意：
-            # 1. 临时禁用 RUSTC_WRAPPER，因为 sccache 可能还没安装
-            # 2. 临时移除 --ld-path=wild，因为 wild 还没安装（在 install-common-rust-tools 之后）
-            if RUSTC_WRAPPER="" RUSTFLAGS="-C linker=clang" cargo install "${crate}" --locked; then
+            # 按需清除 RUSTC_WRAPPER/RUSTFLAGS（仅在 sccache/wild 未安装时）
+            if cargo_install_from_source "${crate}" --locked; then
                 echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ✅ 编译成功：${crate}"
                 COMPILED=$((COMPILED + 1))
             else
                 # --locked 失败则尝试不带 --locked（兼容性回退）
                 echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ⚠️ --locked 失败，尝试不带 --locked..."
-                if RUSTC_WRAPPER="" RUSTFLAGS="-C linker=clang" cargo install "${crate}"; then
+                if cargo_install_from_source "${crate}"; then
                     echo "[${FAILED_COUNT}/${TOTAL_FAILED}] ✅ 编译成功：${crate}"
                     COMPILED=$((COMPILED + 1))
                 else
@@ -151,6 +181,7 @@ function install-common-tools() {
         htop iotop fzf ripgrep net-tools snapd vim tree git delta python3 python3-pip \
         python3-venv python3-dev python3-setuptools python3-wheel zsh sudo \
         libssl-dev libgit2-dev \
+        graphviz \
         bubblewrap  # bwrap - 用于安全运行 cargo audit 等工具
 }
 
@@ -256,7 +287,7 @@ ensure_cargo_binstall() {
     armv7l) TARGET="armv7-unknown-linux-musleabihf" ;;
     *)
       echo "Unsupported architecture: $ARCH, falling back to cargo install"
-      cargo install cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
+      cargo_install_from_source cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
       return
       ;;
   esac
@@ -270,7 +301,7 @@ ensure_cargo_binstall() {
     rm -f "$TMP_TGZ"
   else
     echo "Failed to download precompiled binary, falling back to cargo install"
-    cargo install cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
+    cargo_install_from_source cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
   fi
 }
 
@@ -328,6 +359,8 @@ function install-common-rust-tools() {
     # 固定版本号避免上游更新带来的兼容性问题
     # 最后验证：2026-04-06，Docker Ubuntu 24.04 + Rust stable
     cargo_install_common \
+        sccache \
+        wild-linker \
         kondo@0.9.0 \
         jaq@3.0.0 \
         rust-script@0.36.0 \
@@ -341,7 +374,6 @@ function install-common-rust-tools() {
         zoxide@0.9.9 \
         fd-find@10.4.2 \
         macchina@6.4.0 \
-        fnm@1.39.0 \
         tree-sitter-cli@0.26.8 \
         tokei@14.0.0 \
         gen-mdbook-summary@0.0.10 \
@@ -350,12 +382,12 @@ function install-common-rust-tools() {
         mise@2026.4.5 \
         uv@0.11.3 \
         gitui@0.28.1 \
-        cargo-audit@0.22.1
+        cargo-audit@0.22.1 \
+        nu@0.112.2 \
+        tree-sitter-grep@0.1.0 \
+        tree-sitter-show-ast@0.0.2
 
     local MAIN_TOOLS_STATUS=$?
-
-    setup-yazi
-    local YAZI_STATUS=$?
 
     # 如果主工具安装有失败，返回错误（用于 setup.sh 判断）
     if [ $MAIN_TOOLS_STATUS -ne 0 ]; then
@@ -363,30 +395,21 @@ function install-common-rust-tools() {
         return 1
     fi
 
-    # yazi 失败不影响主工具，但记录日志
-    if [ $YAZI_STATUS -ne 0 ]; then
-        echo "⚠️  警告：yazi 安装失败，请手动安装"
-    fi
+    # 注意：yazi 及其 ya 子命令由 mise 统一安装（见 mise/config.toml），
+    # aqua backend 下载的官方 release 同时包含 yazi 和 ya 两个二进制。
 
     # 安装 zola（静态网站生成器，需要从 git 源安装）
     echo ""
     echo "=========================================="
     echo "安装 zola (静态网站生成器)..."
     echo "=========================================="
-    if cargo install --locked --git https://github.com/getzola/zola --tag v0.22.1 2>/dev/null; then
+    if cargo_install_from_source --locked --git https://github.com/getzola/zola --tag v0.22.1 2>/dev/null; then
         echo "✅ zola 安装成功：$(zola --version)"
     else
         echo "⚠️  警告：zola 安装失败，请手动安装"
     fi
 
     return 0
-}
-
-function setup-yazi(){
-    # yazi-fm 是 yazi 的主程序包名，yazi-cli 是 ya 命令行工具
-    # 使用统一的 cargo 安装函数
-    cargo_install_common yazi-fm yazi-cli
-    return $?
 }
 
 function install-yazi-plugins(){
@@ -861,7 +884,7 @@ function install-taplo() {
     fi
 
     # 回退到 cargo install
-    cargo install taplo-cli 2>/dev/null || {
+    cargo_install_from_source taplo-cli 2>/dev/null || {
         echo "taplo 安装失败"
         return 1
     }
@@ -1191,14 +1214,13 @@ function install-sccache() {
     fi
 
     echo "安装 sccache..."
-    # 注意：cargo config 中 rustc-wrapper = "sccache"，
-    # 安装 sccache 本身时需要临时禁用 wrapper，否则 cargo 找不到 sccache 会失败
-    RUSTC_WRAPPER="" cargo binstall sccache -y 2>/dev/null && {
+    # binstall 下载预编译二进制，不涉及编译；cargo install 按需清除 flags
+    cargo binstall sccache -y 2>/dev/null && {
         echo "sccache 安装成功（binstall）"
         return 0
     } || {
         echo "sccache binstall 失败，尝试 cargo install..."
-        RUSTC_WRAPPER="" cargo install sccache --locked 2>/dev/null && {
+        cargo_install_from_source sccache --locked 2>/dev/null && {
             echo "sccache 安装成功（cargo install）"
             return 0
         } || {
@@ -1219,12 +1241,13 @@ function install-wild() {
     fi
 
     echo "安装 wild (快速链接器)..."
+    # binstall 下载预编译二进制，不涉及编译；cargo install 按需清除 flags
     cargo binstall wild-linker -y 2>/dev/null && {
         echo "wild 安装成功（binstall）"
         return 0
     } || {
         echo "wild binstall 失败，尝试 cargo install..."
-        cargo install --git https://github.com/davidlattimore/wild.git --bin wild wild-linker 2>/dev/null && {
+        cargo_install_from_source --git https://github.com/davidlattimore/wild.git --bin wild wild-linker 2>/dev/null && {
             echo "wild 安装成功（cargo install）"
             return 0
         } || {
