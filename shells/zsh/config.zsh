@@ -178,18 +178,18 @@ if [[ -z $_qc_last_update ]] {
     _source-existent ~cache/p10k-instant-prompt-${(%):-%n}.zsh
 }
 
-zcomet fpath zsh-users/zsh-completions src
-zcomet fpath nix-community/nix-zsh-completions
+zcomet fpath zsh-users/zsh-completions@0.36.0 src
+zcomet fpath nix-community/nix-zsh-completions@0.5.1
 
-zcomet load tj/git-extras etc/git-extras-completion.zsh
-zcomet load QuarticCat/zsh-smartcache
-zcomet load chisui/zsh-nix-shell
-zcomet load romkatv/zsh-no-ps2
+zcomet load tj/git-extras@7.4.0 etc/git-extras-completion.zsh
+zcomet load QuarticCat/zsh-smartcache@54aba13
+zcomet load chisui/zsh-nix-shell@v0.8.0
+zcomet load romkatv/zsh-no-ps2@v1.0.0
 
 AUTOPAIR_SPC_WIDGET=magic-space
 AUTOPAIR_BKSPC_WIDGET=backward-delete-char
 AUTOPAIR_DELWORD_WIDGET=backward-delete-word
-zcomet load hlissner/zsh-autopair
+zcomet load hlissner/zsh-autopair@v1.0
 
 #==================#
 # Plugins (Part 2) #
@@ -197,7 +197,7 @@ zcomet load hlissner/zsh-autopair
 
 zcomet compinit
 
-zcomet load Aloxaf/fzf-tab  # TODO: run `build-fzf-tab-module` after update
+zcomet load Aloxaf/fzf-tab@v1.3.0  # NOTE: after updating this plugin, run `build-fzf-tab-module` in its directory to compile the optional C module for better performance
 zstyle ':fzf-tab:*' fzf-bindings 'tab:accept'
 zstyle ':fzf-tab:*' switch-group '<' '>'
 zstyle ':fzf-tab:*' prefix       ''
@@ -211,15 +211,15 @@ for cmd in "${(@kv)cmds}"; do
     zstyle ":fzf-tab:complete:${cmd}:*" fzf-preview 'exa -a1 --color=auto -s=type $realpath'
 done
 
-zcomet load zsh-users/zsh-autosuggestions
+zcomet load zsh-users/zsh-autosuggestions@v0.7.1
 ZSH_AUTOSUGGEST_MANUAL_REBIND=true
 ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS+=(qc-{sub,shell}-r)
 
-zcomet load zdharma-continuum/fast-syntax-highlighting
-unset 'FAST_HIGHLIGHT[chroma-man]'  # chroma-man will stuck history browsing
-unset 'FAST_HIGHLIGHT[chroma-ssh]'  # 旧版 ssh 不支持参数后置，高亮有误
+zcomet load zdharma-continuum/fast-syntax-highlighting@v1.56
+unset 'FAST_HIGHLIGHT[chroma-man]'  # chroma-man will stick history browsing
+unset 'FAST_HIGHLIGHT[chroma-ssh]'  # old ssh highlighting has false positives with args
 
-zcomet load romkatv/powerlevel10k
+zcomet load romkatv/powerlevel10k@v1.20.0
 
 # ------------------------------
 # Post-init module configuration
