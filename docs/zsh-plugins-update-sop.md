@@ -108,6 +108,27 @@ zsh
 # - 有无报错信息
 ```
 
+#### 6.1 更新 zsh-completions 后的补全覆盖验证
+
+当 `zsh-users/zsh-completions` 或 `nix-community/nix-zsh-completions` 更新后，需要验证新版本是否覆盖了更多已安装工具：
+
+```bash
+# 列出 zsh-completions 提供的所有补全函数
+ls ~/.zcomet/repos/zsh-users/zsh-completions/src/_* | sed 's/.*\///' | sed 's/^_//' | sort > /tmp/zsh-completions.txt
+
+# 对比已安装工具清单
+# (详见 docs/config-consistency-check-sop.md 中的完整检查流程)
+comm -12 /tmp/zsh-completions.txt /tmp/installed-tools.txt
+```
+
+**如果新版本的 zsh-completions 增加了对已安装工具的补全支持**，确认其在 zsh 中正常生效：
+
+```zsh
+# 在 zsh 中测试补全
+compaudit  # 检查补全目录权限是否安全
+# 对新增补全的工具，按 Tab 验证子命令/参数是否出现
+```
+
 ### 7. 更新 CHANGELOG
 
 在 `CHANGELOG.md` 的 `[Unreleased]` 部分记录：
