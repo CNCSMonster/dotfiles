@@ -34,7 +34,7 @@ jobs:
       CARGO_BUILD_JOBS: 2
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup environment (runner 预装工具不足时补充)
         run: |
