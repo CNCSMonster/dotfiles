@@ -2,45 +2,55 @@
 
 ## 设计理念
 
-本项目使用 **Git 分支** 管理不同环境的 dotfile 配置。
+本项目使用 **单代码库 + 平台检测** 管理所有环境。通用逻辑统一写在 main，平台差异通过 `uname -s` 分支处理。
 
 ```
-main              → 主机器配置（物理机）
-wsl2-ubuntu-24    → WSL2 Ubuntu 24.04 配置
-...               → 其他环境
+main  ──────────────────────────→  通用配置（Linux + macOS）
+  └─ macos       ── 仅多一个 .github/workflows/macos-setup.yml CI workflow
 ```
+
+> **已删除的分支**: `wsl2-ubuntu-24`、`exp-main`、`exp-wsl-ubuntu-24`、`ci-runner-direct`
+> 原因：项目中无 WSL 专属代码，分支落后导致维护成本过高
 
 ## 使用方法
 
-### 切换环境
+### 当前分支
 
 ```bash
-# 切换到目标环境分支
-git checkout wsl2-ubuntu-24
+# main 适用于所有 Linux 环境（包括 WSL）
+git checkout main
 
-# 部署该环境的配置
-./setup.sh
+# macOS 专属 CI 验证
+git checkout macos
 ```
 
 ### 创建新环境
 
 ```bash
-# 基于当前分支创建新环境
-git checkout -b new-machine-name
+# 基于 main 创建新环境
+git checkout -b new-environment-name
 
-# 修改 xdotter.toml 和环境特定的配置
-# 提交并推送
-git push -u origin new-machine-name
+# 仅当该平台有「配置层」差异（非安装层）时才需要
+# 示例：WSL 需要不同的 systemd 集成、macOS 需要完全不同的 Neovim 插件
 ```
 
-## 配置差异
+## 平台差异处理
 
-不同分支可以有不同的：
-- `xdotter.toml` - 链接不同的配置文件
-- `shells/` - 不同的 Shell 配置
-- `git/` - 不同的 Git 配置（如凭据、签名）
-- `mise/` - 不同的工具版本
-- 其他环境特定文件
+项目通过 `uname -s` 在代码中处理平台差异（安装层），而非通过分支（配置层）。示例：
+
+```bash
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    # macOS: Homebrew
+    brew install ...
+else
+    # Linux: apt
+    sudo apt-get install ...
+fi
+```
+
+不同分支可以有：
+- 独立的 CI workflow 文件（如 `macos-setup.yml`）
+- 真正平台专属的配置（如 WSL `.wslconfig`、macOS `~/.hushlogin`）
 
 ## 分支命名规范
 
@@ -49,19 +59,8 @@ git push -u origin new-machine-name
 ```
 
 示例：
-- `wsl2-ubuntu-24` - WSL2 Ubuntu 24.04
-- `desktop-arch` - 物理机 Arch Linux
-- `server-2204` - 服务器 Ubuntu 22.04
-
-## 同步配置
-
-```bash
-# 合并 main 的通用配置到环境分支
-git checkout wsl2-ubuntu-24
-git merge main
-
-# 解决冲突后，保留环境特定的配置
-```
+- `macos` — macOS CI 验证
+- ~~`wsl2-ubuntu-24`~~ — 已删除，无 WSL 专属代码
 
 ## 查看当前配置
 
