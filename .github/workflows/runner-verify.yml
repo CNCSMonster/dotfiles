@@ -20,8 +20,12 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify setup.sh on ubuntu-latest
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+    name: Verify setup.sh on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     permissions:
       contents: read
