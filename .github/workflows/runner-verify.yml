@@ -32,6 +32,8 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # 限制 cargo 编译并行度，runner 通常 2 核心
       CARGO_BUILD_JOBS: 2
+      # CI 环境使用官方 PyPI（清华源对海外 runner 返回 403）
+      UV_INDEX_URL: "https://pypi.org/simple"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
