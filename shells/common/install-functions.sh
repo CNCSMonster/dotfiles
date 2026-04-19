@@ -172,17 +172,39 @@ function cargo_install_common() {
 
 
 # 下载基础工具链
+# Linux: apt-based
+# macOS: Homebrew-based (detected automatically)
 function install-common-tools() {
-    sudo_run apt-get update --fix-missing
-    sudo_run apt-get upgrade -y
-    sudo_run apt-get install -y --no-install-recommends \
-        apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build vim \
-        lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip \
-        htop iotop fzf ripgrep net-tools snapd vim tree git delta python3 python3-pip \
-        python3-venv python3-dev python3-setuptools python3-wheel zsh sudo \
-        libssl-dev libgit2-dev \
-        graphviz \
-        bubblewrap  # bwrap - 用于安全运行 cargo audit 等工具
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        # macOS: use Homebrew
+        if ! command -v brew >/dev/null 2>&1; then
+            echo "Homebrew 未安装，正在安装..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            if [[ "$(uname -m)" == "arm64" ]]; then
+                echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+            fi
+        fi
+        echo "使用 Homebrew 安装基础开发工具..."
+        brew install \
+            coreutils findutils gcc cmake ninja make pkg-config \
+            wget curl htop fzf ripgrep fd tree git delta python3 zsh \
+            openssl libgit2 gnupg 2>/dev/null \
+            || echo "⚠️  部分工具可能已安装，继续执行..."
+        echo "✅ 基础工具安装完成（macOS/Homebrew）"
+    else
+        # Linux: apt-based
+        sudo_run apt-get update --fix-missing
+        sudo_run apt-get upgrade -y
+        sudo_run apt-get install -y --no-install-recommends \
+            apt-utils ca-certificates build-essential gcc g++ gdb make cmake ninja-build vim \
+            lsb-release software-properties-common gnupg gpg pkg-config wget curl unzip \
+            htop iotop fzf ripgrep net-tools snapd vim tree git delta python3 python3-pip \
+            python3-venv python3-dev python3-setuptools python3-wheel zsh sudo \
+            libssl-dev libgit2-dev \
+            graphviz \
+            bubblewrap  # bwrap - 用于安全运行 cargo audit 等工具
+    fi
 }
 
 # 确保 rustup 已安装，如果未安装，则下载并安装
@@ -280,17 +302,33 @@ ensure_cargo_binstall() {
   # 优先使用官方预编译二进制，避免从源码编译
   # 官方文档：https://github.com/cargo-bins/cargo-binstall
   local ARCH=$(uname -m)
+  local OS=$(uname -s)
   local TARGET=""
-  case $ARCH in
-    x86_64) TARGET="x86_64-unknown-linux-musl" ;;
-    aarch64) TARGET="aarch64-unknown-linux-musl" ;;
-    armv7l) TARGET="armv7-unknown-linux-musleabihf" ;;
-    *)
-      echo "Unsupported architecture: $ARCH, falling back to cargo install"
-      cargo_install_from_source cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
-      return
-      ;;
-  esac
+
+  # macOS 支持
+  if [[ "$OS" == "Darwin" ]]; then
+    case $ARCH in
+      x86_64) TARGET="x86_64-apple-darwin" ;;
+      arm64) TARGET="aarch64-apple-darwin" ;;
+      *)
+        echo "Unsupported macOS architecture: $ARCH, falling back to cargo install"
+        cargo_install_from_source cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
+        return
+        ;;
+    esac
+  else
+    # Linux
+    case $ARCH in
+      x86_64) TARGET="x86_64-unknown-linux-musl" ;;
+      aarch64) TARGET="aarch64-unknown-linux-musl" ;;
+      armv7l) TARGET="armv7-unknown-linux-musleabihf" ;;
+      *)
+        echo "Unsupported architecture: $ARCH, falling back to cargo install"
+        cargo_install_from_source cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
+        return
+        ;;
+    esac
+  fi
 
   local URL="https://github.com/cargo-bins/cargo-binstall/releases/download/${CARGO_BINSTALL_VERSION}/cargo-binstall-${TARGET}.tgz"
   mkdir -p "${HOME}/.cargo/bin"

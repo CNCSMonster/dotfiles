@@ -47,16 +47,32 @@ ensure_python3() {
   if command -v python3 >/dev/null 2>&1; then
     return 0
   fi
-  sudo_run apt-get update
-  sudo_run apt-get install -y python3
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    if command -v brew >/dev/null 2>&1; then
+      brew install python3
+    else
+      echo "Python3 未安装，请先安装 Python3（推荐 Homebrew: brew install python3）"
+      return 1
+    fi
+  else
+    sudo_run apt-get update
+    sudo_run apt-get install -y python3
+  fi
 }
 
 download_xdotter() {
   local version="${XDOTTER_VERSION:-v0.4.0}"
   local arch
   arch=$(uname -m)
+  local os
+  os=$(uname -s)
 
-  local binary_name="xd-${arch}-unknown-linux-gnu"
+  local binary_name
+  if [[ "$os" == "Darwin" ]]; then
+    binary_name="xd-${arch}-apple-darwin"
+  else
+    binary_name="xd-${arch}-unknown-linux-gnu"
+  fi
   local url="https://github.com/cncsmonster/xdotter/releases/download/${version}/${binary_name}"
   local dest="/tmp/${binary_name}"
 
@@ -64,12 +80,14 @@ download_xdotter() {
     --connect-timeout 30 --max-time 120 \
     "$url" -o "$dest"
 
-  # SHA256 校验
+  # SHA256 校验（仅 Linux x86_64，macOS 版本暂无）
   local EXPECTED_SHA256=""
-  case "$arch" in
-    x86_64) EXPECTED_SHA256="4600c3d855a54fba50dde15adc0156fdc042cef8649eb28e0a6bf6a0d1489430" ;;
-    *) echo "⚠️  不支持的架构: $arch，跳过 SHA256 校验";;
-  esac
+  if [[ "$os" != "Darwin" ]]; then
+    case "$arch" in
+      x86_64) EXPECTED_SHA256="4600c3d855a54fba50dde15adc0156fdc042cef8649eb28e0a6bf6a0d1489430" ;;
+      *) echo "⚠️  不支持的架构: $arch，跳过 SHA256 校验";;
+    esac
+  fi
 
   if [ -n "$EXPECTED_SHA256" ]; then
     local ACTUAL_SHA256
