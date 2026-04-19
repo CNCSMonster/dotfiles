@@ -1,10 +1,8 @@
 name: Dockerfile Build Check
 
+# push/PR 时不自动触发，避免每次推送跑 35 分钟
+# 通过 GitHub Actions 页面手动触发，用于完整构建验证
 on:
-  push:
-    branches:
-      - '**'
-  pull_request:
   workflow_dispatch:
 
 concurrency:
