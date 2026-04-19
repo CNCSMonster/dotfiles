@@ -42,23 +42,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup environment (runner 预装工具不足时补充)
-        run: |
-          # ubuntu-latest 已预装 git, curl, wget, ca-certificates
-          # 补充 setup.sh 可能需要的额外工具
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            software-properties-common \
-            gnupg \
-            jq \
-            file \
-            unzip \
-            xz-utils \
-            zstd \
-            libssl-dev \
-            pkg-config \
-            2>/dev/null || true
-
       - name: Run setup.sh
         run: |
           chmod +x ./setup.sh

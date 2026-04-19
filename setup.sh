@@ -125,50 +125,67 @@ install-fonts() {
   echo "安装字体..."
   echo "=========================================="
 
-  # 通过 apt 安装 fontconfig（提供 fc-list/fc-cache）和字体包
-  sudo_run apt-get update
-  sudo_run apt-get install -y --no-install-recommends \
-    fontconfig \
-    fonts-noto-cjk \
-    fonts-noto-color-emoji \
-    fonts-jetbrains-mono \
-    fonts-dejavu-core
-
-  # 安装 FiraCode Nerd Font（带图标支持，apt 无此包，从 GitHub 下载）
-  if [ -x "$(command -v fc-list)" ] && fc-list | grep -qi "FiraCode.*Nerd"; then
-    echo "FiraCode Nerd Font 已安装，跳过"
-  else
-    echo "安装 FiraCode Nerd Font..."
-    local FIRACODE_VERSION="7.0.0"
-    local FIRACODE_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v${FIRACODE_VERSION}/FiraCode.zip"
-    local FIRACODE_DEST="/tmp/FiraCode-Nerd-Font.zip"
-
-    echo "下载 FiraCode Nerd Font..."
-    if wget --tries=3 --timeout=30 --connect-timeout=15 "$FIRACODE_URL" -O "$FIRACODE_DEST" 2>/dev/null; then
-      local FIRACODE_DIR="/usr/local/share/fonts/FiraCode-Nerd-Font"
-      sudo_run mkdir -p "$FIRACODE_DIR"
-
-      # 解压到系统字体目录
-      if command -v unzip >/dev/null 2>&1; then
-        sudo_run unzip -o "$FIRACODE_DEST" -d "$FIRACODE_DIR"
-      else
-        sudo_run apt-get install -y unzip
-        sudo_run unzip -o "$FIRACODE_DEST" -d "$FIRACODE_DIR"
-      fi
-
-      rm -f "$FIRACODE_DEST"
-      echo "FiraCode Nerd Font 安装完成"
-    else
-      echo "⚠️  FiraCode Nerd Font 下载失败，跳过"
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    # macOS: 使用 Homebrew 安装字体
+    if ! command -v brew >/dev/null 2>&1; then
+      echo "⚠️  Homebrew 未安装，跳过字体安装"
+      return 0
     fi
-  fi
+    echo "使用 Homebrew 安装字体..."
+    brew install --cask \
+      font-jetbrains-mono \
+      font-fira-code \
+      font-fira-code-nerd-font \
+      font-noto-sans-cjk \
+      font-noto-color-emoji \
+      2>/dev/null || echo "⚠️  部分字体可能已安装，继续执行..."
+    echo "✅ 字体安装完成（macOS/Homebrew）"
+  else
+    # Linux: 通过 apt 安装 fontconfig（提供 fc-list/fc-cache）和字体包
+    sudo_run apt-get update
+    sudo_run apt-get install -y --no-install-recommends \
+      fontconfig \
+      fonts-noto-cjk \
+      fonts-noto-color-emoji \
+      fonts-jetbrains-mono \
+      fonts-dejavu-core
 
-  # 刷新字体缓存
-  if [ -x "$(command -v fc-cache)" ]; then
-    echo "刷新字体缓存..."
-    sudo_run fc-cache -f
+    # 安装 FiraCode Nerd Font（带图标支持，apt 无此包，从 GitHub 下载）
+    if [ -x "$(command -v fc-list)" ] && fc-list | grep -qi "FiraCode.*Nerd"; then
+      echo "FiraCode Nerd Font 已安装，跳过"
+    else
+      echo "安装 FiraCode Nerd Font..."
+      local FIRACODE_VERSION="7.0.0"
+      local FIRACODE_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v${FIRACODE_VERSION}/FiraCode.zip"
+      local FIRACODE_DEST="/tmp/FiraCode-Nerd-Font.zip"
+
+      echo "下载 FiraCode Nerd Font..."
+      if wget --tries=3 --timeout=30 --connect-timeout=15 "$FIRACODE_URL" -O "$FIRACODE_DEST" 2>/dev/null; then
+        local FIRACODE_DIR="/usr/local/share/fonts/FiraCode-Nerd-Font"
+        sudo_run mkdir -p "$FIRACODE_DIR"
+
+        # 解压到系统字体目录
+        if command -v unzip >/dev/null 2>&1; then
+          sudo_run unzip -o "$FIRACODE_DEST" -d "$FIRACODE_DIR"
+        else
+          sudo_run apt-get install -y unzip
+          sudo_run unzip -o "$FIRACODE_DEST" -d "$FIRACODE_DIR"
+        fi
+
+        rm -f "$FIRACODE_DEST"
+        echo "FiraCode Nerd Font 安装完成"
+      else
+        echo "⚠️  FiraCode Nerd Font 下载失败，跳过"
+      fi
+    fi
+
+    # 刷新字体缓存
+    if [ -x "$(command -v fc-cache)" ]; then
+      echo "刷新字体缓存..."
+      sudo_run fc-cache -f
+    fi
+    echo "✅ 字体安装完成"
   fi
-  echo "✅ 字体安装完成"
 }
 
 apply_cargo_mirror_override() {
@@ -182,7 +199,12 @@ apply_cargo_mirror_override() {
   # 生成覆盖配置到 ~/.cargo/config.toml（替换 xdotter 创建的 symlink）
   local cargo_config="$HOME/.cargo/config.toml"
   local original_target
-  original_target=$(readlink -f "$cargo_config" 2>/dev/null || echo "")
+  # macOS readlink 不支持 -f，用 realpath 或手动处理
+  if command -v realpath >/dev/null 2>&1; then
+    original_target=$(realpath "$cargo_config" 2>/dev/null || echo "")
+  else
+    original_target=$(readlink -f "$cargo_config" 2>/dev/null || echo "")
+  fi
 
   if [ -n "$original_target" ]; then
     # 读取原配置内容，修改 source 部分
@@ -205,8 +227,10 @@ load_install_functions() {
 
 # ========== 第一部分：部署配置 ==========
 do_deploy() {
-  export DEBIAN_FRONTEND=noninteractive
-  export TZ=Asia/Shanghai
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Asia/Shanghai
+  fi
   echo "=========================================="
   echo "部署 dotfiles 配置..."
   echo "=========================================="
@@ -216,8 +240,10 @@ do_deploy() {
 
 # ========== 第二部分：安装工具 ==========
 do_install() {
-  export DEBIAN_FRONTEND=noninteractive
-  export TZ=Asia/Shanghai
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Asia/Shanghai
+  fi
 
   load_install_functions
 
