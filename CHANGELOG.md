@@ -15,10 +15,13 @@ All notable changes to this project will be documented in this file.
   - Rationale: xdotter (core tool) is built with Rust; many tools depend on cargo/binstall
 
 ### Fixed
-- **Helix Installation on macOS**: Fixed `install-helix()` not supporting `arm64` architecture
-  - macOS now uses Homebrew (`brew install helix`) for simpler, more reliable installation
-  - Fixes CI failure: "不支持的架构：arm64" on `macos-latest` runners
-  - Linux continues using GitHub Release binaries (unchanged)
+- **macOS arm64 Support**: Add Homebrew installation for multiple tools on macOS
+  - `install-helix`: Use Homebrew on macOS (was: GitHub Release download)
+  - `install-marksman`: Use Homebrew on macOS (fixes CI: "不支持的架构：arm64")
+  - `install-yq`: Use Homebrew on macOS
+  - `install-zls`: Use Homebrew on macOS
+  - `install-lua-lsp`: Use Homebrew on macOS
+  - `install-zellij`: Use Homebrew on macOS
   - `setup.sh`: `download_xdotter()` detects macOS and uses `apple-darwin` binary
   - `setup.sh`: `ensure_python3()` uses Homebrew on macOS, apt on Linux
   - `install-functions.sh`: `install-common-tools()` uses Homebrew for macOS, apt for Linux

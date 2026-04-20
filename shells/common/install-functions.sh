@@ -519,6 +519,28 @@ function setup-vscode(){
 # 安装位置：
 #   - 二进制：~/.local/bin/yq
 function install-yq() {
+    # macOS 使用 Homebrew 安装
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            if command -v yq >/dev/null 2>&1; then
+                echo "yq 已安装，跳过"
+                return 0
+            fi
+            echo "使用 Homebrew 安装 yq..."
+            brew install yq
+            if command -v yq >/dev/null 2>&1; then
+                echo "yq 安装成功：$(yq --version)"
+                return 0
+            else
+                echo "yq 安装失败"
+                return 1
+            fi
+        else
+            echo "Homebrew 未安装，无法安装 yq"
+            return 1
+        fi
+    fi
+
     local ARCH=$(uname -m)
     local YQ_ARCH=""
     case $ARCH in
@@ -759,6 +781,28 @@ function install-helix-runtime() {
 # - 自动补全
 # 官方文档：https://github.com/artempyanykh/marksman
 function install-marksman() {
+    # macOS 使用 Homebrew 安装
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            if command -v marksman >/dev/null 2>&1; then
+                echo "marksman 已安装：$(marksman --version)，跳过"
+                return 0
+            fi
+            echo "使用 Homebrew 安装 marksman..."
+            brew install marksman
+            if command -v marksman >/dev/null 2>&1; then
+                echo "marksman 安装成功：$(marksman --version)"
+                return 0
+            else
+                echo "marksman 安装失败"
+                return 1
+            fi
+        else
+            echo "Homebrew 未安装，无法安装 marksman"
+            return 1
+        fi
+    fi
+
     local MARKSMAN_VERSION="2026-02-08"
     local ARCH=$(uname -m)
     local MARKSMAN_ARCH=""
@@ -853,6 +897,28 @@ function install-pyright() {
 # 实现语言：Zig
 # 安装方式：下载预编译二进制
 function install-zls() {
+    # macOS 使用 Homebrew 安装
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            if command -v zls >/dev/null 2>&1; then
+                echo "zls 已安装，跳过"
+                return 0
+            fi
+            echo "使用 Homebrew 安装 zls..."
+            brew install zls
+            if command -v zls >/dev/null 2>&1; then
+                echo "zls 安装成功：$(zls --version)"
+                return 0
+            else
+                echo "zls 安装失败"
+                return 1
+            fi
+        else
+            echo "Homebrew 未安装，无法安装 zls"
+            return 1
+        fi
+    fi
+
     local ZLS_VERSION="0.15.1"
     local ARCH=$(uname -m)
     local ZLS_ARCH=""
@@ -956,6 +1022,28 @@ function install-taplo() {
 
 # 安装 Lua 语言服务器
 function install-lua-lsp() {
+    # macOS 使用 Homebrew 安装
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            if command -v lua-language-server >/dev/null 2>&1; then
+                echo "lua-language-server 已安装，跳过"
+                return 0
+            fi
+            echo "使用 Homebrew 安装 lua-language-server..."
+            brew install lua-language-server
+            if command -v lua-language-server >/dev/null 2>&1; then
+                echo "lua-language-server 安装成功"
+                return 0
+            else
+                echo "lua-language-server 安装失败"
+                return 1
+            fi
+        else
+            echo "Homebrew 未安装，无法安装 lua-language-server"
+            return 1
+        fi
+    fi
+
     local LUA_LSP_VERSION="3.17.1"
     local ARCH=$(uname -m)
     local LUA_LSP_ARCH=""
@@ -1181,6 +1269,28 @@ function install-helix-lsp() {
 # Zellij - 终端复用器
 ########################################################
 function install-zellij() {
+    # macOS 使用 Homebrew 安装
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            if command -v zellij >/dev/null 2>&1; then
+                echo "zellij 已安装，跳过"
+                return 0
+            fi
+            echo "使用 Homebrew 安装 zellij..."
+            brew install zellij
+            if command -v zellij >/dev/null 2>&1; then
+                echo "zellij 安装成功：$(zellij --version)"
+                return 0
+            else
+                echo "zellij 安装失败"
+                return 1
+            fi
+        else
+            echo "Homebrew 未安装，无法安装 zellij"
+            return 1
+        fi
+    fi
+
     local ARCH=$(uname -m)
     local ZELLIJ_ARCH=""
     case $ARCH in
