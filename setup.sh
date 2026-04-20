@@ -97,7 +97,7 @@ download_xdotter() {
   local EXPECTED_SHA256=""
   if [[ "$os" != "Darwin" ]]; then
     case "$arch" in
-      x86_64) EXPECTED_SHA256="4600c3d855a54fba50dde15adc0156fdc042cef8649eb28e0a6bf6a0d1489430" ;;
+      x86_64) EXPECTED_SHA256="6334cdf31d7bf9a0ef35bb358ae425a0de64ca308bcce1cd5ac7af88b4dfb3fc" ;;
       *) echo "⚠️  架构 $arch 无 SHA256 记录，跳过校验";;
     esac
   fi
