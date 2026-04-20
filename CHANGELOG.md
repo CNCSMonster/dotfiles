@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **macOS Support**: Add cross-platform installation support
+
+### Fixed
+- **Helix Installation on macOS**: Fixed `install-helix()` not supporting `arm64` architecture
+  - macOS now uses Homebrew (`brew install helix`) for simpler, more reliable installation
+  - Fixes CI failure: "不支持的架构：arm64" on `macos-latest` runners
+  - Linux continues using GitHub Release binaries (unchanged)
   - `setup.sh`: `download_xdotter()` detects macOS and uses `apple-darwin` binary
   - `setup.sh`: `ensure_python3()` uses Homebrew on macOS, apt on Linux
   - `install-functions.sh`: `install-common-tools()` uses Homebrew for macOS, apt for Linux

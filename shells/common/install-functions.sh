@@ -584,6 +584,28 @@ function install-yq() {
 #   - SHA256 校验下载完整性，防止中间人攻击和文件篡改
 #   - 从官方 GitHub Releases 下载
 function install-helix() {
+    # macOS 使用 Homebrew 安装
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        if command -v brew >/dev/null 2>&1; then
+            if command -v hx >/dev/null 2>&1; then
+                echo "Helix 已安装：$(hx --version)，跳过"
+                return 0
+            fi
+            echo "使用 Homebrew 安装 Helix..."
+            brew install helix
+            if command -v hx >/dev/null 2>&1; then
+                echo "Helix 安装成功：$(hx --version)"
+                return 0
+            else
+                echo "Helix 安装失败"
+                return 1
+            fi
+        else
+            echo "Homebrew 未安装，无法安装 Helix（推荐: brew install helix）"
+            return 1
+        fi
+    fi
+
     local ARCH=$(uname -m)
     local HELIX_ARCH=""
     case $ARCH in
