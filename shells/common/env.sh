@@ -48,13 +48,28 @@ export ORT_LIB_LOCATION=/usr/local/lib/libonnxruntime.a
 # moonbit 路径
 export PATH="$HOME/.moon/bin:$PATH"
 
-# llvm镜像源
-export LLVM_PATH='/usr/lib/llvm'
-export LLVM_BIN_PATH="$LLVM_PATH/bin"
-export PATH="$LLVM_BIN_PATH:$PATH"
+# llvm 路径
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    # macOS: 使用 Homebrew 安装的 LLVM（单一版本）
+    if [ -d "/opt/homebrew/opt/llvm" ]; then
+        export LLVM_PATH="/opt/homebrew/opt/llvm"
+    elif [ -d "/usr/local/opt/llvm" ]; then
+        export LLVM_PATH="/usr/local/opt/llvm"
+    fi
+else
+    # Linux: llvmup 管理，通过 /usr/lib/llvm symlink 切换版本
+    export LLVM_PATH='/usr/lib/llvm'
+fi
 
-# snap 路径
-export PATH="/snap/bin:$PATH"
+if [ -n "$LLVM_PATH" ] && [ -d "$LLVM_PATH" ]; then
+    export LLVM_BIN_PATH="$LLVM_PATH/bin"
+    export PATH="$LLVM_BIN_PATH:$PATH"
+fi
+
+# snap 路径（仅 Linux）
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    export PATH="/snap/bin:$PATH"
+fi
 
 # 用户可执行程序目录
 # 将本地目录放在 PATH 前面，优先于系统/WSL Windows PATH
