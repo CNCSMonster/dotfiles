@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
     name: Verify setup.sh on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: ${{ matrix.os == 'macos-latest' && 90 || 60 }}
     permissions:
       contents: read
     env:
