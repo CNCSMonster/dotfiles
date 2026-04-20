@@ -81,6 +81,11 @@ download_xdotter() {
     --connect-timeout 30 --max-time 120 \
     "$url" -o "$dest" 2>/dev/null; then
     echo "⚠️  下载失败，回退到 cargo install"
+    if ! command -v cargo >/dev/null 2>&1; then
+      echo "❌ cargo 未安装，无法从源码编译 xdotter"
+      echo "   推荐：安装 Rust 后重试，或手动下载预编译二进制"
+      return 1
+    fi
     cargo install --git https://github.com/cncsmonster/xdotter.git --tag "${version}" --locked
     return $?
   fi
@@ -89,6 +94,11 @@ download_xdotter() {
   if ! file "$dest" | grep -qE 'ELF|Mach-O|executable'; then
     echo "⚠️  下载的不是有效二进制文件（可能是 404 页面），回退到 cargo install"
     rm -f "$dest"
+    if ! command -v cargo >/dev/null 2>&1; then
+      echo "❌ cargo 未安装，无法从源码编译 xdotter"
+      echo "   推荐：安装 Rust 后重试，或手动下载预编译二进制"
+      return 1
+    fi
     cargo install --git https://github.com/cncsmonster/xdotter.git --tag "${version}" --locked
     return $?
   fi
@@ -121,6 +131,18 @@ download_xdotter() {
 
 deploy_dotfiles(){
   mkdir -p ~/.cargo/bin
+
+  # 确保 cargo 可用，以便 xdotter 下载失败时能 fallback 到 cargo install
+  if ! command -v cargo >/dev/null 2>&1; then
+    echo "🔧 xdotter 需要 Rust 作为后备安装方式，正在安装最小 Rust 工具链..."
+    if [[ "$(uname -s)" != "Darwin" ]]; then
+      export DEBIAN_FRONTEND=noninteractive
+      export TZ=Asia/Shanghai
+    fi
+    load_install_functions
+    setup-rustup
+  fi
+
   retry_fn 3 "下载 xdotter" download_xdotter
   cd "${SCRIPT_DIR}" && ~/.cargo/bin/xd deploy --quiet --force
 
@@ -266,12 +288,8 @@ do_install() {
   echo "=========================================="
 
   install-common-tools
-  retry_fn 3 "安装 Neovim" install-neovim
-  retry_fn 3 "安装 Helix" install-helix
-  retry_fn 3 "安装 Helix Runtime" install-helix-runtime
-  retry_fn 3 "安装 marksman" install-marksman
-  retry_fn 3 "安装 yq" install-yq
-  llvmup default 19
+
+  # Rust 工具链（第一公民）
   retry_fn 5 "安装 Rust" install-rust stable
 
   # Rust 工具安装
@@ -284,6 +302,14 @@ do_install() {
   fi
 
   retry_fn 3 "安装 cargo-fuzz" setup-cargo-fuzz
+
+  # 其他开发工具
+  retry_fn 3 "安装 Neovim" install-neovim
+  retry_fn 3 "安装 Helix" install-helix
+  retry_fn 3 "安装 Helix Runtime" install-helix-runtime
+  retry_fn 3 "安装 marksman" install-marksman
+  retry_fn 3 "安装 yq" install-yq
+  llvmup default 19
 
   # 使用 mise 安装 go, zig, node, pnpm 等工具
   mise trust && mise install

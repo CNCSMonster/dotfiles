@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **macOS Support**: Add cross-platform installation support
 
+### Changed
+- **Rust as First Citizen**: Move Rust toolchain installation to the top of `do_install()`
+  - Rust is now installed immediately after `install-common-tools`, before all other dev tools
+  - `do_deploy()`: Add minimum Rust installation fallback if cargo is not available
+  - `download_xdotter()`: Add cargo availability check before fallback to `cargo install`
+  - Rationale: xdotter (core tool) is built with Rust; many tools depend on cargo/binstall
+
 ### Fixed
 - **Helix Installation on macOS**: Fixed `install-helix()` not supporting `arm64` architecture
   - macOS now uses Homebrew (`brew install helix`) for simpler, more reliable installation
