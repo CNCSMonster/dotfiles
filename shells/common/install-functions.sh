@@ -298,7 +298,11 @@ ensure_cargo_binstall() {
   
   # 使用 vendor 的官方安装脚本
   # 优势：自动处理 OS/架构检测、文件名匹配、路径配置，避免硬编码错误
-  local VENDOR_SCRIPT="${SCRIPT_DIR}/../scripts/vendor/cargo-binstall-install.sh"
+  # 路径计算：通过当前 source 文件位置定位 vendor 脚本
+  # BASH_SOURCE[0] 在 source 时返回被 source 的文件路径
+  local _install_dir
+  _install_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local VENDOR_SCRIPT="${_install_dir}/../scripts/vendor/cargo-binstall-install.sh"
   
   if [ -f "$VENDOR_SCRIPT" ]; then
     echo "使用 vendor 脚本安装..."
@@ -310,7 +314,7 @@ ensure_cargo_binstall() {
       return 1
     fi
   else
-    echo "⚠️  vendor 脚本不存在，回退到源码编译..."
+    echo "⚠️  vendor 脚本不存在 ($VENDOR_SCRIPT)，回退到源码编译..."
     cargo_install_from_source cargo-binstall --version "1.17.9"
     return $?
   fi

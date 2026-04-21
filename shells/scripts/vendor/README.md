@@ -11,6 +11,11 @@
 ## 更新方式
 
 ```bash
-curl -sSL <官方脚本URL> -o scripts/vendor/<脚本名>.sh
-chmod +x scripts/vendor/<脚本名>.sh
+curl -sSL <官方脚本URL> -o shells/scripts/vendor/<脚本名>.sh
+chmod +x shells/scripts/vendor/<脚本名>.sh
 ```
+
+## 部署路径
+
+通过 xdotter 部署后，vendor 脚本位于：
+`~/.config/shells/scripts/vendor/`
