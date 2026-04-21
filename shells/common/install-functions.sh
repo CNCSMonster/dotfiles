@@ -294,53 +294,25 @@ ensure_cargo_binstall() {
     return 0
   fi
 
-  # 固定 cargo-binstall 版本，确保可复现性
-  # 最新版本查询：gh release view --repo cargo-bins/cargo-binstall --json tagName
-  # 注意：GitHub Release 使用 v1.17.9 格式，cargo install 使用 1.17.9 格式
-  local CARGO_BINSTALL_VERSION="v1.17.9"
-  local CARGO_BINSTALL_VERSION_CARGO="1.17.9"
-
-  # 优先使用官方预编译二进制，避免从源码编译
-  # 官方文档：https://github.com/cargo-bins/cargo-binstall
-  local ARCH=$(uname -m)
-  local OS=$(uname -s)
-  local TARGET=""
-
-  # macOS 支持
-  if [[ "$OS" == "Darwin" ]]; then
-    case $ARCH in
-      x86_64) TARGET="x86_64-apple-darwin" ;;
-      arm64) TARGET="aarch64-apple-darwin" ;;
-      *)
-        echo "Unsupported macOS architecture: $ARCH, falling back to cargo install"
-        cargo_install_from_source cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
-        return
-        ;;
-    esac
+  echo "正在安装 cargo-binstall..."
+  
+  # 使用 vendor 的官方安装脚本
+  # 优势：自动处理 OS/架构检测、文件名匹配、路径配置，避免硬编码错误
+  local VENDOR_SCRIPT="${SCRIPT_DIR}/../scripts/vendor/cargo-binstall-install.sh"
+  
+  if [ -f "$VENDOR_SCRIPT" ]; then
+    echo "使用 vendor 脚本安装..."
+    if bash "$VENDOR_SCRIPT"; then
+      echo "cargo-binstall 安装成功"
+      return 0
+    else
+      echo "vendor 脚本安装失败"
+      return 1
+    fi
   else
-    # Linux
-    case $ARCH in
-      x86_64) TARGET="x86_64-unknown-linux-musl" ;;
-      aarch64) TARGET="aarch64-unknown-linux-musl" ;;
-      armv7l) TARGET="armv7-unknown-linux-musleabihf" ;;
-      *)
-        echo "Unsupported architecture: $ARCH, falling back to cargo install"
-        cargo_install_from_source cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
-        return
-        ;;
-    esac
-  fi
-
-  local URL="https://github.com/cargo-bins/cargo-binstall/releases/download/${CARGO_BINSTALL_VERSION}/cargo-binstall-${TARGET}.tgz"
-  mkdir -p "${HOME}/.cargo/bin"
-  local TMP_TGZ="/tmp/cargo-binstall-${TARGET}.tgz"
-
-  if github_download "$URL" "$TMP_TGZ" && tar -xzf "$TMP_TGZ" -C "${HOME}/.cargo/bin" 2>/dev/null; then
-    echo "cargo-binstall ${CARGO_BINSTALL_VERSION} installed successfully via precompiled binary"
-    rm -f "$TMP_TGZ"
-  else
-    echo "Failed to download precompiled binary, falling back to cargo install"
-    cargo_install_from_source cargo-binstall --version "${CARGO_BINSTALL_VERSION_CARGO}"
+    echo "⚠️  vendor 脚本不存在，回退到源码编译..."
+    cargo_install_from_source cargo-binstall --version "1.17.9"
+    return $?
   fi
 }
 
