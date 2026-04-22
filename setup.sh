@@ -309,7 +309,13 @@ do_install() {
   retry_fn 3 "安装 Helix Runtime" install-helix-runtime
   retry_fn 3 "安装 marksman" install-marksman
   retry_fn 3 "安装 yq" install-yq
-  llvmup default 22
+
+  # LLVM 仅 Linux（llvmup 使用 apt-get，macOS 用 Homebrew 管理）
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    llvmup default 22
+  else
+    echo "macOS: 跳过 llvmup（LLVM 由 Homebrew 提供）"
+  fi
 
   # 使用 mise 安装 go, zig, node, pnpm 等工具
   mise trust && mise install
