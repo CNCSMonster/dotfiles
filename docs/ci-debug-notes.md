@@ -68,8 +68,45 @@ cargo binstall bat --dry-run
 4. [ ] 平台兼容性（OS/架构匹配，预编译是否存在）
 5. [ ] 具体工具安装日志
 
+## 附录：Homebrew vs Cargo 安装策略权衡
+
+在 macOS CI 中，面临**速度 vs 可复现性**的权衡。
+
+### Homebrew 版本控制机制
+
+| 特性 | 说明 | 限制 |
+|------|------|------|
+| **主版本 (Main Formula)** | 跟踪上游最新版本 | 上游更新后版本会变 |
+| **版本化 Formula (`@version`)** | 人工维护的旧版 (如 `node@18`) | 需社区持续维护，大部分小工具无此版本 |
+| **覆盖范围** | 热门基础设施 (LLVM, Python) | Rust 小工具 (bat, starship) 通常**无** `@version` |
+
+### 权衡分析
+
+| 维度 | Homebrew | Cargo Binstall/Install |
+|------|----------|------------------------|
+| **CI 速度** | 🚀 极快（下载预编译 bottle） | 🐢 慢（大部分需源码编译） |
+| **版本锁定** | ❌ 不可控（除非有 `@version`） | ✅ 精确锁定 (`xxx@0.26.1`) |
+| **环境一致性** | 低（随时间漂移） | 高（始终安装同一版本） |
+| **维护成本** | 低（自动处理依赖） | 高（需处理 Rust 版本、编译错误） |
+
+### 最终决策：优先保证可复现性
+
+Dotfiles 项目需要确保环境的一致性和可复现性（Reproducibility）。
+**如果为了 CI 速度而使用 Homebrew 安装不稳定的版本，可能导致配置在未来某天静默失效。**
+
+因此，我们**坚持使用 Cargo 安装**，即使 macOS 上编译较慢，也要确保版本锁定的正确性。
+
+### 优化手段
+
+为了在保持版本锁定的同时减少编译时间：
+1.  **修复 cargo-binstall**：尽可能利用预编译二进制（CI 中 vendor 脚本已修复）。
+2.  **提高并行度**：macOS runner 使用 `CARGO_BUILD_JOBS=4`。
+3.  **缓存 Rust 构建**：(待考虑) 使用 `actions/cache` 缓存 Cargo registry 和 build 目录。
+
 ## 相关修复
 
+- `3eb912f` fix: skip llvmup on macOS (uses apt-get, Linux only) (Network pending push)
+- `4d9a438` docs: add CI debug notes for macOS timeout troubleshooting
 - `f064729` fix: move vendor scripts to shells/scripts/vendor for proper xdotter deployment
 - `790e39c` ci: optimize macOS cargo build parallelism to 4
 - `409fccc` fix: use vendored cargo-binstall installer script
