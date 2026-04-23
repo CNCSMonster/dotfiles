@@ -34,6 +34,16 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Shanghai
 
 # -----------------------------------------------------------------------------
+# 中国镜像源开关
+# -----------------------------------------------------------------------------
+# 默认启用中国镜像源（国内构建），CI 环境传 0 使用官方源
+# 用法:
+#   国内构建: ./scripts/docker-build-test.sh  (默认 USE_CHINA_MIRROR=1)
+#   CI 构建:  docker buildx build --build-arg USE_CHINA_MIRROR=0 ...
+# -----------------------------------------------------------------------------
+ARG USE_CHINA_MIRROR=1
+
+# -----------------------------------------------------------------------------
 # Rust 编译并行度限制
 # -----------------------------------------------------------------------------
 # 由 docker-build-test.sh 根据可用内存动态计算传入：
@@ -51,16 +61,28 @@ COPY ./apt-retry.conf /etc/apt/apt.conf.d/99-retry-timeout.conf
 
 # Rust 镜像源由 setup.sh 内 deploy_dotfiles 统一软链接 ~/.cargo/config.toml，此处不预 COPY 避免路径冲突
 
-# 先用默认源安装 ca-certificates，再全量切国内源（否则 https 镜像站校验证书会失败）
-# 外层重试：单次 apt 失败（如网络抖动）时自动重试
-RUN for i in 1 2 3 4 5; do \
+# 安装 ca-certificates：
+# - 国内 (USE_CHINA_MIRROR=1): 先用 HTTP 清华源安装，再切回 HTTPS
+# - 海外 (USE_CHINA_MIRROR=0): 直接用默认源（已有系统 CA 证书）
+RUN if [ "${USE_CHINA_MIRROR}" = "1" ]; then \
+      echo 'deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ noble main restricted universe multiverse' > /etc/apt/sources.list && \
+      echo 'deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ noble-updates main restricted universe multiverse' >> /etc/apt/sources.list && \
+      echo 'deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ noble-security main restricted universe multiverse' >> /etc/apt/sources.list; \
+    fi && \
+    for i in 1 2 3 4 5; do \
       apt-get update && apt-get install -y --no-install-recommends ca-certificates && break; \
       [ "$i" -eq 5 ] && exit 1; echo "apt 失败，15s 后重试 $i/5"; sleep 15; \
-    done
-COPY ./tsinghua.list /etc/apt/sources.list
+    done && \
+    if [ "${USE_CHINA_MIRROR}" = "1" ]; then \
+      sed -i 's|http://mirrors.tuna.tsinghua.edu.cn|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list; \
+    fi
+
+# 清理默认源配置（避免冲突）
 RUN rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null; true
 
-# 安装基础工具（此后 apt 均走清华源，同样带重试）
+# 安装基础工具（带重试）
+# 国内: 走 HTTPS 清华源（已安装 ca-certificates）
+# 海外: 走默认源
 # 包含 gcc/build-essential，用于编译需要 C 编译器的 Rust 工具（如 tree-sitter-cli）
 RUN for i in 1 2 3 4 5; do \
       apt-get update && apt-get install -y --no-install-recommends wget git curl gcc build-essential && break; \

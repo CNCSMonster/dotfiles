@@ -2,7 +2,7 @@
 # =============================================================================
 # Docker 构建脚本 - 根据系统资源动态限制构建过程
 # =============================================================================
-# 用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>]
+# 用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--no-china-mirror]
 #
 # ## BuildKit 资源限制架构说明
 #
@@ -58,6 +58,7 @@
 #   --gh-token <token>   GitHub Token，加速 cargo-binstall（也可设 GITHUB_TOKEN 环境变量）
 #   --file <dockerfile>  指定 Dockerfile 路径（默认: Dockerfile）
 #   --tag <image-tag>    指定镜像标签（默认: dotfiles:test）
+#   --no-china-mirror    使用官方源（海外 CI 模式，默认使用中国镜像源）
 # =============================================================================
 
 set -eo pipefail
@@ -181,6 +182,9 @@ log_info "  编译并行度: ${BUILD_JOBS}"
 log_info "  预留内存: ${RESERVED_MEM}GB (系统开销)"
 log_info "  预估占用: ${ESTIMATED_MEM}GB (${BUILD_JOBS} × 1.5GB/rustc)"
 log_info ""
+log_info "【镜像源】APT 配置:"
+log_info "  中国镜像: $([ "$USE_CHINA_MIRROR" = "1" ] && echo "启用 (清华源)" || echo "禁用 (官方源)")"
+log_info ""
 
 # 安全检查
 if [ $AVAIL_MEM_GB -lt 4 ]; then
@@ -203,6 +207,8 @@ IMAGE_TAG="dotfiles:test"
 GH_TOKEN=""
 # CI 默认启用严格模式，任何 Rust 工具安装失败都会终止构建
 CARGO_INSTALL_STRICT="${CARGO_INSTALL_STRICT:-1}"
+# 默认使用中国镜像源（国内构建），--no-china-mirror 切换为官方源
+USE_CHINA_MIRROR=1
 
 # 本地缓存目录（与 builder 解耦，支持不同 builder 复用）
 CACHE_DIR=".buildx-cache"
@@ -249,9 +255,14 @@ while [[ $# -gt 0 ]]; do
             log_info "已设置 GitHub Token（加速 cargo-binstall 下载）"
             shift 2
             ;;
+        --no-china-mirror)
+            USE_CHINA_MIRROR=0
+            log_info "使用官方源（海外 CI 模式）"
+            shift
+            ;;
         *)
             log_error "未知参数: $1"
-                log_info "用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>]"
+                log_info "用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--no-china-mirror]"
             exit 1
             ;;
     esac
@@ -357,6 +368,7 @@ for BUILD_ATTEMPT in $(seq 1 "$RETRY_BUILD"); do
         --tag "${IMAGE_TAG}" \
         --file "${DOCKERFILE_PATH}" \
         --build-arg BUILD_JOBS=${BUILD_JOBS} \
+        --build-arg USE_CHINA_MIRROR=${USE_CHINA_MIRROR} \
         --load \
         "${CACHE_FROM_ARGS[@]}" \
         "${CACHE_TO_ARGS[@]}" \
