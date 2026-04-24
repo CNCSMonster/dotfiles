@@ -75,6 +75,23 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# 默认值
+NO_CACHE_ARGS=()
+RETRY_BUILD=1
+DOCKERFILE_PATH="Dockerfile"
+IMAGE_TAG="dotfiles:test"
+GH_TOKEN=""
+# CI 默认启用严格模式，任何 Rust 工具安装失败都会终止构建
+CARGO_INSTALL_STRICT="${CARGO_INSTALL_STRICT:-1}"
+# 默认使用中国镜像源（国内构建），--no-china-mirror 切换为官方源
+USE_CHINA_MIRROR=1
+# 基础镜像，默认使用官方源，--use-china-image 切换为中国镜像站
+BASE_IMAGE="ubuntu:24.04"
+
+# 本地缓存目录（与 builder 解耦，支持不同 builder 复用）
+CACHE_DIR=".buildx-cache"
+CACHE_DIR_NEW=".buildx-cache-new"
+
 # 检查 Docker 是否可用
 if ! command -v docker &> /dev/null; then
     log_error "Docker 未安装或不在 PATH 中"
@@ -200,20 +217,6 @@ if [ $AVAIL_MEM_GB -lt 6 ]; then
 fi
 
 # 解析参数
-NO_CACHE_ARGS=()
-RETRY_BUILD=1
-DOCKERFILE_PATH="Dockerfile"
-IMAGE_TAG="dotfiles:test"
-GH_TOKEN=""
-# CI 默认启用严格模式，任何 Rust 工具安装失败都会终止构建
-CARGO_INSTALL_STRICT="${CARGO_INSTALL_STRICT:-1}"
-# 默认使用中国镜像源（国内构建），--no-china-mirror 切换为官方源
-USE_CHINA_MIRROR=1
-
-# 本地缓存目录（与 builder 解耦，支持不同 builder 复用）
-CACHE_DIR=".buildx-cache"
-CACHE_DIR_NEW=".buildx-cache-new"
-
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --no-cache)
@@ -260,9 +263,14 @@ while [[ $# -gt 0 ]]; do
             log_info "使用官方源（海外 CI 模式）"
             shift
             ;;
+        --use-china-image)
+            BASE_IMAGE="docker.m.daocloud.io/library/ubuntu:24.04"
+            log_info "使用中国镜像站拉取基础镜像"
+            shift
+            ;;
         *)
             log_error "未知参数: $1"
-                log_info "用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--no-china-mirror]"
+                log_info "用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--no-china-mirror] [--use-china-image]"
             exit 1
             ;;
     esac
@@ -367,6 +375,7 @@ for BUILD_ATTEMPT in $(seq 1 "$RETRY_BUILD"); do
         --progress=plain \
         --tag "${IMAGE_TAG}" \
         --file "${DOCKERFILE_PATH}" \
+        --build-arg BASE_IMAGE=${BASE_IMAGE} \
         --build-arg BUILD_JOBS=${BUILD_JOBS} \
         --build-arg USE_CHINA_MIRROR=${USE_CHINA_MIRROR} \
         --load \

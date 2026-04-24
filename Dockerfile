@@ -24,10 +24,10 @@
 # 因此，CARGO_BUILD_JOBS 是防止 OOM 的关键，由 docker-build-test.sh 动态计算。
 # =============================================================================
 
-# 使用中国镜像站作为默认基础镜像来源，降低拉取超时概率
-# 如需切回官方源，可在构建时传入：
-#   --build-arg BASE_IMAGE=ubuntu:24.04
-ARG BASE_IMAGE=docker.m.daocloud.io/library/ubuntu:24.04
+# 使用基础镜像，默认官方源
+# 国内构建可传入中国镜像站：
+#   --build-arg BASE_IMAGE=docker.m.daocloud.io/library/ubuntu:24.04
+ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
