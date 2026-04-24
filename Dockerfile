@@ -83,9 +83,9 @@ RUN rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/de
 # 安装基础工具（带重试）
 # 国内: 走 HTTPS 清华源（已安装 ca-certificates）
 # 海外: 走默认源
-# 包含 gcc/build-essential，用于编译需要 C 编译器的 Rust 工具（如 tree-sitter-cli）
+# 包含 gcc/build-essential/clang，用于编译需要 C 编译器的 Rust 工具（如 tree-sitter-cli）
 RUN for i in 1 2 3 4 5; do \
-      apt-get update && apt-get install -y --no-install-recommends wget git curl gcc build-essential && break; \
+      apt-get update && apt-get install -y --no-install-recommends wget git curl gcc build-essential clang && break; \
       [ "$i" -eq 5 ] && exit 1; echo "apt 失败，15s 后重试 $i/5"; sleep 15; \
     done
 
