@@ -40,6 +40,8 @@ jobs:
       CARGO_BUILD_JOBS: ${{ matrix.os == 'macos-latest' && 4 || 2 }}
       # CI 环境使用官方 PyPI（清华源对海外 runner 返回 403）
       UV_INDEX_URL: "https://pypi.org/simple"
+      # CI runner 可直连 GitHub，禁用镜像站避免引入不稳定因素
+      GITHUB_MIRRORS: ""
     steps:
       - name: Checkout
         uses: actions/checkout@v6
