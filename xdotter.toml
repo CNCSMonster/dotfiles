@@ -3,8 +3,6 @@ langs = "langs"
 shells = "shells"
 nvims = "nvims"
 helix = "helix"
-zellij = "zellij"
-fontconfig = "fontconfig"
 
 
 [links]
