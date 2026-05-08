@@ -832,8 +832,11 @@ function install-typescript-lsp() {
         return 0
     fi
 
-    echo "安装 typescript-language-server..."
-    npm install -g typescript-language-server typescript --registry=https://registry.npmmirror.com 2>&1 || {
+    local npm_registry=""
+    if [ -z "${GITHUB_ACTIONS:-}" ] && [ -z "${CI:-}" ]; then
+        npm_registry="--registry=https://registry.npmmirror.com"
+    fi
+    npm install -g typescript-language-server typescript $npm_registry 2>&1 || {
         echo "typescript-language-server 安装失败"
         return 1
     }

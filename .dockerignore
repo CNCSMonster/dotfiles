@@ -1,0 +1,44 @@
+# Git
+.git/
+.gitattributes
+.gitignore
+.gitmodules
+
+# CI configuration
+.github/
+
+# Docker build artifacts
+.buildx-cache/
+.buildx-cache-new/
+build.log
+build-monitor.log
+
+# IDE/editor config
+.vscode/
+.aider*
+.qwen/
+.qoder/
+.claude/
+
+# Qwen Code configuration
+.qwen/
+
+# Local temp files
+.tmp/
+
+# Yazi plugins (downloaded at build time)
+yazi/plugins/
+
+# Local configuration overrides (not part of the deployable config)
+git/ignore
+
+# NPM lockfile (not used, pnpm is the package manager)
+package-lock.json
+
+# README files (not needed in build)
+readme.md
+README.md
+README_EN.md
+
+# License (not needed in build)
+LICENSE
