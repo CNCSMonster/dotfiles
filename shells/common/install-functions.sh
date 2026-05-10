@@ -966,6 +966,34 @@ function install-yaml-lsp() {
     return 0
 }
 
+# 安装 CMake 语言服务器 (neocmakelsp)
+# 实现语言：Rust
+# 安装方式：cargo binstall (预编译) 或 cargo install
+function install-cmake-lsp() {
+    # 检查是否已安装
+    if command -v neocmakelsp >/dev/null 2>&1; then
+        echo "neocmakelsp 已安装，跳过"
+        return 0
+    fi
+
+    echo "安装 neocmakelsp..."
+
+    if command -v cargo-binstall >/dev/null 2>&1; then
+        cargo binstall neocmakelsp -y 2>/dev/null && {
+            echo "neocmakelsp 安装成功 (binstall)"
+            return 0
+        }
+    fi
+
+    cargo_install_from_source neocmakelsp --locked 2>/dev/null || {
+        echo "neocmakelsp 安装失败"
+        return 1
+    }
+
+    echo "neocmakelsp 安装成功：$(neocmakelsp --version)"
+    return 0
+}
+
 # 安装 TOML 语言服务器 (taplo)
 # 实现语言：Rust
 # 安装方式：cargo binstall (预编译) 或 cargo install
@@ -1192,6 +1220,15 @@ function install-helix-lsp() {
         fi
     else
         echo "[跳过] node/pnpm 未安装，跳过 yaml-language-server"
+    fi
+
+    # neocmakelsp (CMake LSP) - Rust 工具，总是安装
+    if ! command -v neocmakelsp >/dev/null 2>&1; then
+        echo "[安装] neocmakelsp (Rust 工具)"
+        install-cmake-lsp && { ((++installed)); true; } || { ((failed++)); true; }
+    else
+        echo "[跳过] neocmakelsp 已安装"
+        ((skipped++))
     fi
 
     # taplo (TOML LSP) - Rust 工具，总是安装
