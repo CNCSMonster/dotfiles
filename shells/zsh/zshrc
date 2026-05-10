@@ -9,3 +9,14 @@ source "$HOME/.config/shells/zsh/init.zsh"
 
 # 安全 source - 文件不存在时不报错
 [[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
+
+
+# WSL: 命令找不到时自动补 .exe
+command_not_found_handler() {
+    if (( $+commands[${1}.exe] )); then
+        ${1}.exe "${@[2,-1]}"
+    else
+        echo "zsh: command not found: $1" >&2
+        return 127
+    fi
+}
