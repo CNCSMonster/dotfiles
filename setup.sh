@@ -61,72 +61,33 @@ ensure_python3() {
 }
 
 download_xdotter() {
-  local version="${XDOTTER_VERSION:-v0.4.3}"
-  local arch
-  arch=$(uname -m)
-  local os
-  os=$(uname -s)
+  echo "安装 xdotter..."
 
-  local binary_name
-  if [[ "$os" == "Darwin" ]]; then
-    binary_name="xd-${arch}-apple-darwin"
-  else
-    binary_name="xd-${arch}-unknown-linux-gnu"
+  # 1. cargo-binstall: 自动匹配平台，下载预编译二进制
+  if command -v cargo-binstall >/dev/null 2>&1; then
+    cargo binstall xdotter -y 2>/dev/null && return 0
+    echo "cargo-binstall 未能安装，尝试其他方式..."
   fi
-  local url="https://github.com/cncsmonster/xdotter/releases/download/${version}/${binary_name}"
-  local dest="/tmp/${binary_name}"
 
-  echo "尝试下载 xdotter 预编译二进制: ${binary_name}"
-  if ! curl -sSL --retry 3 --retry-delay 2 \
-    --connect-timeout 30 --max-time 120 \
-    "$url" -o "$dest" 2>/dev/null; then
-    echo "⚠️  下载失败，回退到 cargo install"
-    if ! command -v cargo >/dev/null 2>&1; then
-      echo "❌ cargo 未安装，无法从源码编译 xdotter"
-      echo "   推荐：安装 Rust 后重试，或手动下载预编译二进制"
-      return 1
+  # 2. musl 静态二进制: 无 glibc 依赖，通吃所有 Linux x86_64
+  if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
+    mkdir -p ~/.local/bin
+    local url="https://github.com/CNCSMonster/xdotter/releases/latest/download/xd-x86_64-unknown-linux-musl"
+    if curl -fsSL --retry 3 "$url" -o ~/.local/bin/xd 2>/dev/null && file ~/.local/bin/xd | grep -q ELF; then
+      chmod +x ~/.local/bin/xd
+      export PATH="$HOME/.local/bin:$PATH"
+      echo "✅ xdotter (musl) 安装成功"
+      return 0
     fi
-    cargo install --git https://github.com/cncsmonster/xdotter.git --tag "${version}" --locked
-    return $?
+    echo "musl 下载失败，回退到 cargo install..."
   fi
 
-  # 检查下载的是否为有效二进制文件（而非 GitHub 404 HTML 页面）
-  if ! file "$dest" | grep -qE 'ELF|Mach-O|executable'; then
-    echo "⚠️  下载的不是有效二进制文件（可能是 404 页面），回退到 cargo install"
-    rm -f "$dest"
-    if ! command -v cargo >/dev/null 2>&1; then
-      echo "❌ cargo 未安装，无法从源码编译 xdotter"
-      echo "   推荐：安装 Rust 后重试，或手动下载预编译二进制"
-      return 1
-    fi
-    cargo install --git https://github.com/cncsmonster/xdotter.git --tag "${version}" --locked
-    return $?
+  # 3. 从源码编译（需要 C 工具链）
+  if ! command -v cc >/dev/null 2>&1; then
+    echo "⚠️  未检测到 C 编译器，尝试安装 build-essential..."
+    sudo_run apt-get update -qq && sudo_run apt-get install -y -qq build-essential 2>/dev/null || true
   fi
-
-  # SHA256 校验（仅 Linux x86_64，其他架构暂无）
-  local EXPECTED_SHA256=""
-  if [[ "$os" != "Darwin" ]]; then
-    case "$arch" in
-      x86_64) EXPECTED_SHA256="6334cdf31d7bf9a0ef35bb358ae425a0de64ca308bcce1cd5ac7af88b4dfb3fc" ;;
-      *) echo "⚠️  架构 $arch 无 SHA256 记录，跳过校验";;
-    esac
-  fi
-
-  if [ -n "$EXPECTED_SHA256" ]; then
-    local ACTUAL_SHA256
-    ACTUAL_SHA256=$(sha256sum "$dest" | awk '{print $1}')
-    if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
-      echo "❌ xdotter SHA256 校验失败!"
-      echo "  期望: $EXPECTED_SHA256"
-      echo "  实际: $ACTUAL_SHA256"
-      rm -f "$dest"
-      return 1
-    fi
-  fi
-
-  mv "$dest" ~/.cargo/bin/xd
-  chmod +x ~/.cargo/bin/xd
-  echo "✅ xdotter 预编译二进制安装成功"
+  cargo install xdotter --locked
 }
 
 deploy_dotfiles(){
@@ -144,7 +105,7 @@ deploy_dotfiles(){
   fi
 
   retry_fn 3 "下载 xdotter" download_xdotter
-  cd "${SCRIPT_DIR}" && ~/.cargo/bin/xd deploy --quiet --force
+  cd "${SCRIPT_DIR}" && xd deploy --force
 
   # 部署字体配置后刷新缓存
   install-fonts
