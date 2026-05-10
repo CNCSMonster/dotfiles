@@ -125,26 +125,23 @@ RUN --mount=type=secret,id=github_token,required=false \
     if [ -f /run/secrets/github_token ]; then \
       export GITHUB_TOKEN=$(cat /run/secrets/github_token); \
     fi && \
-    chmod +x ./setup.sh && ./setup.sh
-
-# 清理所有编译缓存和包管理器缓存，减小镜像体积
-RUN rm -rf \
-    ~/.cargo/registry/src \
-    ~/.cargo/registry/cache \
-    ~/.cargo/git \
-    ~/.cargo/.package-cache \
-    ~/.cargo/target \
-    ~/.rustup/toolchains/*/share/doc \
-    ~/.rustup/toolchains/*/share/man \
-    ~/.cache/pip \
-    ~/.cache/uv \
-    ~/.npm/_cacache \
-    /var/cache/apt/archives/* \
-    /var/lib/apt/lists/* \
-    /tmp/* \
-    /var/tmp/* \
+    chmod +x ./setup.sh && ./setup.sh && \
+    rm -rf \
+      ~/.cargo/registry/src \
+      ~/.cargo/registry/cache \
+      ~/.cargo/git \
+      ~/.cargo/.package-cache \
+      ~/.cargo/target \
+      ~/.rustup/toolchains/*/share/doc \
+      ~/.rustup/toolchains/*/share/man \
+      ~/.cache/pip \
+      ~/.cache/uv \
+      ~/.npm/_cacache \
+      /var/cache/apt/archives/* \
+      /var/lib/apt/lists/* \
+      /tmp/* \
+      /var/tmp/* \
     && apt-get clean \
-    && find ~/.local/share -name '*.pyc' -delete 2>/dev/null || true \
     && find ~/.cargo/bin -name '*.crate' -delete 2>/dev/null || true
 
 WORKDIR /root
