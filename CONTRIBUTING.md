@@ -63,9 +63,22 @@ GitHub Actions 在每次 push 时自动运行：
 ## 修改后流程
 
 1. 本地修改 dotfiles 配置
-2. 运行 `./scripts/docker-build-test.sh`
+2. 运行 `./scripts/docker-build-test.sh --gh-token "$(gh auth token)"`
 3. 确保验证通过（`失败：0`）
 4. 提交并推送（CI 自动验证）
+
+## 自动化工具优先原则
+
+项目 `scripts/` 目录下的脚本封装了资源限制、重试、token 管理等复杂逻辑。
+**任何构建/验证操作必须先检查是否有对应的脚本，而不是手动拼凑原始命令。**
+
+| 你要做的事 | 用这个 | 不要手动 |
+|-----------|--------|-----------|
+| 构建 Docker 镜像 | `scripts/docker-build-test.sh` | `docker build ...` |
+| 验证镜像内容 | `scripts/verify-docker-build.sh` | `docker run ...` |
+
+脚本会自动处理：网络重试、GitHub API 限额（token 注入）、内存/CPU 限制、镜像源切换。
+CI 用的就是同一套脚本，本地 = CI 行为。
 
 ---
 
