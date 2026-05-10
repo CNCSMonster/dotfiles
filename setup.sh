@@ -85,8 +85,7 @@ download_xdotter() {
   # 3. 从源码编译（需要 C 工具链）
   if ! command -v cc >/dev/null 2>&1; then
     if [[ "$(uname -s)" == "Darwin" ]]; then
-      echo "⚠️  macOS 需要 Xcode Command Line Tools 才能编译"
-      xcode-select --install 2>/dev/null || true
+      echo "⚠️  缺少 C 编译器，请运行: xcode-select --install"
     else
       sudo_run apt-get update -qq && sudo_run apt-get install -y -qq build-essential 2>/dev/null || true
     fi
