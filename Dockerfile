@@ -111,12 +111,6 @@ WORKDIR /root/dotfiles
 ARG CARGO_INSTALL_STRICT=1
 ENV CARGO_INSTALL_STRICT=${CARGO_INSTALL_STRICT}
 
-# -----------------------------------------------------------------------------
-# xdotter 版本（固定版本，避免破坏性变更）
-# -----------------------------------------------------------------------------
-ARG XDOTTER_VERSION=v0.4.3
-ENV XDOTTER_VERSION=${XDOTTER_VERSION}
-
 #   或: docker buildx build --secret id=github_token,env=GITHUB_TOKEN ...
 # 不传则匿名访问，下载失败的 crate 会 fallback 到源码编译。
 # -----------------------------------------------------------------------------
@@ -133,9 +127,25 @@ RUN --mount=type=secret,id=github_token,required=false \
     fi && \
     chmod +x ./setup.sh && ./setup.sh
 
-# 清理 cargo 缓存（registry、git 依赖、编译中间文件），只保留安装的二进制
-RUN rm -rf ~/.cargo/registry/src ~/.cargo/registry/cache ~/.cargo/git ~/.cargo/.package-cache && \
-    find ~/.cargo/bin -type f -name '*.crate' -delete 2>/dev/null || true
+# 清理所有编译缓存和包管理器缓存，减小镜像体积
+RUN rm -rf \
+    ~/.cargo/registry/src \
+    ~/.cargo/registry/cache \
+    ~/.cargo/git \
+    ~/.cargo/.package-cache \
+    ~/.cargo/target \
+    ~/.rustup/toolchains/*/share/doc \
+    ~/.rustup/toolchains/*/share/man \
+    ~/.cache/pip \
+    ~/.cache/uv \
+    ~/.npm/_cacache \
+    /var/cache/apt/archives/* \
+    /var/lib/apt/lists/* \
+    /tmp/* \
+    /var/tmp/* \
+    && apt-get clean \
+    && find ~/.local/share -name '*.pyc' -delete 2>/dev/null || true \
+    && find ~/.cargo/bin -name '*.crate' -delete 2>/dev/null || true
 
 WORKDIR /root
 
