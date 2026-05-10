@@ -63,13 +63,7 @@ ensure_python3() {
 download_xdotter() {
   echo "安装 xdotter..."
 
-  # 1. cargo-binstall: 自动匹配平台，下载预编译二进制
-  if command -v cargo-binstall >/dev/null 2>&1; then
-    cargo binstall xdotter -y 2>/dev/null && xd version >/dev/null 2>&1 && return 0
-    echo "cargo-binstall 未能安装，尝试其他方式..."
-  fi
-
-  # 2. musl 静态二进制: 无 glibc 依赖，通吃所有 Linux x86_64
+  # 1. musl 静态二进制: 无任何系统依赖，最可靠
   if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
     mkdir -p ~/.local/bin
     local url="https://github.com/CNCSMonster/xdotter/releases/latest/download/xd-x86_64-unknown-linux-musl"
@@ -79,7 +73,13 @@ download_xdotter() {
       echo "✅ xdotter (musl) 安装成功"
       return 0
     fi
-    echo "musl 下载失败，回退到 cargo install..."
+    echo "musl 下载失败，尝试其他方式..."
+  fi
+
+  # 2. cargo-binstall: 自动匹配平台
+  if command -v cargo-binstall >/dev/null 2>&1; then
+    cargo binstall xdotter -y 2>/dev/null && xd version >/dev/null 2>&1 && return 0
+    echo "cargo-binstall 未能安装可用版本，尝试其他方式..."
   fi
 
   # 3. 从源码编译（需要 C 工具链）
