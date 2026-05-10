@@ -65,7 +65,7 @@ download_xdotter() {
 
   # 1. cargo-binstall: 自动匹配平台，下载预编译二进制
   if command -v cargo-binstall >/dev/null 2>&1; then
-    cargo binstall xdotter -y 2>/dev/null && return 0
+    cargo binstall xdotter -y 2>/dev/null && xd version >/dev/null 2>&1 && return 0
     echo "cargo-binstall 未能安装，尝试其他方式..."
   fi
 
