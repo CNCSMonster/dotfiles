@@ -133,7 +133,6 @@ check_version starship
 check_cmd zoxide
 check_cmd fd
 check_version yazi
-check_cmd mcfly
 check_cmd navi
 check_cmd tokei
 echo

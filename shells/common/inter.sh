@@ -10,7 +10,7 @@
 #
 # 示例：
 #   ✅ env.sh   - mise activate, PATH, JAVA_HOME
-#   ✅ inter.sh - starship prompt, navi widget, mcfly Ctrl+R
+#   ✅ inter.sh - starship prompt, navi widget
 # =============================================================================
 
 # 非交互式 shell 直接返回（如：bash -c, Docker RUN, CI/CD）
@@ -29,8 +29,7 @@ eval "$(zoxide init $SH)"
 # starship - Shell 提示符（仅交互式显示）
 eval "$(starship init $SH)"
 
-# mcfly - 历史搜索增强（替换 Ctrl+R）
-eval "$(mcfly init $SH)"
+# 历史搜索使用 shell 自带的 Ctrl+R + fzf，无需额外工具
 if [ ! -f "$HOME/.cache/zsh/histfile" ]; then
     mkdir -p "$HOME/.cache/zsh"
     touch "$HOME/.cache/zsh/histfile"

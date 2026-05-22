@@ -61,9 +61,9 @@ eval "$(mise activate $SH)"
 
 **包含内容：**
 - Shell 提示符（starship）
-- 快捷键绑定（navi Ctrl+N, mcfly Ctrl+R）
+- 快捷键绑定（navi Ctrl+N）
 - 命令增强（zoxide cd 增强）
-- 历史搜索增强（mcfly）
+- 历史搜索增强（fzf Ctrl+R）
 
 **示例：**
 ```bash

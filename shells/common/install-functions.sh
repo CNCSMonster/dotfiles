@@ -9,6 +9,9 @@
 CURL_RETRY_OPTS="--retry 8 --retry-delay 2 --connect-timeout 30 --max-time 300"
 WGET_RETRY_OPTS="--tries=8 --timeout=60 --connect-timeout=30 -c"
 
+# Vendor 脚本目录（相对于此文件的路径：shells/common/ → scripts/vendor/）
+VENDOR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../scripts/vendor"
+
 # GitHub 镜像加速：仅使用相对可信的 ghproxy.com
 # 设置 GITHUB_MIRROR="" 可禁用镜像，直连 GitHub
 # 镜像站说明：
@@ -43,6 +46,30 @@ sudo_run() {
         "$@"
     else
         sudo "$@"
+    fi
+}
+
+
+# =============================================================================
+# Vendor 脚本辅助函数
+# =============================================================================
+# 从项目内 vendor 目录运行经过审查的安装脚本，替代 curl | sh 管道执行
+# =============================================================================
+
+_run_rustup_vendor() {
+    local _vendor_script="${VENDOR_DIR:-scripts/vendor}/rustup-init.sh"
+    if [ ! -f "$_vendor_script" ]; then
+        echo "❌ vendor 脚本不存在: $_vendor_script"
+        return 1
+    fi
+    echo "使用 vendor 的 rustup-init.sh（已审查版本）..."
+    chmod +x "$_vendor_script"
+    if bash "$_vendor_script" -y; then
+        echo "✅ rustup 安装成功（vendor 脚本）"
+        return 0
+    else
+        echo "❌ vendor 脚本执行失败"
+        return 1
     fi
 }
 
@@ -229,20 +256,26 @@ function setup-rustup() {
             x86_64) RUSTUP_URL="https://rsproxy.cn/rustup/dist/x86_64-unknown-linux-gnu/rustup-init" ;;
             aarch64) RUSTUP_URL="https://rsproxy.cn/rustup/dist/aarch64-unknown-linux-gnu/rustup-init" ;;
             *)
-                echo "⚠️  未知架构 $ARCH，回退到 shell 脚本方式"
-                curl $CURL_RETRY_OPTS --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh | sh -s -- -y
-                source "${CARGO_HOME}/env"
-                return 0
+                echo "⚠️  未知架构 $ARCH，回退到 vendor 脚本"
+                if _run_rustup_vendor; then
+                    source "${CARGO_HOME}/env"
+                    return 0
+                fi
+                echo "❌ vendor 脚本不可用，无法安装 rustup"
+                return 1
                 ;;
         esac
         
         # 下载静态二进制
         echo "下载 rustup-init ($ARCH)..."
         if ! curl $CURL_RETRY_OPTS --proto '=https' --tlsv1.2 -fsSL "$RUSTUP_URL" -o "$RUSTUP_BIN"; then
-            echo "❌ 下载 rustup-init 失败，回退到 shell 脚本方式"
-            curl $CURL_RETRY_OPTS --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh | sh -s -- -y
-            source "${CARGO_HOME}/env"
-            return 0
+            echo "❌ 下载 rustup-init 失败，回退到 vendor 脚本"
+            if _run_rustup_vendor; then
+                source "${CARGO_HOME}/env"
+                return 0
+            fi
+            echo "❌ vendor 脚本不可用，无法安装 rustup"
+            return 1
         fi
         
         chmod +x "$RUSTUP_BIN"
@@ -302,7 +335,7 @@ ensure_cargo_binstall() {
   # BASH_SOURCE[0] 在 source 时返回被 source 的文件路径
   local _install_dir
   _install_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local VENDOR_SCRIPT="${_install_dir}/../scripts/vendor/cargo-binstall-install.sh"
+  local VENDOR_SCRIPT="${VENDOR_DIR:-${_install_dir}/../../scripts/vendor}/cargo-binstall-install.sh"
   
   if [ -f "$VENDOR_SCRIPT" ]; then
     echo "使用 vendor 脚本安装..."
@@ -382,7 +415,6 @@ function install-common-rust-tools() {
         parallel-disk-usage@0.22.0 \
         bat@0.26.1 \
         navi@2.24.0 \
-        mcfly@0.9.4 \
         starship@1.24.2 \
         eza@0.23.4 \
         conceal@0.7.0 \
