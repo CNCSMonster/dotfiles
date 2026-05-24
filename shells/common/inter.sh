@@ -39,11 +39,13 @@ fi
 eval "$(navi widget $SH)"
 
 # xdotter / xd - dotfiles 管理器命令补全
-# xd 是新版命令名；xdotter 是旧版命令名。两者的补全子命令参数不同。
 if command -v xd >/dev/null 2>&1; then
     eval "$(xd completion "$SH")"
-elif command -v xdotter >/dev/null 2>&1; then
-    eval "$(xdotter completions --shell "$SH")"
+fi
+
+# llm-proxy - 本地 LLM 代理命令行补全
+if command -v llm-proxy >/dev/null 2>&1; then
+    eval "$(llm-proxy completion "$SH")"
 fi
 
 # =============================================================================
