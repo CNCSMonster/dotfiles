@@ -38,6 +38,14 @@ fi
 # navi - 命令快捷键（Ctrl+N）
 eval "$(navi widget $SH)"
 
+# xdotter / xd - dotfiles 管理器命令补全
+# xd 是新版命令名；xdotter 是旧版命令名。两者的补全子命令参数不同。
+if command -v xd >/dev/null 2>&1; then
+    eval "$(xd completion "$SH")"
+elif command -v xdotter >/dev/null 2>&1; then
+    eval "$(xdotter completions --shell "$SH")"
+fi
+
 # =============================================================================
 # Yazi - 文件管理器 shell 集成
 # =============================================================================
