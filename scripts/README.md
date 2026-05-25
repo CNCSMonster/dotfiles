@@ -9,6 +9,7 @@ Run from repo root:
 ./scripts/docker-build-test.sh
 
 # 2) Verify installed environment inside the container
+# The build script prints this command after a successful build.
 docker run --rm dotfiles:test /root/dotfiles/scripts/verify-docker-build.sh
 ```
 

@@ -10,11 +10,13 @@
 - `apt` — 安装系统级工具
 - 二进制下载 — helix、wezterm 等
 
-但 **shell 补全只有两个来源**：
+当前 **shell 补全来源** 包括：
 - `zsh-completions` 插件（静态补全脚本，`@0.36.0`）
+- `nix-zsh-completions` 插件（静态补全脚本，`@0.5.1`）
 - `mise activate` 动态注册（仅限 mise 管理的工具）
+- `shells/common/inter.sh` 中主动加载的工具自带补全（如 `xd`、`llm-proxy`、`codex`、`opencode`）
 
-很多工具（如 `zola`、`helix`、`jaq`、`nu`、`tree-sitter-grep` 等）在这两个来源中都没有补全，导致按 Tab 时无反应。
+很多工具（如 `zola`、`helix`、`jaq`、`nu`、`tree-sitter-grep` 等）可能不在上述来源中，导致按 Tab 时无反应。
 
 ## 检查范围
 
@@ -29,10 +31,11 @@
 
 | 文件 | 内容 |
 |------|------|
-| `shells/zsh/config.zsh` | `compinit` + `zcomet fpath zsh-users/zsh-completions@0.36.0 src` |
+| `shells/zsh/config.zsh` | `compinit` + `zcomet fpath zsh-users/zsh-completions@0.36.0 src` + `nix-community/nix-zsh-completions@0.5.1` |
 | `shells/bash/bashrc` | `/usr/share/bash-completion/bash_completion` |
+| `shells/common/inter.sh` | 交互式 shell 中主动加载工具自带补全：`xd`、`llm-proxy`、`codex`、`opencode` |
 
-**无任何 `eval $(xxx completion $SH)` 语句**，即没有主动为单个工具加载自带补全。
+工具自带补全统一放在 `shells/common/inter.sh`，并用 `command -v` 守卫，避免未安装工具影响 shell 启动。
 
 ## 检查流程
 
@@ -128,19 +131,19 @@ comm -13 /tmp/installed-tools.txt /tmp/active-zsh-completions.txt > /tmp/orphan-
 
 #### 方案 A：工具自带补全生成（最佳）
 
-```zsh
-# 在 shells/zsh/config.zsh 中添加，或新建 shells/zsh/completions.zsh
-# 示例：
-if (( $+commands[uv] )); then
-    eval "$(uv generate-shell-completion zsh)"
-fi
-if (( $+commands[zola] )); then
-    eval "$(zola completion zsh)"
+工具自带补全生成统一添加到 `shells/common/inter.sh`，并使用 `$SH` 兼容 bash/zsh。
+
+```bash
+# shells/common/inter.sh
+if command -v zola >/dev/null 2>&1; then
+    eval "$(zola completion "$SH" 2>/dev/null)"
 fi
 ```
 
+如果工具对不同 shell 使用不同子命令，必须先通过官方文档或本机 `--help` 验证，再按实际命令配置。
+
 **优点**：总是最新，跟随工具版本更新
-**缺点**：每个工具都要写一段
+**缺点**：每个工具都要写一段，并且必须验证补全命令确实存在
 
 #### 方案 B：zsh-completions 已有但没加载
 
@@ -153,10 +156,10 @@ ls ~/.zcomet/repos/zsh-users/zsh-completions/src/_<工具名>
 
 #### 方案 C：手写简单补全
 
-对于没有自带补全生成、也不在 zsh-completions 中的工具：
+对于没有自带补全生成、也不在 zsh-completions 中的工具，优先确认是否真的值得维护手写补全。若需要手写，放入专门的 shell 补全文件并在 `shells/common/inter.sh` 中按 shell 类型加载，避免把大量补全函数散落在 `config.zsh` 或 `bashrc`。
 
 ```zsh
-# shells/zsh/completions.zsh
+# 示例：zsh 专用补全函数
 if (( $+commands[jaq] )); then
     _jaq() {
         local -a opts
@@ -186,7 +189,7 @@ compaudit  # 应提示 "There are insecure directories" 或 "no problems found"
 
 ### 7. 提交
 
-将补全配置添加到 `shells/zsh/completions.zsh`（新建），并在 commit 中说明补齐了哪些工具的补全。
+将已验证的工具自带补全配置添加到 `shells/common/inter.sh`，并在 commit 中说明补齐了哪些工具的补全。不要为没有可验证 shell 补全命令的工具添加占位配置。
 
 ## 自动化脚本建议
 
@@ -212,6 +215,7 @@ compaudit  # 应提示 "There are insecure directories" 或 "no problems found"
 
 - zsh 补全配置: `shells/zsh/config.zsh`
 - bash 补全配置: `shells/bash/bashrc`
-- 补全加载（建议）: `shells/zsh/completions.zsh`（待新建）
+- 工具自带补全加载: `shells/common/inter.sh`
 - zsh-completions 版本: 通过 `zcomet fpath zsh-users/zsh-completions@0.36.0 src` 固定
+- nix-zsh-completions 版本: 通过 `zcomet fpath nix-community/nix-zsh-completions@0.5.1` 固定
 - 相关 SOP: `docs/zsh-plugins-update-sop.md`（更新 zsh-completions 后验证补全）

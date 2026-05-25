@@ -33,7 +33,8 @@ helix = "helix"
 # 符号链接
 [links]
 "navi" = "~/.local/share/navi/cheats"
-"yazi" = "~/.config/yazi"
+"yazi/yazi.toml" = "~/.config/yazi/yazi.toml"
+"yazi/keymap.toml" = "~/.config/yazi/keymap.toml"
 "git" = "~/.config/git"
 ```
 
