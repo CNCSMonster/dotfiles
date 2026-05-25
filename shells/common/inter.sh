@@ -48,6 +48,11 @@ if command -v llm-proxy >/dev/null 2>&1; then
     eval "$(llm-proxy completion "$SH")"
 fi
 
+# codex - OpenAI 代码助手补全
+if command -v codex >/dev/null 2>&1; then
+    eval "$(codex completion "$SH" 2>/dev/null)"
+fi
+
 # =============================================================================
 # Yazi - 文件管理器 shell 集成
 # =============================================================================

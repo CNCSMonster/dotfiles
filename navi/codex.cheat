@@ -1,0 +1,18 @@
+% codex,openai-codex
+
+# 交互式，跳过所有确认和沙箱
+codex --dangerously-bypass-approvals-and-sandbox
+
+# 非交互执行指令，跳过确认和沙箱
+codex exec --dangerously-bypass-approvals-and-sandbox "<prompt>"
+$ prompt: echo ""
+
+
+# 非交互 + JSON 输出
+codex exec --json --dangerously-bypass-approvals-and-sandbox "<prompt>"
+$ prompt: echo ""
+
+# 指定工作目录
+codex exec -C <dir> --dangerously-bypass-approvals-and-sandbox "<prompt>"
+$ dir: echo "."
+$ prompt: echo ""

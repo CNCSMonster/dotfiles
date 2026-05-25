@@ -64,6 +64,7 @@ eval "$(mise activate $SH)"
 - 快捷键绑定（navi Ctrl+N）
 - 命令增强（zoxide cd 增强）
 - 历史搜索增强（fzf Ctrl+R）
+- 第三方命令补全（xd、llm-proxy、codex）
 
 **示例：**
 ```bash
@@ -71,6 +72,14 @@ eval "$(mise activate $SH)"
 eval "$(starship init $SH)"     # prompt
 eval "$(navi widget $SH)"       # Ctrl+N 快捷键
 eval "$(zoxide init $SH)"       # cd 命令增强
+
+# ✅ 第三方命令补全统一放在这里
+if command -v xd >/dev/null 2>&1; then
+    eval "$(xd completion "$SH")"
+fi
+if command -v codex >/dev/null 2>&1; then
+    eval "$(codex completion "$SH" 2>/dev/null)"
+fi
 
 # ❌ 不应该放在 inter.sh
 export PATH="..."               # 应该在 env.sh
@@ -287,7 +296,7 @@ source shells/common/install-functions.sh
 | **env.sh** | 基础环境 | 所有场景 | PATH, mise, 镜像源 |
 | **fn.sh** | 功能函数 | 需要时 | log_info, retry_fn |
 | **install-functions.sh** | 安装函数 | 安装脚本 | install-rust, install-neovim |
-| **inter.sh** | 交互特性 | 仅交互式 | starship, navi widget |
+| **inter.sh** | 交互特性+补全 | 仅交互式 | starship, navi, **xd/codex completion** |
 | **alias.sh** | 命令别名 | 仅交互式 | ll, gs |
 
 **核心原则：**
