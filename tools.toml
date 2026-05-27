@@ -38,9 +38,8 @@ cargo-fuzz = { desc = "模糊测试", allow_fail = true }
 grcov = { desc = "代码覆盖率", allow_fail = true }
 cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
 
-# ── Layer 1c: 编辑器和终端工具 ──
+# ── Layer 1c: 编辑器和终端工具（独立，不需要 Rust）──
 [editors]
-depends = ["build-base"]
 neovim = "Neovim 编辑器"
 helix = "Helix 编辑器"
 zellij = "终端复用器"
