@@ -1,0 +1,78 @@
+[tool-installer]
+manifest = "./manifest.toml"
+
+# ── Layer 1a: 编译基础设施 ──
+[build-base]
+"rust@stable" = "Rust stable toolchain"
+
+# ── Layer 1b: Cargo 工具（依赖 Rust）──
+[cargo-tools]
+depends = ["build-base"]
+sccache = { desc = "编译缓存", allow_fail = true }
+wild-linker = { desc = "快速链接器", allow_fail = true }
+"bat@0.26.1" = "Cat 替代品"
+"eza@0.23.4" = "ls 替代品"
+"fd-find@10.4.2" = "find 替代品"
+"starship@1.24.2" = "Shell prompt"
+"zoxide@0.9.9" = "cd 替代品"
+"tokei@14.0.0" = "代码统计"
+"navi@2.24.0" = "交互式命令行"
+"gitui@0.28.1" = "Git TUI"
+"kondo@0.9.0" = "项目清理"
+"jaq@3.0.0" = "jq 替代品"
+"mdbook@0.5.2" = "文档生成器"
+"mdbook-mermaid@0.17.0" = "mdbook 图表"
+"gen-mdbook-summary@0.0.10" = "mdbook 目录"
+"tree-sitter-cli@0.26.8" = "语法解析器"
+"tree-sitter-grep@0.1.0" = "语法感知搜索"
+"tree-sitter-show-ast@0.0.2" = "AST 可视化"
+"macchina@6.4.0" = "系统信息"
+"conceal@0.7.0" = "隐藏敏感信息"
+"rust-script@0.36.0" = "Rust 脚本运行器"
+"parallel-disk-usage@0.22.0" = "磁盘分析"
+"nu@0.112.2" = "现代 Shell"
+"uv@0.11.3" = "Python 包管理器"
+"mise@2026.4.5" = "版本管理器"
+"cargo-audit@0.22.1" = "依赖审计"
+cargo-fuzz = { desc = "模糊测试", allow_fail = true }
+grcov = { desc = "代码覆盖率", allow_fail = true }
+cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
+
+# ── Layer 1c: 编辑器和终端工具 ──
+[editors]
+depends = ["build-base"]
+neovim = "Neovim 编辑器"
+helix = "Helix 编辑器"
+zellij = "终端复用器"
+yq = "YAML/JSON 处理器"
+
+# ── Layer 1d: 语言运行时（独立）──
+[languages]
+"go@1.23.4" = "Go via mise"
+"node@latest" = "Node.js via mise"
+"pnpm@10.20.0" = "pnpm via mise"
+"zig@latest" = "Zig via mise"
+"yazi@26.1.22" = "终端文件管理器 via mise"
+gopls = "Go LSP via mise"
+
+# ── Layer 1e: LSP 服务器 ──
+[lsp-servers]
+depends = ["languages"]
+typescript-lsp = "TypeScript LSP"
+pyright = "Python LSP"
+yaml-lsp = "YAML LSP"
+bash-lsp = "Bash LSP"
+marksman = "Markdown LSP"
+zls = "Zig LSP"
+lua-lsp = "Lua LSP"
+qwen-code = { desc = "Qwen Code", allow_fail = true }
+
+# ── Layer 1f: 其他 ──
+[extras]
+depends = ["build-base"]
+xdotter = "配置部署工具"
+cargo-binstall = "Cargo 预编译安装器"
+
+# ── 全量安装 ──
+[dev]
+depends = ["cargo-tools", "editors", "languages", "lsp-servers", "extras"]

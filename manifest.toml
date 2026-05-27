@@ -1,0 +1,370 @@
+# Manifest for dotfiles development environment
+# Migrated from: dotfiles/shells/common/install-functions.sh
+# Tool count: 45+ tools across 6 manager types
+
+# ============================================================
+# GitHub release manager configuration
+# ============================================================
+
+[_github-release]
+github_mirrors = ["https://mirror.ghproxy.com"]
+timeout = 60
+retry = 3
+
+# ============================================================
+# Languages & Toolchains
+# ============================================================
+
+[rust]
+[rust.linux]
+manager = "rustup"
+components = ["clippy", "rustfmt", "rust-analyzer"]
+profile = "minimal"
+set_default = true
+
+# ============================================================
+# Editors
+# ============================================================
+
+[neovim]
+[neovim.linux]
+manager = "github-release"
+repo = "neovim/neovim"
+asset = "nvim-linux-x86_64.tar.gz"
+bin = "nvim-linux-x86_64/bin/nvim"
+install_name = "nvim"
+[neovim.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "^NVIM v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[helix]
+[helix.linux]
+manager = "github-release"
+repo = "helix-editor/helix"
+asset = "helix-{version}-x86_64-linux.tar.xz"
+bin = "hx"
+[helix.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "^helix (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[zellij]
+[zellij.linux]
+manager = "github-release"
+repo = "zellij-org/zellij"
+asset = "zellij-x86_64-unknown-linux-musl.tar.gz"
+bin = "zellij"
+sha256 = "669825021d529fca5d939888263c9d2a90762145191fa07581a15250e8af2b49"
+[zellij.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "^zellij (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+# ============================================================
+# GitHub Release Tools
+# ============================================================
+
+[yq]
+[yq.linux]
+manager = "github-release"
+repo = "mikefarah/yq"
+asset = "yq_linux_amd64.tar.gz"
+bin = "yq_linux_amd64"
+install_name = "yq"
+[yq.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "version (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[marksman]
+[marksman.linux]
+manager = "github-release"
+repo = "artempyanykh/marksman"
+asset = "marksman-linux-x86_64"
+bin = "marksman"
+install_name = "marksman"
+
+[zls]
+[zls.linux]
+manager = "github-release"
+repo = "zigtools/zls"
+asset = "zls-x86_64-linux.tar.xz"
+bin = "zls"
+install_name = "zls"
+[zls.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "zls (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[lua-lsp]
+[lua-lsp.linux]
+manager = "github-release"
+repo = "LuaLS/lua-language-server"
+asset = "lua-language-server-{version}-linux-x64.tar.gz"
+bin = "bin/lua-language-server"
+install_name = "lua-language-server"
+[lua-lsp.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[xdotter]
+[xdotter.linux]
+manager = "github-release"
+repo = "CNCSMonster/xdotter"
+asset = "xd-x86_64-unknown-linux-musl"
+bin = "xd-x86_64-unknown-linux-musl"
+install_name = "xd"
+
+[cargo-binstall]
+[cargo-binstall.linux]
+manager = "github-release"
+repo = "cargo-bins/cargo-binstall"
+asset = "cargo-binstall-x86_64-unknown-linux-musl.tgz"
+bin = "cargo-binstall"
+install_name = "cargo-binstall"
+
+# ============================================================
+# CLI Tools (cargo-install, locked)
+# ============================================================
+
+[bat]
+[bat.linux]
+manager = "cargo-install"
+pkg = "bat"
+locked = true
+
+[eza]
+[eza.linux]
+manager = "cargo-install"
+pkg = "eza"
+locked = true
+
+[fd-find]
+[fd-find.linux]
+manager = "cargo-install"
+pkg = "fd-find"
+locked = true
+
+[starship]
+[starship.linux]
+manager = "cargo-install"
+pkg = "starship"
+locked = true
+
+[zoxide]
+[zoxide.linux]
+manager = "cargo-install"
+pkg = "zoxide"
+locked = true
+
+[tokei]
+[tokei.linux]
+manager = "cargo-install"
+pkg = "tokei"
+locked = true
+
+[navi]
+[navi.linux]
+manager = "cargo-install"
+pkg = "navi"
+locked = true
+
+[gitui]
+[gitui.linux]
+manager = "cargo-install"
+pkg = "gitui"
+locked = true
+
+[kondo]
+[kondo.linux]
+manager = "cargo-install"
+pkg = "kondo"
+locked = true
+
+[jaq]
+[jaq.linux]
+manager = "cargo-install"
+pkg = "jaq"
+locked = true
+
+[mdbook]
+[mdbook.linux]
+manager = "cargo-install"
+pkg = "mdbook"
+locked = true
+
+[mdbook-mermaid]
+[mdbook-mermaid.linux]
+manager = "cargo-install"
+pkg = "mdbook-mermaid"
+locked = true
+
+[gen-mdbook-summary]
+[gen-mdbook-summary.linux]
+manager = "cargo-install"
+pkg = "gen-mdbook-summary"
+locked = true
+
+[tree-sitter-cli]
+[tree-sitter-cli.linux]
+manager = "cargo-install"
+pkg = "tree-sitter-cli"
+locked = true
+
+[tree-sitter-grep]
+[tree-sitter-grep.linux]
+manager = "cargo-install"
+pkg = "tree-sitter-grep"
+locked = true
+
+[tree-sitter-show-ast]
+[tree-sitter-show-ast.linux]
+manager = "cargo-install"
+pkg = "tree-sitter-show-ast"
+locked = true
+
+[macchina]
+[macchina.linux]
+manager = "cargo-install"
+pkg = "macchina"
+locked = true
+
+[conceal]
+[conceal.linux]
+manager = "cargo-install"
+pkg = "conceal"
+locked = true
+
+[rust-script]
+[rust-script.linux]
+manager = "cargo-install"
+pkg = "rust-script"
+locked = true
+
+[parallel-disk-usage]
+[parallel-disk-usage.linux]
+manager = "cargo-install"
+pkg = "parallel-disk-usage"
+locked = true
+
+[nu]
+[nu.linux]
+manager = "cargo-install"
+pkg = "nu"
+locked = true
+
+[uv]
+[uv.linux]
+manager = "cargo-install"
+pkg = "uv"
+locked = true
+
+[mise]
+[mise.linux]
+manager = "cargo-install"
+pkg = "mise"
+locked = true
+
+[cargo-audit]
+[cargo-audit.linux]
+manager = "cargo-install"
+pkg = "cargo-audit"
+locked = true
+
+[cargo-fuzz]
+[cargo-fuzz.linux]
+manager = "cargo-install"
+pkg = "cargo-fuzz"
+locked = true
+
+[grcov]
+[grcov.linux]
+manager = "cargo-install"
+pkg = "grcov"
+locked = true
+
+[cargo-tarpaulin]
+[cargo-tarpaulin.linux]
+manager = "cargo-install"
+pkg = "cargo-tarpaulin"
+locked = true
+
+[sccache]
+[sccache.linux]
+manager = "cargo-install"
+pkg = "sccache"
+locked = true
+
+[wild-linker]
+[wild-linker.linux]
+manager = "cargo-install"
+pkg = "wild-linker"
+locked = true
+
+# ============================================================
+# Languages & Runtimes (via mise)
+# ============================================================
+
+[go]
+[go.linux]
+manager = "mise"
+plugin = "go"
+
+[node]
+[node.linux]
+manager = "mise"
+plugin = "node"
+
+[pnpm]
+[pnpm.linux]
+manager = "mise"
+plugin = "pnpm"
+
+[zig]
+[zig.linux]
+manager = "mise"
+plugin = "zig"
+
+[yazi]
+[yazi.linux]
+manager = "mise"
+plugin = "yazi"
+
+[gopls]
+[gopls.linux]
+manager = "mise"
+plugin = "go:golang.org/x/tools/gopls"
+
+# ============================================================
+# Node.js Global Tools (npm-global)
+# ============================================================
+
+[typescript-lsp]
+[typescript-lsp.linux]
+manager = "npm-global"
+pkg = "typescript-language-server"
+bin = "typescript-language-server"
+
+[yaml-lsp]
+[yaml-lsp.linux]
+manager = "npm-global"
+pkg = "yaml-language-server"
+bin = "yaml-language-server"
+
+[bash-lsp]
+[bash-lsp.linux]
+manager = "npm-global"
+pkg = "bash-language-server"
+bin = "bash-language-server"
+
+[qwen-code]
+[qwen-code.linux]
+manager = "npm-global"
+pkg = "@qwen-code/qwen-code"
+bin = "qwen"
+
+# ============================================================
+# Python Tools (uv-tool)
+# ============================================================
+
+[pyright]
+[pyright.linux]
+manager = "uv-tool"
+pkg = "pyright"
+bin = "pyright"

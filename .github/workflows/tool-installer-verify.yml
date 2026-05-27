@@ -1,0 +1,94 @@
+name: tool-installer Migration Verify
+
+# 验证 tool-installer 迁移后的安装流程
+# 与 runner-verify.yml 并行运行，对比新旧安装方式
+
+on:
+  push:
+    branches:
+      - 'feat/tool-installer-migration'
+  pull_request:
+    branches:
+      - 'feat/tool-installer-migration'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Job 1: Dry-run 验证（快速，不需要网络）──
+  dry-run:
+    name: Dry-run verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Dry-run all modules
+        run: |
+          python3 vendor/tool-installer install dev --dry-run
+
+      - name: Dry-run individual modules
+        run: |
+          for module in build-base cargo-tools editors languages lsp-servers extras; do
+            echo "--- Module: $module ---"
+            python3 vendor/tool-installer install "$module" --dry-run
+          done
+
+  # ── Job 2: Layer 0 Bootstrap 验证 ──
+  bootstrap:
+    name: Layer 0 Bootstrap on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+      fail-fast: false
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run Layer 0 Bootstrap
+        run: |
+          bash scripts/layer0-bootstrap.sh
+
+      - name: Verify tool-installer installed
+        run: |
+          ~/.local/bin/tool-installer --help
+          ~/.local/bin/tool-installer install dev --dry-run
+
+  # ── Job 3: 单模块 apply 测试（最小化）──
+  apply-single-module:
+    name: Apply build-base module
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build-base (Rust toolchain)
+        run: |
+          python3 vendor/tool-installer install build-base
+
+      - name: Verify Rust installed
+        run: |
+          rustc --version
+          cargo --version
+          rustfmt --version
+          clippy-driver --version
