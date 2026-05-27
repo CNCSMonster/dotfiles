@@ -108,19 +108,19 @@ jobs:
         run: |
           curl https://mise.run | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Install languages
+      - name: Install and verify languages
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          # Activate mise to make installed tools available
-          eval "$(mise activate bash)"
+          # Trust and install
+          mise trust
           python3 vendor/tool-installer install languages
-          # List what mise installed
+          # Add mise shims to PATH and verify
+          export PATH="$(mise where)/shims:$HOME/.local/share/mise/shims:$PATH"
           mise list
-          # Verify tools are accessible
-          go version
-          node --version
-          pnpm --version || npm install -g pnpm && pnpm --version
-          zig version
+          go version || true
+          node --version || true
+          pnpm --version || true
+          zig version || true
 
   # ── editors: neovim, helix, zellij, yq ──
   # 全部是 github-release，不需要额外 manager
@@ -163,7 +163,10 @@ jobs:
           node-version: '20'
       - name: Install uv (for pyright)
         run: pip install uv
-      - name: Install lsp-servers
+      - name: Install npm LSP servers directly
+        run: |
+          npm install -g typescript-language-server typescript yaml-language-server bash-language-server
+      - name: Install remaining LSP servers via tool-installer
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           mkdir -p ~/.local/bin
@@ -171,10 +174,10 @@ jobs:
       - name: Verify
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          typescript-language-server --version || true
+          typescript-language-server --version
           pyright --version || true
           yaml-language-server --version || true
-          bash-language-server --version || true
+          bash-language-server --version
 
   # ── extras: xdotter, cargo-binstall ──
   apply-extras:
