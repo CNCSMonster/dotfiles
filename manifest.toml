@@ -42,7 +42,8 @@ regex = "^NVIM v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 manager = "github-release"
 repo = "helix-editor/helix"
 asset = "helix-{version}-x86_64-linux.tar.xz"
-bin = "hx"
+bin = "helix-{version}-x86_64-linux/hx"
+install_name = "hx"
 [helix.linux.version_probe]
 command = ["{bin}", "--version"]
 regex = "^helix (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"

@@ -55,8 +55,8 @@ yq = "YAML/JSON 处理器"
 gopls = "Go LSP via mise"
 
 # ── Layer 1e: LSP 服务器 ──
+# 注意：不依赖 languages，因为 CI 中 node/uv 由前置步骤安装
 [lsp-servers]
-depends = ["languages"]
 typescript-lsp = "TypeScript LSP"
 pyright = "Python LSP"
 yaml-lsp = "YAML LSP"
@@ -66,9 +66,8 @@ zls = "Zig LSP"
 lua-lsp = "Lua LSP"
 qwen-code = { desc = "Qwen Code", allow_fail = true }
 
-# ── Layer 1f: 其他 ──
+# ── Layer 1f: 其他（独立）──
 [extras]
-depends = ["build-base"]
 xdotter = "配置部署工具"
 cargo-binstall = "Cargo 预编译安装器"
 
