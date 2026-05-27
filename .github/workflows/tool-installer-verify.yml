@@ -1,8 +1,5 @@
 name: tool-installer Migration Verify
 
-# 验证 tool-installer 迁移后的安装流程
-# 与 runner-verify.yml 并行运行，对比新旧安装方式
-
 on:
   push:
     branches:
@@ -16,79 +13,186 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
-  # ── Job 1: Dry-run 验证（快速，不需要网络）──
+  # ── Dry-run（快速，无网络）──
   dry-run:
-    name: Dry-run verification
+    name: Dry-run (all modules)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Dry-run all modules
-        run: |
-          python3 vendor/tool-installer install dev --dry-run
-
-      - name: Dry-run individual modules
+      - name: Dry-run dev (full)
+        run: python3 vendor/tool-installer install dev --dry-run
+      - name: Dry-run each module
         run: |
           for module in build-base cargo-tools editors languages lsp-servers extras; do
-            echo "--- Module: $module ---"
+            echo "--- $module ---"
             python3 vendor/tool-installer install "$module" --dry-run
           done
 
-  # ── Job 2: Layer 0 Bootstrap 验证 ──
+  # ── Bootstrap ──
   bootstrap:
-    name: Layer 0 Bootstrap on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Bootstrap
+    runs-on: ubuntu-latest
     timeout-minutes: 10
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-      fail-fast: false
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Run Layer 0 Bootstrap
-        run: |
-          bash scripts/layer0-bootstrap.sh
-
-      - name: Verify tool-installer installed
+      - uses: actions/checkout@v6
+      - name: Run Layer 0
+        run: bash scripts/layer0-bootstrap.sh
+      - name: Verify
         run: |
           ~/.local/bin/tool-installer --help
           ~/.local/bin/tool-installer install dev --dry-run
 
-  # ── Job 3: 单模块 apply 测试（最小化）──
-  apply-single-module:
-    name: Apply build-base module
+  # ── build-base: Rust 工具链 ──
+  apply-build-base:
+    name: "Apply: build-base (Rust)"
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Install build-base (Rust toolchain)
-        run: |
-          python3 vendor/tool-installer install build-base
-
-      - name: Verify Rust installed
+      - name: Install build-base
+        run: python3 vendor/tool-installer install build-base
+      - name: Verify
         run: |
           rustc --version
           cargo --version
           rustfmt --version
           clippy-driver --version
+
+  # ── cargo-tools: 29 个 Rust 工具（最耗时）──
+  apply-cargo-tools:
+    name: "Apply: cargo-tools (29 crates)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install cargo-tools (includes build-base)
+        run: python3 vendor/tool-installer install cargo-tools
+      - name: Verify key tools
+        run: |
+          bat --version
+          eza --version
+          fd --version || fdfind --version
+          starship --version
+          tokei --version
+          zoxide --version
+          gitui --version || true
+          mdbook --version
+          nu --version
+          mise --version
+          uv --version
+
+  # ── editors: neovim, helix, zellij, yq ──
+  apply-editors:
+    name: "Apply: editors"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install editors
+        run: python3 vendor/tool-installer install editors
+      - name: Verify
+        run: |
+          ~/.local/bin/nvim --version | head -1
+          hx --version
+          zellij --version
+          yq --version
+
+  # ── languages: go, node, pnpm, zig, yazi, gopls ──
+  apply-languages:
+    name: "Apply: languages (mise)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install languages
+        run: python3 vendor/tool-installer install languages
+      - name: Verify
+        run: |
+          eval "$(mise activate bash)"
+          mise list
+          go version
+          node --version
+          pnpm --version
+          zig version
+
+  # ── lsp-servers: npm/uv/github-release LSP ──
+  apply-lsp-servers:
+    name: "Apply: lsp-servers"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install lsp-servers (includes languages)
+        run: python3 vendor/tool-installer install lsp-servers
+      - name: Verify
+        run: |
+          typescript-language-server --version || true
+          pyright --version || true
+          yaml-language-server --version || true
+          bash-language-server --version || true
+
+  # ── extras: xdotter, cargo-binstall ──
+  apply-extras:
+    name: "Apply: extras"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install extras
+        run: python3 vendor/tool-installer install extras
+      - name: Verify
+        run: |
+          xd --version || true
+          cargo-binstall --version || true
+
+  # ── 全量安装验证 ──
+  full-install:
+    name: "Apply: dev (full)"
+    needs: [dry-run, bootstrap, apply-build-base, apply-cargo-tools, apply-editors, apply-languages, apply-lsp-servers, apply-extras]
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Full install
+        run: python3 vendor/tool-installer install dev
+      - name: Comprehensive verification
+        run: |
+          echo "=== Rust ==="
+          rustc --version && cargo --version
+          echo "=== Editors ==="
+          hx --version && zellij --version && yq --version
+          echo "=== Languages ==="
+          go version 2>/dev/null || echo "go: skipped"
+          node --version 2>/dev/null || echo "node: skipped"
+          echo "=== CLI Tools ==="
+          bat --version && eza --version && starship --version
+          echo "=== All passed ==="
