@@ -69,7 +69,7 @@ jobs:
           rustfmt --version
           clippy-driver --version
 
-  # ── cargo-tools: 29 个 Rust 工具（最耗时）──
+  # ── cargo-tools: 29 个 Rust 工具 ──
   apply-cargo-tools:
     name: "Apply: cargo-tools (29 crates)"
     runs-on: ubuntu-latest
@@ -83,19 +83,48 @@ jobs:
         run: python3 vendor/tool-installer install cargo-tools
       - name: Verify key tools
         run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
           bat --version
           eza --version
           fd --version || fdfind --version
           starship --version
           tokei --version
           zoxide --version
-          gitui --version || true
           mdbook --version
-          nu --version
           mise --version
           uv --version
 
+  # ── languages: go, node, pnpm, zig, yazi, gopls ──
+  # 需要先安装 mise（tool-installer 的 mise manager 需要 mise 二进制）
+  apply-languages:
+    name: "Apply: languages (mise)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install mise (prerequisite)
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install languages
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          python3 vendor/tool-installer install languages
+      - name: Verify
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          eval "$(mise activate bash)"
+          mise list
+          go version
+          node --version
+          pnpm --version
+          zig version
+
   # ── editors: neovim, helix, zellij, yq ──
+  # 全部是 github-release，不需要额外 manager
   apply-editors:
     name: "Apply: editors"
     runs-on: ubuntu-latest
@@ -106,36 +135,21 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install editors
-        run: python3 vendor/tool-installer install editors
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mkdir -p ~/.local/bin
+          python3 vendor/tool-installer install editors
       - name: Verify
         run: |
-          ~/.local/bin/nvim --version | head -1
+          export PATH="$HOME/.local/bin:$PATH"
+          nvim --version | head -1
           hx --version
           zellij --version
           yq --version
 
-  # ── languages: go, node, pnpm, zig, yazi, gopls ──
-  apply-languages:
-    name: "Apply: languages (mise)"
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install languages
-        run: python3 vendor/tool-installer install languages
-      - name: Verify
-        run: |
-          eval "$(mise activate bash)"
-          mise list
-          go version
-          node --version
-          pnpm --version
-          zig version
-
   # ── lsp-servers: npm/uv/github-release LSP ──
+  # 依赖 node（来自 languages），需要等 languages 完成
+  # CI 中单独安装 node 作为前置
   apply-lsp-servers:
     name: "Apply: lsp-servers"
     runs-on: ubuntu-latest
@@ -145,10 +159,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install lsp-servers (includes languages)
-        run: python3 vendor/tool-installer install lsp-servers
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install uv (for pyright)
+        run: pip install uv
+      - name: Install lsp-servers
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mkdir -p ~/.local/bin
+          python3 vendor/tool-installer install lsp-servers
       - name: Verify
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
           typescript-language-server --version || true
           pyright --version || true
           yaml-language-server --version || true
@@ -165,13 +188,17 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install extras
-        run: python3 vendor/tool-installer install extras
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mkdir -p ~/.local/bin
+          python3 vendor/tool-installer install extras
       - name: Verify
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
           xd --version || true
           cargo-binstall --version || true
 
-  # ── 全量安装验证 ──
+  # ── 全量安装验证（等所有模块通过后）──
   full-install:
     name: "Apply: dev (full)"
     needs: [dry-run, bootstrap, apply-build-base, apply-cargo-tools, apply-editors, apply-languages, apply-lsp-servers, apply-extras]
@@ -182,17 +209,29 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install mise (prerequisite)
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install uv
+        run: pip install uv
       - name: Full install
-        run: python3 vendor/tool-installer install dev
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          python3 vendor/tool-installer install dev
       - name: Comprehensive verification
         run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           echo "=== Rust ==="
           rustc --version && cargo --version
           echo "=== Editors ==="
           hx --version && zellij --version && yq --version
+          echo "=== CLI Tools ==="
+          bat --version && eza --version && starship --version
           echo "=== Languages ==="
           go version 2>/dev/null || echo "go: skipped"
           node --version 2>/dev/null || echo "node: skipped"
-          echo "=== CLI Tools ==="
-          bat --version && eza --version && starship --version
           echo "=== All passed ==="
