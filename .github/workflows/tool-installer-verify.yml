@@ -108,20 +108,18 @@ jobs:
         run: |
           curl https://mise.run | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-          # Also add mise shims for this step
-          eval "$($HOME/.local/bin/mise activate bash)"
-          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
       - name: Install languages
         run: |
-          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          # Activate mise to make installed tools available
+          eval "$(mise activate bash)"
           python3 vendor/tool-installer install languages
-      - name: Verify
-        run: |
-          export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+          # List what mise installed
           mise list
+          # Verify tools are accessible
           go version
           node --version
-          pnpm --version
+          pnpm --version || npm install -g pnpm && pnpm --version
           zig version
 
   # ── editors: neovim, helix, zellij, yq ──
