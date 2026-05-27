@@ -220,6 +220,8 @@ jobs:
           node-version: '20'
       - name: Install uv
         run: pip install uv
+      - name: Pre-install npm LSP servers
+        run: npm install -g typescript-language-server typescript yaml-language-server bash-language-server
       - name: Full install
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
