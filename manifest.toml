@@ -128,203 +128,174 @@ install_name = "cargo-binstall"
 manager = "cargo-install"
 pkg = "bat"
 locked = true
-binstall_first = true
 
 [eza]
 [eza.linux]
 manager = "cargo-install"
 pkg = "eza"
 locked = true
-binstall_first = true
 
 [fd-find]
 [fd-find.linux]
 manager = "cargo-install"
 pkg = "fd-find"
 locked = true
-binstall_first = true
 
 [starship]
 [starship.linux]
 manager = "cargo-install"
 pkg = "starship"
 locked = true
-binstall_first = true
 
 [zoxide]
 [zoxide.linux]
 manager = "cargo-install"
 pkg = "zoxide"
 locked = true
-binstall_first = true
 
 [tokei]
 [tokei.linux]
 manager = "cargo-install"
 pkg = "tokei"
 locked = true
-binstall_first = true
 
 [navi]
 [navi.linux]
 manager = "cargo-install"
 pkg = "navi"
 locked = true
-binstall_first = true
 
 [gitui]
 [gitui.linux]
 manager = "cargo-install"
 pkg = "gitui"
 locked = true
-binstall_first = true
 
 [kondo]
 [kondo.linux]
 manager = "cargo-install"
 pkg = "kondo"
 locked = true
-binstall_first = true
 
 [jaq]
 [jaq.linux]
 manager = "cargo-install"
 pkg = "jaq"
 locked = true
-binstall_first = true
 
 [mdbook]
 [mdbook.linux]
 manager = "cargo-install"
 pkg = "mdbook"
 locked = true
-binstall_first = true
 
 [mdbook-mermaid]
 [mdbook-mermaid.linux]
 manager = "cargo-install"
 pkg = "mdbook-mermaid"
 locked = true
-binstall_first = true
 
 [gen-mdbook-summary]
 [gen-mdbook-summary.linux]
 manager = "cargo-install"
 pkg = "gen-mdbook-summary"
 locked = true
-binstall_first = true
 
 [tree-sitter-cli]
 [tree-sitter-cli.linux]
 manager = "cargo-install"
 pkg = "tree-sitter-cli"
 locked = true
-binstall_first = true
 
 [tree-sitter-grep]
 [tree-sitter-grep.linux]
 manager = "cargo-install"
 pkg = "tree-sitter-grep"
 locked = true
-binstall_first = true
 
 [tree-sitter-show-ast]
 [tree-sitter-show-ast.linux]
 manager = "cargo-install"
 pkg = "tree-sitter-show-ast"
 locked = true
-binstall_first = true
 
 [macchina]
 [macchina.linux]
 manager = "cargo-install"
 pkg = "macchina"
 locked = true
-binstall_first = true
 
 [conceal]
 [conceal.linux]
 manager = "cargo-install"
 pkg = "conceal"
 locked = true
-binstall_first = true
 
 [rust-script]
 [rust-script.linux]
 manager = "cargo-install"
 pkg = "rust-script"
 locked = true
-binstall_first = true
 
 [parallel-disk-usage]
 [parallel-disk-usage.linux]
 manager = "cargo-install"
 pkg = "parallel-disk-usage"
 locked = true
-binstall_first = true
 
 [nu]
 [nu.linux]
 manager = "cargo-install"
 pkg = "nu"
 locked = true
-binstall_first = true
 
 [uv]
 [uv.linux]
 manager = "cargo-install"
 pkg = "uv"
 locked = true
-binstall_first = true
 
 [mise]
 [mise.linux]
 manager = "cargo-install"
 pkg = "mise"
 locked = true
-binstall_first = true
 
 [cargo-audit]
 [cargo-audit.linux]
 manager = "cargo-install"
 pkg = "cargo-audit"
 locked = true
-binstall_first = true
 
 [cargo-fuzz]
 [cargo-fuzz.linux]
 manager = "cargo-install"
 pkg = "cargo-fuzz"
 locked = true
-binstall_first = true
 
 [grcov]
 [grcov.linux]
 manager = "cargo-install"
 pkg = "grcov"
 locked = true
-binstall_first = true
 
 [cargo-tarpaulin]
 [cargo-tarpaulin.linux]
 manager = "cargo-install"
 pkg = "cargo-tarpaulin"
 locked = true
-binstall_first = true
 
 [sccache]
 [sccache.linux]
 manager = "cargo-install"
 pkg = "sccache"
 locked = true
-binstall_first = true
 
 [wild-linker]
 [wild-linker.linux]
 manager = "cargo-install"
 pkg = "wild-linker"
 locked = true
-binstall_first = true
 
 # ============================================================
 # Languages & Runtimes (via mise)
