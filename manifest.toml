@@ -15,6 +15,13 @@ retry = 3
 # Languages & Toolchains
 # ============================================================
 
+# 安装 rustup 本身（vendor 脚本，已审查）
+[rustup-install]
+[rustup-install.linux]
+manager = "script"
+path = "scripts/install-rustup.sh"
+
+# 配置 Rust 工具链（rustup manager）
 [rust]
 [rust.linux]
 manager = "rustup"

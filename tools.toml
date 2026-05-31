@@ -3,6 +3,7 @@ manifest = "./manifest.toml"
 
 # ── Layer 1a: 编译基础设施 ──
 [build-base]
+rustup-install = "安装 rustup（vendor 脚本）"
 "rust@stable" = "Rust stable toolchain"
 
 # ── Layer 1b: Cargo 工具（依赖 Rust）──
