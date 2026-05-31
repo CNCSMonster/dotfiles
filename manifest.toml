@@ -153,10 +153,13 @@ binstall_first = true
 
 [starship]
 [starship.linux]
-manager = "cargo-install"
-pkg = "starship"
-locked = true
-binstall_first = true
+manager = "github-release"
+repo = "starship/starship"
+asset = "starship-x86_64-unknown-linux-gnu.tar.gz"
+bin = "starship"
+[starship.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "^starship (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [zoxide]
 [zoxide.linux]

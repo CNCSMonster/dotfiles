@@ -6,15 +6,19 @@ manifest = "./manifest.toml"
 rustup-install = "安装 rustup（vendor 脚本）"
 "rust@stable" = "Rust stable toolchain"
 
-# ── Layer 1b: Cargo 工具（依赖 Rust）──
+# ── Layer 1b: Cargo 预编译安装器（独立，不需要 Rust）──
+# 必须在 cargo-tools 之前安装，因为 cargo-tools 中的工具使用 binstall_first
+[cargo-binstall]
+cargo-binstall = "Cargo 预编译安装器"
+
+# ── Layer 1c: Cargo 工具（依赖 Rust + cargo-binstall）──
 [cargo-tools]
-depends = ["build-base"]
+depends = ["build-base", "cargo-binstall"]
 sccache = { desc = "编译缓存", allow_fail = true }
 wild-linker = { desc = "快速链接器", allow_fail = true }
 "bat@0.26.1" = "Cat 替代品"
 "eza@0.23.4" = "ls 替代品"
 "fd-find@10.4.2" = "find 替代品"
-"starship@1.24.2" = "Shell prompt"
 "zoxide@0.9.9" = "cd 替代品"
 "tokei@14.0.0" = "代码统计"
 "navi@2.24.0" = "交互式命令行"
@@ -39,7 +43,11 @@ cargo-fuzz = { desc = "模糊测试", allow_fail = true }
 grcov = { desc = "代码覆盖率", allow_fail = true }
 cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
 
-# ── Layer 1c: 编辑器和终端工具（独立，不需要 Rust）──
+# ── Layer 1c: Shell 工具（独立，不需要 Rust）──
+[shell-tools]
+"starship@1.24.2" = "Shell prompt"
+
+# ── Layer 1d: 编辑器和终端工具（独立，不需要 Rust）──
 [editors]
 neovim = "Neovim 编辑器"
 helix = "Helix 编辑器"
@@ -70,8 +78,7 @@ qwen-code = { desc = "Qwen Code", allow_fail = true }
 # ── Layer 1f: 其他（独立）──
 [extras]
 xdotter = "配置部署工具"
-cargo-binstall = "Cargo 预编译安装器"
 
 # ── 全量安装 ──
 [dev]
-depends = ["cargo-tools", "editors", "languages", "lsp-servers", "extras"]
+depends = ["cargo-binstall", "build-base", "cargo-tools", "shell-tools", "editors", "languages", "lsp-servers", "extras"]

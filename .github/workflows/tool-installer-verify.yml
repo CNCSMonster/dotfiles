@@ -32,7 +32,7 @@ jobs:
         run: python3 vendor/tool-installer install dev --dry-run
       - name: Dry-run each module
         run: |
-          for module in build-base cargo-tools editors languages lsp-servers extras; do
+          for module in cargo-binstall build-base cargo-tools shell-tools editors languages lsp-servers extras; do
             echo "--- $module ---"
             python3 vendor/tool-installer install "$module" --dry-run
           done
@@ -72,9 +72,27 @@ jobs:
           rustfmt --version
           clippy-driver --version
 
-  # ── cargo-tools: 29 个 Rust 工具 ──
+  # ── cargo-binstall: 预编译安装器 ──
+  apply-cargo-binstall:
+    name: "Apply: cargo-binstall"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install cargo-binstall
+        run: python3 vendor/tool-installer install cargo-binstall
+      - name: Verify
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          cargo-binstall -V
+
+  # ── cargo-tools: 28 个 Rust 工具 ──
   apply-cargo-tools:
-    name: "Apply: cargo-tools (29 crates)"
+    name: "Apply: cargo-tools (28 crates)"
+    needs: [apply-cargo-binstall, apply-build-base]
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -83,11 +101,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install cargo-tools (includes build-base)
-        run: python3 vendor/tool-installer install cargo-tools
+      - name: Install cargo-tools (needs cargo-binstall + build-base)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          python3 vendor/tool-installer install cargo-binstall
+          python3 vendor/tool-installer install build-base
+          python3 vendor/tool-installer install cargo-tools
       - name: Verify key tools
         run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           bat --version
           eza --version
           fd --version || fdfind --version
@@ -126,6 +148,26 @@ jobs:
           node --version || true
           pnpm --version || true
           zig version || true
+
+  # ── shell-tools: starship ──
+  apply-shell-tools:
+    name: "Apply: shell-tools"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install shell-tools
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mkdir -p ~/.local/bin
+          python3 vendor/tool-installer install shell-tools
+      - name: Verify
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          starship -V
 
   # ── editors: neovim, helix, zellij, yq ──
   # 全部是 github-release，不需要额外 manager
@@ -186,7 +228,7 @@ jobs:
           yaml-language-server --version || true
           bash-language-server --version
 
-  # ── extras: xdotter, cargo-binstall ──
+  # ── extras: xdotter ──
   apply-extras:
     name: "Apply: extras"
     runs-on: ubuntu-latest
@@ -206,12 +248,11 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           xd --version || true
-          cargo-binstall --version || true
 
   # ── 全量安装验证（等所有模块通过后）──
   full-install:
     name: "Apply: dev (full)"
-    needs: [dry-run, bootstrap, apply-build-base, apply-cargo-tools, apply-editors, apply-languages, apply-lsp-servers, apply-extras]
+    needs: [dry-run, bootstrap, apply-cargo-binstall, apply-build-base, apply-cargo-tools, apply-shell-tools, apply-editors, apply-languages, apply-lsp-servers, apply-extras]
     runs-on: ubuntu-latest
     timeout-minutes: 150
     steps:
