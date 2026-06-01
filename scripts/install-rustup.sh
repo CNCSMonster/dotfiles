@@ -4,8 +4,5 @@
 
 set -e
 
-# 运行安装脚本
+# 运行安装脚本（tool-installer 会在安装后重新评估 PATH）
 exec "$(dirname "$0")/vendor/rustup-init.sh" -y
-
-# 安装后：source cargo env 使 rustup 在当前 shell 可用
-source "$HOME/.cargo/env" 2>/dev/null || true

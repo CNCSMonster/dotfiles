@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Layer 0: Bootstrap — 安装 tool-installer 的前置依赖
 # 这个脚本不依赖 tool-installer，因为它负责安装 tool-installer 本身
-set -exo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"

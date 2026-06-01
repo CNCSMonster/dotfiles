@@ -40,6 +40,10 @@ do_install() {
     echo "=========================================="
     echo "Layer 1: 安装开发工具..."
     echo "=========================================="
+    if ! command -v tool-installer &>/dev/null; then
+        echo "❌ tool-installer 未安装，请先运行 --bootstrap"
+        exit 1
+    fi
     tool-installer install dev
 }
 
@@ -54,6 +58,10 @@ main() {
         --install)   do_install ;;
         --post)      do_post ;;
         --dry-run)
+            if ! command -v tool-installer &>/dev/null; then
+                echo "❌ tool-installer 未安装，请先运行 --bootstrap"
+                exit 1
+            fi
             tool-installer install dev --dry-run
             ;;
         --help|-h) usage; exit 0 ;;

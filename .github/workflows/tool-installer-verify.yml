@@ -24,7 +24,6 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -44,7 +43,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - uses: Swatinem/rust-cache@v2
       - name: Run Layer 0
         run: bash scripts/layer0-bootstrap.sh
       - name: Verify
@@ -113,12 +111,19 @@ jobs:
           bat --version
           eza --version
           fd --version || fdfind --version
-          starship --version
           tokei --version
           zoxide --version
           mdbook --version
           mise --version
           uv --version
+          navi --version || true
+          gitui --version || true
+          kondo --version || true
+          jaq --version
+          nu --version
+          cargo-audit --version
+          macchina --version || true
+          tree-sitter --version
 
   # ── languages: go, node, pnpm, zig, yazi, gopls ──
   apply-languages:
@@ -127,7 +132,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
-      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -177,7 +181,6 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
-      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -203,7 +206,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
-      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -227,6 +229,9 @@ jobs:
           pyright --version || true
           yaml-language-server --version || true
           bash-language-server --version
+          marksman --version || true
+          zls --version || true
+          lua-language-server --version || true
 
   # ── extras: xdotter ──
   apply-extras:
@@ -235,7 +240,6 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
-      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -282,10 +286,20 @@ jobs:
           echo "=== Rust ==="
           rustc --version && cargo --version
           echo "=== Editors ==="
-          hx --version && zellij --version && yq --version
-          echo "=== CLI Tools ==="
-          bat --version && eza --version && starship --version
+          nvim --version | head -1
+          hx --version
+          zellij --version
+          yq --version
+          echo "=== Cargo Tools ==="
+          bat --version && eza --version && fd --version
+          tokei --version && zoxide --version
+          nu --version && uv --version && mise --version
+          echo "=== Shell Tools ==="
+          starship -V
           echo "=== Languages ==="
           go version 2>/dev/null || echo "go: skipped"
           node --version 2>/dev/null || echo "node: skipped"
+          echo "=== LSP ==="
+          typescript-language-server --version
+          bash-language-server --version
           echo "=== All passed ==="

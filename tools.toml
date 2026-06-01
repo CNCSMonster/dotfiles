@@ -81,4 +81,4 @@ xdotter = "配置部署工具"
 
 # ── 全量安装 ──
 [dev]
-depends = ["cargo-binstall", "build-base", "cargo-tools", "shell-tools", "editors", "languages", "lsp-servers", "extras"]
+depends = ["build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "languages", "lsp-servers", "extras"]

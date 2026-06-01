@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Layer 2: 后置脚本 — 依赖 Layer 1 安装的工具
-set -exo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
