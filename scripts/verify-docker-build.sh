@@ -178,7 +178,7 @@ check_file "$HOME/.config/starship.toml" "starship 配置"
 echo
 
 echo "=== 9. 额外工具验证 ==="
-# setup.sh 安装但之前未检查的工具
+# setup-new.sh 安装但之前未检查的工具
 check_cmd cargo-fuzz "cargo-fuzz"
 check_cmd uv "uv"
 echo

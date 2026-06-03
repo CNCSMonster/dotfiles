@@ -7,8 +7,8 @@
 # ============================================================
 
 [_github-release]
-github_mirrors = ["https://mirror.ghproxy.com"]
-timeout = 60
+github_mirrors = ["https://ghfast.top", "https://mirror.ghproxy.com"]
+timeout = 120
 retry = 3
 
 # ============================================================
@@ -44,26 +44,46 @@ install_name = "nvim"
 command = ["{bin}", "--version"]
 regex = "^NVIM v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
+[neovim.linux.x86_64]
+sha256 = "31cf85945cb600d96cdf69f88bc68bec814acbff50863c5546adef3a1bcef260"
+
+[neovim.linux.aarch64]
+asset = "nvim-linux-arm64.tar.gz"
+bin = "nvim-linux-arm64/bin/nvim"
+sha256 = "f697d4e4582b6e4b5c3c26e76e06ce26efa08ba1768e03fd2733fcc422bb0490"
+
 [helix]
 [helix.linux]
 manager = "github-release"
 repo = "helix-editor/helix"
-asset = "helix-{version}-x86_64-linux.tar.xz"
-bin = "helix-{version}-x86_64-linux/hx"
+asset = "helix-{version}-{arch}-linux.tar.xz"
+bin = "helix-{version}-{arch}-linux/hx"
 install_name = "hx"
 [helix.linux.version_probe]
 command = ["{bin}", "--version"]
 regex = "^helix (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
+[helix.linux.x86_64]
+sha256 = "3f08e63ecd388fff657ad39722f88bb03dcf326f1f2da2700d99e1dc40ab2e8b"
+
+[helix.linux.aarch64]
+sha256 = "ce23fa8d395e633e3e54c052012f11965d91d8d5c2bfa659685f50430b4f8175"
+
 [zellij]
 [zellij.linux]
 manager = "github-release"
 repo = "zellij-org/zellij"
-asset = "zellij-x86_64-unknown-linux-musl.tar.gz"
+asset = "zellij-{arch}-unknown-linux-musl.tar.gz"
 bin = "zellij"
 [zellij.linux.version_probe]
 command = ["{bin}", "--version"]
 regex = "^zellij (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[zellij.linux.x86_64]
+sha256 = "669825021d529fca5d939888263c9d2a90762145191fa07581a15250e8af2b49"
+
+[zellij.linux.aarch64]
+sha256 = "6f028bb569d29be968c961249c5f80d5336ad4ad4b3cd79af8e32afab57b0948"
 
 # ============================================================
 # GitHub Release Tools
@@ -80,6 +100,14 @@ install_name = "yq"
 command = ["{bin}", "--version"]
 regex = "version (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
+[yq.linux.x86_64]
+sha256 = "3fa3c1c32d94520102ea4d853d03c3ab907867d964540e896410ad8a7fc6c8f7"
+
+[yq.linux.aarch64]
+asset = "yq_linux_arm64.tar.gz"
+bin = "yq_linux_arm64"
+sha256 = "10a4a2093090363a00b55ad52e132a082f9652970cb8f1ad35a1ae048b917e6e"
+
 [marksman]
 [marksman.linux]
 manager = "github-release"
@@ -88,16 +116,30 @@ asset = "marksman-linux-x64"
 bin = "marksman-linux-x64"
 install_name = "marksman"
 
+[marksman.linux.x86_64]
+sha256 = "be5098e8213219269c47fc0d916a66fa31ce0602ec967475c722260aabf26087"
+
+[marksman.linux.aarch64]
+asset = "marksman-linux-arm64"
+bin = "marksman-linux-arm64"
+sha256 = "db8e124527f7f8048e3e6c91821b9c52ef173d92c01e47d221bf1337afd962fb"
+
 [zls]
 [zls.linux]
 manager = "github-release"
 repo = "zigtools/zls"
-asset = "zls-x86_64-linux.tar.xz"
+asset = "zls-{arch}-linux.tar.xz"
 bin = "zls"
 install_name = "zls"
 [zls.linux.version_probe]
 command = ["{bin}", "--version"]
 regex = "zls (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[zls.linux.x86_64]
+sha256 = "3bb38f522cb23213e8c075ac6b170273fe49b4274b8c12b034cc496407400067"
+
+[zls.linux.aarch64]
+sha256 = "a2daa860a0e0cd1410491ff9703c6aaca96defd833b88af6a9811d6ff04fc13b"
 
 [lua-lsp]
 [lua-lsp.linux]
@@ -109,6 +151,13 @@ install_name = "lua-language-server"
 [lua-lsp.linux.version_probe]
 command = ["{bin}", "--version"]
 regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[lua-lsp.linux.x86_64]
+sha256 = "248b0858a0afc8233f2535e89b648398b2202cb96cf51ce187e3263923dd0223"
+
+[lua-lsp.linux.aarch64]
+asset = "lua-language-server-{version}-linux-arm64.tar.gz"
+sha256 = "680285a36d8cf7b17ca4be7a2f9c93643ebd8daec0b7425a6b7a02d003f3da81"
 
 [xdotter]
 [xdotter.linux]
@@ -282,10 +331,8 @@ binstall_first = true
 
 [uv]
 [uv.linux]
-manager = "cargo-install"
-pkg = "uv"
-locked = true
-binstall_first = true
+manager = "script"
+path = "scripts/install-uv.sh"
 
 [mise]
 [mise.linux]
@@ -335,6 +382,17 @@ manager = "cargo-install"
 pkg = "wild-linker"
 locked = true
 binstall_first = true
+
+[zola]
+[zola.linux]
+manager = "github-release"
+repo = "getzola/zola"
+asset = "zola-{version}-x86_64-unknown-linux-musl.tar.gz"
+bin = "zola"
+install_name = "zola"
+[zola.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "zola (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 # ============================================================
 # Languages & Runtimes (via mise)

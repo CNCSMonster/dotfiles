@@ -7,7 +7,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 sudo_run() {
-    if [ "$EUID" -eq 0 ]; then "$@"; else sudo "$@"; fi
+    if [ "$EUID" -eq 0 ]; then "$@"
+    elif sudo -n true 2>/dev/null; then sudo "$@"
+    else
+        echo "⚠️  需要 sudo 权限，但当前用户无 NOPASSWD 配置"
+        echo "   请手动安装: sudo apt-get install -y python3 curl gh"
+        return 1
+    fi
 }
 
 # ── 0a: 基础系统包 ──
@@ -23,9 +29,19 @@ install_system_packages() {
         fi
         brew install python3 gh
     else
-        export DEBIAN_FRONTEND=noninteractive
-        sudo_run apt-get update
-        sudo_run apt-get install -y python3 curl gh
+        # 检查所需包是否已安装，已装则跳过 sudo
+        local missing=()
+        for pkg in python3 curl gh build-essential pkg-config libssl-dev \
+                   libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev; do
+            command -v "$pkg" &>/dev/null || dpkg -s "$pkg" &>/dev/null || missing+=("$pkg")
+        done
+        if [ ${#missing[@]} -eq 0 ]; then
+            echo "✅ 基础系统包已就绪（python3, curl, gh, build-essential）"
+        else
+            export DEBIAN_FRONTEND=noninteractive
+            sudo_run apt-get update
+            sudo_run apt-get install -y "${missing[@]}"
+        fi
     fi
     echo "✅ 基础系统包安装完成"
 }
@@ -36,6 +52,20 @@ ensure_gh_login() {
     echo "Layer 0: 检查 GitHub CLI 登录状态..."
     echo "=========================================="
 
+    # 优先通过环境变量认证（CI 和容器环境）
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        if gh auth status &>/dev/null; then
+            echo "✅ GitHub CLI 已登录（通过 GITHUB_TOKEN）"
+            return 0
+        fi
+        echo "检测到 GITHUB_TOKEN 环境变量，配置 gh 认证..."
+        gh auth login --with-token <<< "$GITHUB_TOKEN" 2>/dev/null || true
+        if gh auth status &>/dev/null; then
+            echo "✅ GitHub CLI 已通过 GITHUB_TOKEN 登录"
+            return 0
+        fi
+    fi
+
     if gh auth status &>/dev/null; then
         echo "✅ GitHub CLI 已登录"
         return 0
@@ -45,14 +75,6 @@ ensure_gh_login() {
     echo "⚠️  GitHub CLI 未登录。"
     echo "   登录后可享受 5000 次/小时 API 限额（匿名仅 60 次）。"
     echo ""
-
-    # CI 环境使用 GITHUB_TOKEN
-    if [ -n "${GITHUB_TOKEN:-}" ]; then
-        echo "检测到 GITHUB_TOKEN 环境变量，使用它登录..."
-        gh auth login --with-token <<< "$GITHUB_TOKEN"
-        echo "✅ GitHub CLI 已通过 GITHUB_TOKEN 登录"
-        return 0
-    fi
 
     # 交互式环境提示登录
     if [ -t 0 ]; then
@@ -82,6 +104,15 @@ install_tool_installer() {
     else
         echo "❌ vendor/tool-installer 不存在，请先构建"
         return 1
+    fi
+
+    # 预安装 vendored cargo-binstall（如果有），避免依赖 GitHub 下载
+    local binstall_artifact="${PROJECT_DIR}/vendor/cargo-binstall"
+    if [ -f "$binstall_artifact" ]; then
+        mkdir -p ~/.cargo/bin
+        cp "$binstall_artifact" ~/.cargo/bin/cargo-binstall
+        chmod +x ~/.cargo/bin/cargo-binstall
+        echo "✅ cargo-binstall 已从 vendor 安装到 ~/.cargo/bin/cargo-binstall"
     fi
 }
 

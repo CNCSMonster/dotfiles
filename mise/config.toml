@@ -1,10 +1,10 @@
 [tools]
 go = "1.23.4"
-node = "latest"
+node = "22.22.3"
 pnpm = "10.20.0"
 yazi = "26.1.22"
-zig = "latest"
-"go:golang.org/x/tools/gopls" = "latest"
+zig = "0.16.0"
+"go:golang.org/x/tools/gopls" = "0.22.0"
 
 [settings]
 # 网络重试配置：Docker 构建时网络不稳定，需要重试

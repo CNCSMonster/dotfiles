@@ -1,7 +1,7 @@
 name: Setup Verification (Runner Direct)
 
-# 直接在 GitHub runner 上运行 setup.sh，无需 Docker 构建
-# 目的：快速验证 setup.sh 在干净 Ubuntu 环境中能正常执行
+# 直接在 GitHub runner 上运行 setup-new.sh，无需 Docker 构建
+# 目的：快速验证 setup-new.sh 在干净 Ubuntu 环境中能正常执行
 #
 # 对比 Docker 构建方式：
 #   - Docker 构建平均耗时：~32 分钟（成功）/ ~6 分钟（失败）
@@ -24,7 +24,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
       fail-fast: false
-    name: Verify setup.sh on ${{ matrix.os }}
+    name: Verify setup-new.sh on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: ${{ matrix.os == 'macos-latest' && 120 || 60 }}
     permissions:
@@ -46,14 +46,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Run setup.sh
+      - name: Run setup-new.sh
         run: |
-          chmod +x ./setup.sh
-          ./setup.sh
+          chmod +x ./setup-new.sh
+          ./setup-new.sh
 
       - name: Verify installation
         run: |
-          # 加载 dotfiles 环境变量（setup.sh 已部署符号链接）
+          # 加载 dotfiles 环境变量（setup-new.sh 已部署符号链接）
           export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
 
           if [ -f "./scripts/verify-docker-build.sh" ]; then

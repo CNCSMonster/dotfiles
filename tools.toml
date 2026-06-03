@@ -9,12 +9,12 @@ rustup-install = "安装 rustup（vendor 脚本）"
 # ── Layer 1b: Cargo 预编译安装器（独立，不需要 Rust）──
 # 必须在 cargo-tools 之前安装，因为 cargo-tools 中的工具使用 binstall_first
 [cargo-binstall]
-cargo-binstall = "Cargo 预编译安装器"
+"cargo-binstall@v1.19.1" = { desc = "Cargo 预编译安装器", allow_fail = true }
 
 # ── Layer 1c: Cargo 工具（依赖 Rust + cargo-binstall）──
 [cargo-tools]
 depends = ["build-base", "cargo-binstall"]
-sccache = { desc = "编译缓存", allow_fail = true }
+"sccache@0.15.0" = { desc = "编译缓存", allow_fail = true }
 wild-linker = { desc = "快速链接器", allow_fail = true }
 "bat@0.26.1" = "Cat 替代品"
 "eza@0.23.4" = "ls 替代品"
@@ -36,49 +36,53 @@ wild-linker = { desc = "快速链接器", allow_fail = true }
 "rust-script@0.36.0" = "Rust 脚本运行器"
 "parallel-disk-usage@0.22.0" = "磁盘分析"
 "nu@0.112.2" = "现代 Shell"
-"uv@0.11.3" = "Python 包管理器"
+"uv@0.11.18" = "Python 包管理器"
 "mise@2026.4.5" = "版本管理器"
 "cargo-audit@0.22.1" = "依赖审计"
 cargo-fuzz = { desc = "模糊测试", allow_fail = true }
 grcov = { desc = "代码覆盖率", allow_fail = true }
 cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
 
+# ── Layer 1f: 静态网站工具（独立，github-release 预编译）──
+[zola]
+"zola@v0.22.1" = "静态网站生成器"
+
 # ── Layer 1c: Shell 工具（独立，不需要 Rust）──
 [shell-tools]
-"starship@1.24.2" = "Shell prompt"
+"starship@v1.24.2" = "Shell prompt"
 
 # ── Layer 1d: 编辑器和终端工具（独立，不需要 Rust）──
 [editors]
-neovim = "Neovim 编辑器"
-helix = "Helix 编辑器"
-zellij = "终端复用器"
-yq = "YAML/JSON 处理器"
+"neovim@v0.12.2" = "Neovim 编辑器"
+"helix@25.07.1" = "Helix 编辑器"
+"zellij@v0.44.1" = "终端复用器"
+"yq@v4.52.4" = "YAML/JSON 处理器"
 
 # ── Layer 1d: 语言运行时（独立）──
 [languages]
 "go@1.23.4" = "Go via mise"
-"node@latest" = "Node.js via mise"
+"node@22.22.3" = "Node.js via mise"
 "pnpm@10.20.0" = "pnpm via mise"
-"zig@latest" = "Zig via mise"
+"zig@0.16.0" = "Zig via mise"
 "yazi@26.1.22" = "终端文件管理器 via mise"
-gopls = "Go LSP via mise"
+"gopls@0.22.0" = "Go LSP via mise"
 
 # ── Layer 1e: LSP 服务器 ──
 # 注意：不依赖 languages，因为 CI 中 node/uv 由前置步骤安装
 [lsp-servers]
-typescript-lsp = "TypeScript LSP"
-pyright = "Python LSP"
-yaml-lsp = "YAML LSP"
-bash-lsp = "Bash LSP"
-marksman = "Markdown LSP"
-zls = "Zig LSP"
-lua-lsp = "Lua LSP"
-qwen-code = { desc = "Qwen Code", allow_fail = true }
+"typescript-lsp@5.3.0" = "TypeScript LSP"
+"pyright@1.1.410" = "Python LSP"
+"yaml-lsp@1.23.0" = "YAML LSP"
+"bash-lsp@5.6.0" = "Bash LSP"
+"marksman@2026-02-08" = "Markdown LSP"
+"zls@0.15.1" = "Zig LSP"
+"lua-lsp@3.17.1" = "Lua LSP"
+"qwen-code@0.17.0" = { desc = "Qwen Code", allow_fail = true }
 
 # ── Layer 1f: 其他（独立）──
 [extras]
-xdotter = "配置部署工具"
+"xdotter@v0.5.2" = "配置部署工具"
 
 # ── 全量安装 ──
 [dev]
-depends = ["build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "languages", "lsp-servers", "extras"]
+depends = ["build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "languages", "lsp-servers", "extras", "zola"]

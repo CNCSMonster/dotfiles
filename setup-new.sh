@@ -9,6 +9,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 export PATH="$HOME/.local/bin:$PATH"
 
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Asia/Shanghai
+fi
+
+sudo_run() {
+    if [ "$EUID" -eq 0 ]; then "$@"
+    elif sudo -n true 2>/dev/null; then sudo "$@"
+    else
+        echo "⚠️  需要 sudo 权限，但当前用户无 NOPASSWD 配置"
+        return 1
+    fi
+}
+
 usage() {
     echo "用法: $0 [选项]"
     echo ""
@@ -24,27 +38,141 @@ do_bootstrap() {
     bash "${SCRIPT_DIR}/scripts/layer0-bootstrap.sh"
 }
 
+# 确保 xdotter 已安装（bootstrap 后 tool-installer 可用，用其安装 extras 组）
+# 多重回退策略：tool-installer → 直接下载 → vendor
+ensure_xdotter() {
+    if command -v xd &>/dev/null; then
+        return 0
+    fi
+    echo "安装 xdotter..."
+
+    # 方案 1: tool-installer（最优，使用 GitHub API，可能被限流）
+    if command -v tool-installer &>/dev/null; then
+        if tool-installer install extras 2>/dev/null; then
+            command -v xd &>/dev/null && return 0
+        fi
+        echo "⚠️  tool-installer 安装 xdotter 失败，尝试直接下载..."
+    fi
+
+    # 方案 2: 直接 curl 下载 musl 静态二进制（绕过 GitHub API 限流）
+    mkdir -p ~/.local/bin
+    local xd_url="https://github.com/CNCSMonster/xdotter/releases/latest/download/xd-x86_64-unknown-linux-musl"
+    if curl -fsSL --retry 3 --connect-timeout 15 "$xd_url" -o ~/.local/bin/xd 2>/dev/null; then
+        chmod +x ~/.local/bin/xd
+        echo "✅ xdotter 已通过直接下载安装"
+        return 0
+    fi
+
+    # 方案 3: vendor 目录
+    if [ -f "${SCRIPT_DIR}/vendor/xdotter" ]; then
+        cp "${SCRIPT_DIR}/vendor/xdotter" ~/.local/bin/xd
+        chmod +x ~/.local/bin/xd
+        echo "✅ xdotter 已从 vendor 目录安装"
+        return 0
+    fi
+
+    echo "❌ 所有安装方式均失败，无法继续"
+    return 1
+}
+
+install_fonts() {
+    echo "=========================================="
+    echo "安装字体..."
+    echo "=========================================="
+
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        if command -v brew &>/dev/null; then
+            brew install --cask \
+                font-jetbrains-mono \
+                font-fira-code \
+                font-fira-code-nerd-font \
+                font-noto-sans-cjk \
+                font-noto-color-emoji \
+                2>/dev/null || echo "⚠️  部分字体可能已安装，继续..."
+        else
+            echo "⚠️  Homebrew 未安装，跳过字体安装"
+        fi
+    else
+        sudo_run apt-get update
+        sudo_run apt-get install -y --no-install-recommends \
+            fontconfig \
+            fonts-noto-cjk \
+            fonts-noto-color-emoji \
+            fonts-jetbrains-mono \
+            fonts-dejavu-core
+
+        if ! fc-list 2>/dev/null | grep -qi "FiraCode.*Nerd"; then
+            echo "安装 FiraCode Nerd Font..."
+            local fira_url="https://github.com/ryanoasis/nerd-fonts/releases/download/v7.0.0/FiraCode.zip"
+            local fira_tmp="/tmp/FiraCode-Nerd-Font.zip"
+            if wget --tries=3 --timeout=30 --connect-timeout=15 "$fira_url" -O "$fira_tmp" 2>/dev/null; then
+                local fira_dir="/usr/local/share/fonts/FiraCode-Nerd-Font"
+                sudo_run mkdir -p "$fira_dir"
+                if command -v unzip &>/dev/null; then
+                    sudo_run unzip -o "$fira_tmp" -d "$fira_dir"
+                else
+                    sudo_run apt-get install -y unzip
+                    sudo_run unzip -o "$fira_tmp" -d "$fira_dir"
+                fi
+                rm -f "$fira_tmp"
+            else
+                echo "⚠️  FiraCode Nerd Font 下载失败，跳过"
+            fi
+        else
+            echo "FiraCode Nerd Font 已安装，跳过"
+        fi
+
+        if command -v fc-cache &>/dev/null; then
+            echo "刷新字体缓存..."
+            sudo_run fc-cache -f
+        fi
+    fi
+    echo "✅ 字体安装完成"
+}
+
 do_deploy() {
     echo "=========================================="
     echo "部署配置文件（xdotter deploy）..."
     echo "=========================================="
-    if command -v xd &>/dev/null; then
-        cd "${SCRIPT_DIR}" && xd deploy --force
-    else
-        echo "⚠️  xdotter 未安装，跳过配置部署"
-        echo "   运行 --bootstrap 或 --install 后重试"
-    fi
+    ensure_xdotter
+    export PATH="$HOME/.local/bin:$PATH"
+    cd "${SCRIPT_DIR}" && xd deploy --force
+    install_fonts
+    echo "✅ 配置部署完成"
 }
 
 do_install() {
     echo "=========================================="
     echo "Layer 1: 安装开发工具..."
     echo "=========================================="
+    export PATH="$HOME/.local/bin:$PATH"
     if ! command -v tool-installer &>/dev/null; then
         echo "❌ tool-installer 未安装，请先运行 --bootstrap"
         exit 1
     fi
-    tool-installer install dev
+
+    # 如果 xdotter 已在 deploy 阶段部署了 ~/.cargo/config.toml，
+    # 其中的 sccache wrapper / wild linker 此时尚未安装，会阻断 cargo 编译。
+    # 临时禁用这些配置，等 sccache/wild 安装完成后自动恢复。
+    local cargo_config="$HOME/.cargo/config.toml"
+    local patched=false
+    if [ -f "$cargo_config" ] && grep -qE 'rustc-wrapper|ld-path=wild' "$cargo_config" 2>/dev/null; then
+        echo "🔧 临时禁用 sccache wrapper / wild linker（工具尚未安装）..."
+        cp "$cargo_config" "$cargo_config.bak"
+        sed -i 's/^rustc-wrapper = "sccache"/#rustc-wrapper = "sccache"  # temporarily disabled during install/' "$cargo_config"
+        sed -i 's/--ld-path=wild/--ld-path=ld/' "$cargo_config"
+        patched=true
+    fi
+
+    # tool-installer 失败时也要恢复原始配置
+    if $patched; then
+        local rc=0
+        tool-installer install dev || rc=$?
+        mv "$cargo_config.bak" "$cargo_config"
+        return $rc
+    else
+        tool-installer install dev
+    fi
 }
 
 do_post() {
