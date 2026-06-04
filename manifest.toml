@@ -20,6 +20,9 @@ retry = 3
 [rustup-install.linux]
 manager = "script"
 path = "scripts/install-rustup.sh"
+[rustup-install.macos]
+manager = "script"
+path = "scripts/install-rustup.sh"
 
 # 配置 Rust 工具链（rustup manager）
 [rust]
