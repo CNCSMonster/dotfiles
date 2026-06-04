@@ -54,13 +54,15 @@ ensure_xdotter() {
         echo "⚠️  tool-installer 安装 xdotter 失败，尝试直接下载..."
     fi
 
-    # 方案 2: 直接 curl 下载 musl 静态二进制（绕过 GitHub API 限流）
-    mkdir -p ~/.local/bin
-    local xd_url="https://github.com/CNCSMonster/xdotter/releases/latest/download/xd-x86_64-unknown-linux-musl"
-    if curl -fsSL --retry 3 --connect-timeout 15 "$xd_url" -o ~/.local/bin/xd 2>/dev/null; then
-        chmod +x ~/.local/bin/xd
-        echo "✅ xdotter 已通过直接下载安装"
-        return 0
+    # 方案 2: 直接 curl 下载 musl 静态二进制（仅 Linux x86_64）
+    if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
+        mkdir -p ~/.local/bin
+        local xd_url="https://github.com/CNCSMonster/xdotter/releases/latest/download/xd-x86_64-unknown-linux-musl"
+        if curl -fsSL --retry 3 --connect-timeout 15 "$xd_url" -o ~/.local/bin/xd 2>/dev/null; then
+            chmod +x ~/.local/bin/xd
+            echo "✅ xdotter 已通过直接下载安装"
+            return 0
+        fi
     fi
 
     # 方案 3: vendor 目录（仅 Linux x86_64）
@@ -68,6 +70,12 @@ ensure_xdotter() {
         cp "${SCRIPT_DIR}/vendor/xdotter" ~/.local/bin/xd
         chmod +x ~/.local/bin/xd
         echo "✅ xdotter 已从 vendor 目录安装"
+        return 0
+    fi
+
+    # macOS 无回退，跳过 xdotter（deploy 会检查 xd 是否存在）
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "⚠️  macOS 上 xdotter 安装失败（无 vendor 兜底），将跳过 xd deploy"
         return 0
     fi
 
@@ -136,9 +144,13 @@ do_deploy() {
     echo "=========================================="
     ensure_xdotter
     export PATH="$HOME/.local/bin:$PATH"
-    cd "${SCRIPT_DIR}" && xd deploy --force
-    install_fonts
-    echo "✅ 配置部署完成"
+    if command -v xd &>/dev/null; then
+        cd "${SCRIPT_DIR}" && xd deploy --force
+        install_fonts
+        echo "✅ 配置部署完成"
+    else
+        echo "⚠️  xdotter 未安装，跳过配置部署（macOS 上可能需要手动安装）"
+    fi
 }
 
 do_install() {
