@@ -22,7 +22,9 @@ jobs:
   verify:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
+        # TODO: add macos-latest when manifest.toml has .macos strategies
+        # for all tools in the dev module (~43 tools need macos entries)
       fail-fast: false
     name: Verify setup-new.sh on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
