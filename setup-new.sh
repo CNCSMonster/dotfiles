@@ -63,8 +63,8 @@ ensure_xdotter() {
         return 0
     fi
 
-    # 方案 3: vendor 目录
-    if [ -f "${SCRIPT_DIR}/vendor/xdotter" ]; then
+    # 方案 3: vendor 目录（仅 Linux x86_64）
+    if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" && -f "${SCRIPT_DIR}/vendor/xdotter" ]]; then
         cp "${SCRIPT_DIR}/vendor/xdotter" ~/.local/bin/xd
         chmod +x ~/.local/bin/xd
         echo "✅ xdotter 已从 vendor 目录安装"
