@@ -1,11 +1,12 @@
-name: Setup Verification (Runner Direct)
+name: E2E Full Install
 
-# 直接在 GitHub runner 上运行 setup-new.sh，无需 Docker 构建
-# 目的：快速验证 setup-new.sh 在干净 Ubuntu 环境中能正常执行
+# 端到端完整安装测试：在干净 GitHub runner 上一键运行 setup-new.sh
+# 覆盖 Layer 0 (bootstrap) + Layer 1 (deploy + install) + Layer 2 (post)
+# 并验证所有关键工具是否正确安装
 #
 # 对比 Docker 构建方式：
 #   - Docker 构建平均耗时：~32 分钟（成功）/ ~6 分钟（失败）
-#   - Runner 直接运行预计：~15-20 分钟（跳过镜像构建，runner 已有基础工具）
+#   - Runner 直接运行预计：~10-15 分钟（跳过镜像构建，runner 已有基础工具）
 
 on:
   push:
@@ -26,7 +27,7 @@ jobs:
         # TODO: add macos-latest when manifest.toml has .macos strategies
         # for all tools in the dev module (~43 tools need macos entries)
       fail-fast: false
-    name: Verify setup-new.sh on ${{ matrix.os }}
+    name: E2E full install on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: ${{ matrix.os == 'macos-latest' && 120 || 60 }}
     permissions:
@@ -48,12 +49,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Run setup-new.sh
+      - name: Run full install (setup-new.sh)
         run: |
           chmod +x ./setup-new.sh
           ./setup-new.sh
 
-      - name: Verify installation
+      - name: Verify all installed tools
         run: |
           # 加载 dotfiles 环境变量（setup-new.sh 已部署符号链接）
           export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
