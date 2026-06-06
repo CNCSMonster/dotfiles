@@ -126,5 +126,7 @@ export EDITOR='hx'
 #   - env.sh: 基础环境变量（PATH 等），所有场景都需要
 #   - inter.sh: 交互式特性（prompt、快捷键），仅交互式 shell 需要
 if command -v mise &>/dev/null; then
-    eval "$(mise activate $SH)" 2>/dev/null || true
+    # 非交互式场景（CI、脚本）中 activate 只设置 prompt hook，不会立即生效
+    # hook-env 能立即将 mise shims 注入 PATH
+    eval "$(mise hook-env -s $SH)" 2>/dev/null || true
 fi
