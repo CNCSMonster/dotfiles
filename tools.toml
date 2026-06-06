@@ -28,7 +28,7 @@ wild-linker = { desc = "快速链接器", allow_fail = true }
 "mdbook@0.5.2" = "文档生成器"
 "mdbook-mermaid@0.17.0" = "mdbook 图表"
 "gen-mdbook-summary@0.0.10" = "mdbook 目录"
-"tree-sitter-cli@0.26.8" = "语法解析器"
+"tree-sitter-cli@0.26.8" = { desc = "语法解析器", allow_fail = true }
 "tree-sitter-grep@0.1.0" = "语法感知搜索"
 "tree-sitter-show-ast@0.0.2" = "AST 可视化"
 "macchina@6.4.0" = "系统信息"
