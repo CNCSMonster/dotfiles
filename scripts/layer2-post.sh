@@ -69,7 +69,29 @@ install_yazi_plugins() {
     fi
 }
 
-# ── 2c: 字体缓存刷新 ──
+# ── 2c: LLVM / clangd ──
+install_llvm() {
+    echo "=========================================="
+    echo "Layer 2: 安装 LLVM / clangd..."
+    echo "=========================================="
+
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "macOS: 跳过 llvmup（LLVM 由 Homebrew 提供）"
+        return 0
+    fi
+
+    local llvmup="${SCRIPT_DIR}/llvmup"
+    if [ ! -f "$llvmup" ]; then
+        echo "⚠️  llvmup 脚本不存在，跳过 LLVM 安装"
+        return 0
+    fi
+
+    chmod +x "$llvmup"
+    "$llvmup" default 22
+    echo "✅ LLVM 22 / clangd 安装完成"
+}
+
+# ── 2d: 字体缓存刷新 ──
 refresh_fonts() {
     echo "=========================================="
     echo "Layer 2: 刷新字体缓存..."
@@ -87,6 +109,7 @@ refresh_fonts() {
 main() {
     install_helix_runtime
     install_yazi_plugins
+    install_llvm
     refresh_fonts
     echo ""
     echo "✅ Layer 2 (后置脚本) 完成"

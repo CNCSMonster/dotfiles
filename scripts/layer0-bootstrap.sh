@@ -87,6 +87,53 @@ ensure_gh_login() {
     fi
 }
 
+# ── 0b: WezTerm 终端 ──
+install_wezterm() {
+    echo "=========================================="
+    echo "Layer 0: 安装 WezTerm..."
+    echo "=========================================="
+
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        if command -v brew &>/dev/null; then
+            brew install --cask wezterm 2>/dev/null || echo "⚠️  WezTerm 安装失败，跳过"
+        else
+            echo "⚠️  Homebrew 未安装，跳过 WezTerm"
+        fi
+        return 0
+    fi
+
+    # 检查是否已安装
+    if command -v wezterm &>/dev/null || command -v wezterm-gui &>/dev/null; then
+        echo "✅ WezTerm 已安装，跳过"
+        return 0
+    fi
+
+    # Ubuntu 24+ 强制使用 nightly
+    local nightly=false
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        if [ "${ID}" = "ubuntu" ] && [[ "${VERSION_ID}" == 24* ]]; then
+            echo "检测到 Ubuntu 24，使用 nightly 版本"
+            nightly=true
+        fi
+    fi
+
+    # 添加 wez fury repo
+    curl -fsSL --retry 3 --connect-timeout 15 https://apt.fury.io/wez/gpg.key | \
+        sudo_run gpg --yes --dearmor -o /usr/share/keyrings/wezterm-fury.gpg
+    echo 'deb [signed-by=/usr/share/keyrings/wezterm-fury.gpg] https://apt.fury.io/wez/ * *' | \
+        sudo_run tee /etc/apt/sources.list.d/wezterm.list
+    sudo_run chmod 644 /usr/share/keyrings/wezterm-fury.gpg
+    sudo_run apt-get update
+
+    if [ "$nightly" = true ]; then
+        sudo_run apt-get install -y wezterm-nightly
+    else
+        sudo_run apt-get install -y wezterm
+    fi
+    echo "✅ WezTerm 安装完成"
+}
+
 # ── 0c: 安装 tool-installer ──
 install_tool_installer() {
     echo "=========================================="
@@ -111,6 +158,7 @@ install_tool_installer() {
 # ── 入口 ──
 main() {
     install_system_packages
+    install_wezterm
     ensure_gh_login
     install_tool_installer
     echo ""

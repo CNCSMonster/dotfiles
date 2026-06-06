@@ -1,0 +1,293 @@
+#!/usr/bin/env bash
+
+# llvmup - LLVM 版本管理工具
+#
+# 用法：llvmup <command> [arguments]
+#
+# 可用命令:
+#   list, ls, l          列出已安装的 LLVM 版本（* 表示当前使用）
+#   ls-remote            列出可安装的 LLVM 版本
+#   use <version>        切换到指定版本的 LLVM
+#   install <version>    安装指定版本的 LLVM
+#   default <version>    安装并切换到指定版本的 LLVM
+#   remove <version>     删除指定版本的 LLVM
+#   help, h              显示此帮助信息
+#
+# 示例:
+#   llvmup list                    # 查看已安装的版本
+#   llvmup ls-remote               # 查看可安装的版本
+#   llvmup install 18              # 安装 LLVM 18
+#   llvmup use 18                  # 切换到 LLVM 18
+#   llvmup default 18              # 安装并切换到 LLVM 18
+#   llvmup remove 18               # 删除 LLVM 18
+
+set -eo pipefail
+
+APP_NAME="llvmup"
+LLVM_SCRIPT="https://apt.llvm.org/llvm.sh"
+function sudo_run(){
+    # 如果当前用户是root用户, 则直接运行命令
+    if [ "$EUID" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+function prepare_for_install(){
+    # 检查lsb_release命令是否存在
+    if ! command -v lsb_release >/dev/null 2>&1; then
+        sudo_run apt-get update
+        sudo_run apt-get install -y lsb-release
+    fi
+}
+
+function list-llvm-versions() {
+python3 << 'EOF'
+import os
+import sys
+
+def main():
+    # 可以从命令行参数获取路径
+    lib_path = sys.argv[1] if len(sys.argv) > 1 else "/usr/lib"
+    
+    # list files in specified path
+    files = os.listdir(lib_path)
+    # filter files, only retain file matching llvm-<number>
+    files = filter(lambda x: x.startswith("llvm-"), files)
+    # map files to version number
+    versions = list(map(lambda x: x[5:], files))
+    
+    # check if exists /usr/lib/llvm, and if it is a symlink and point to where
+    used = None
+    llvm_link_path = os.path.join(lib_path, "llvm")
+    if os.path.exists(llvm_link_path):
+        if os.path.islink(llvm_link_path):
+            point_to = os.readlink(llvm_link_path)
+            if point_to.startswith(os.path.join(lib_path, "llvm-")):
+                used = point_to[len(os.path.join(lib_path, "llvm-")):]
+    
+    print("Installed LLVM versions:")
+    for version in versions:
+        if used is not None and used == version:
+            print(f"  {version}* (Currently used)")
+        else:
+            print(f"  {version}")
+
+if __name__ == "__main__":
+    main()
+EOF
+}
+
+function install-llvm-version() {
+    if [ -z "$1" ]; then
+        echo "用法: $APP_NAME install <llvm版本号>"
+        exit 1
+    fi
+    LLVM_VERSION=$1
+    LLVM_PATH="/usr/lib/llvm-${LLVM_VERSION}"
+
+    # 检查是否已安装
+    if [ -d "${LLVM_PATH}" ]; then
+        echo "LLVM ${LLVM_VERSION} 已经安装，跳过安装步骤"
+        echo "如果需要重新安装，请先运行 '$APP_NAME remove ${LLVM_VERSION}'"
+        echo "如果想要切换到该版本，请运行 '$APP_NAME use ${LLVM_VERSION}'"
+        return
+    fi
+    prepare_for_install
+
+    # 优先使用 Ubuntu 官方源（速度快，使用镜像）
+    # Ubuntu 24.04 官方源支持 LLVM 14-20
+    if apt-cache show llvm-${LLVM_VERSION} 2>/dev/null | grep -q "Package: llvm-${LLVM_VERSION}"; then
+        echo "使用 Ubuntu 官方源安装 LLVM ${LLVM_VERSION}..."
+        sudo_run apt-get update
+        sudo_run apt-get install -y \
+            llvm-${LLVM_VERSION} \
+            clang-${LLVM_VERSION} \
+            clangd-${LLVM_VERSION} \
+            lldb-${LLVM_VERSION} \
+            lld-${LLVM_VERSION} \
+            llvm-${LLVM_VERSION}-dev \
+            clang-tools-${LLVM_VERSION}
+        
+        # 验证安装
+        if [ -f "${LLVM_PATH}/bin/clang" ]; then
+            echo "已成功安装 LLVM ${LLVM_VERSION} (来自 Ubuntu 官方源)"
+            return 0
+        else
+            echo "警告: Ubuntu 官方源安装可能不完整，尝试 apt.llvm.org..."
+        fi
+    fi
+
+    # 回退到 apt.llvm.org（支持版本 17-22+）
+    echo "Ubuntu 官方源无 LLVM ${LLVM_VERSION}，使用 apt.llvm.org..."
+    INSTALL_DIR="${HOME}/.local/install-llvm"
+    mkdir -p "${INSTALL_DIR}"
+    LLVM_SCRIPT_PATH="${INSTALL_DIR}/llvm.sh"
+    wget -O "${LLVM_SCRIPT_PATH}" $LLVM_SCRIPT --tries=5 --timeout=60 --connect-timeout=30
+    chmod +x "${LLVM_SCRIPT_PATH}"
+    # 添加 clangd 包到安装列表
+    sudo_run "${LLVM_SCRIPT_PATH}" "${LLVM_VERSION}" clangd
+
+    # 等待安装完成，验证文件存在
+    if [ -f "${LLVM_PATH}/bin/clang" ]; then
+        echo "已成功安装 LLVM ${LLVM_VERSION} (来自 apt.llvm.org)"
+    else
+        echo "错误: clang 未找到，安装可能失败" >&2
+        exit 1
+    fi
+}
+
+function remove-llvm-version() {
+    if [ -z "$1" ]; then
+        echo "用法: $APP_NAME remove <llvm版本号>"
+        exit 1
+    fi
+    LLVM_VERSION=$1
+    LLVM_PATH="/usr/lib/llvm-${LLVM_VERSION}"
+
+    if [ -d "${LLVM_PATH}" ]; then
+        sudo_run rm -rf "${LLVM_PATH}"
+        echo "已删除 LLVM ${LLVM_VERSION}"
+    else
+        echo "错误: LLVM ${LLVM_VERSION} 未安装" >&2
+        exit 1
+    fi
+}
+
+function use-llvm-version() {
+    if [ -z "$1" ]; then
+        echo "用法: $APP_NAME use <llvm版本号>"
+        exit 1
+    fi
+    VERSION=$1
+    LLVM_PATH="/usr/lib/llvm-${VERSION}"
+    
+    # 如果目标版本不存在，先安装
+    if [ ! -d "${LLVM_PATH}" ]; then
+        echo "LLVM ${VERSION} 未安装，正在自动安装..."
+        install-llvm-version "$VERSION"
+    fi
+    
+    sudo_run rm /usr/lib/llvm || true
+    sudo_run ln -s /usr/lib/llvm-$VERSION /usr/lib/llvm
+    echo "已切换到 LLVM ${VERSION}"
+}
+
+function print-usage() {
+    cat << USAGE
+llvmup - LLVM 版本管理工具
+
+用法：$APP_NAME <command> [arguments]
+
+可用命令:
+  list, ls, l          列出已安装的 LLVM 版本（* 表示当前使用）
+  ls-remote            列出可安装的 LLVM 版本
+  use <version>        切换到指定版本的 LLVM
+  install <version>    安装指定版本的 LLVM
+  default <version>    安装并切换到指定版本的 LLVM
+  remove <version>     删除指定版本的 LLVM
+  help, h              显示此帮助信息
+
+示例:
+  $APP_NAME list                    # 查看已安装的版本
+  $APP_NAME ls-remote               # 查看可安装的版本
+  $APP_NAME install 18              # 安装 LLVM 18
+  $APP_NAME use 18                  # 切换到 LLVM 18
+  $APP_NAME default 18              # 安装并切换到 LLVM 18
+  $APP_NAME remove 18               # 删除 LLVM 18
+USAGE
+    exit 0
+}
+
+
+# 函数：列出可安装的 LLVM 版本
+# 标记哪些版本可以从 Ubuntu 官方源安装（速度快）
+function list-remote-versions() {
+    echo "可安装的 LLVM 版本:"
+    echo ""
+    echo "  [U] = Ubuntu 官方源 (速度快，推荐)"
+    echo "  [L] = apt.llvm.org (最新版本)"
+    echo ""
+    
+    # 检查 Ubuntu 官方源支持的版本
+    local ubuntu_versions=()
+    for v in 14 15 16 17 18 19 20; do
+        if apt-cache show llvm-${v} 2>/dev/null | grep -q "Package: llvm-${v}"; then
+            ubuntu_versions+=("$v")
+        fi
+    done
+    
+    # 从 apt.llvm.org 获取支持的版本
+    local llvm_org_versions=()
+    local CACHE_DIR="${HOME}/.local/llvmup"
+    local CACHE_FILE="${CACHE_DIR}/remote_versions"
+    local CACHE_EXPIRATION_SECONDS=7200 # 2小时
+
+    mkdir -p "${CACHE_DIR}"
+
+    # 检查缓存文件是否存在且未过期
+    if [ -f "${CACHE_FILE}" ]; then
+        local file_mod_time=$(stat -c %Y "${CACHE_FILE}")
+        local current_time=$(date +%s)
+        if (( current_time - file_mod_time < CACHE_EXPIRATION_SECONDS )); then
+            mapfile -t llvm_org_versions < "${CACHE_FILE}"
+        fi
+    fi
+
+    # 如果缓存无效，从 apt.llvm.org 获取
+    if [ ${#llvm_org_versions[@]} -eq 0 ]; then
+        local file_path="/tmp/llvm_temp.sh"
+        wget -O "$file_path" $LLVM_SCRIPT > /dev/null 2>&1
+
+        if [ -f "$file_path" ]; then
+            while IFS= read -r line; do
+                if [[ "$line" =~ ^[[:space:]]*\+?[[:space:]]*LLVM_VERSION_PATTERNS\[([0-9]+)\]=(.*)$ ]]; then
+                    local version_num="${BASH_REMATCH[1]}"
+                    if [ -n "$version_num" ] && [ "$version_num" -ge 9 ] && [ "$version_num" -le 22 ]; then
+                        llvm_org_versions+=("$version_num")
+                    fi
+                fi
+            done < "$file_path"
+        fi
+        
+        # 缓存结果
+        printf "%s\n" "${llvm_org_versions[@]}" > "${CACHE_FILE}" 2>/dev/null || true
+    fi
+
+    # 合并并显示所有版本
+    local all_versions=$(echo -e "${ubuntu_versions[*]} ${llvm_org_versions[*]}" | tr ' ' '\n' | sort -n | uniq)
+    
+    for v in $all_versions; do
+        local marker="[L]"
+        if [[ " ${ubuntu_versions[*]} " =~ " $v " ]]; then
+            marker="[U]"
+        fi
+        echo "  $marker LLVM $v"
+    done
+}
+
+# 如果第一个命令行参数为空，则默认执行list命令 --- IGNORE ---
+COMMAND=${1:-list}
+
+# 如果是ls/list/l子命令，则列出已安装的llvm版本
+if [ "$COMMAND" == "list" ] || [ "$COMMAND" == "ls" ] || [ "$COMMAND" == "l" ]; then
+    list-llvm-versions
+elif [ "$COMMAND" == "ls-remote" ]; then
+    list-remote-versions
+elif [ "$COMMAND" == "use" ]; then
+    use-llvm-version "$2"
+# 如果是install/i子命令, 则安装指定版本的llvm
+elif [ "$COMMAND" == "install" ] || [ "$COMMAND" == "i" ]; then
+    install-llvm-version "$2"
+# 安装然后切换到指定版本 , default 子命令
+elif [ "$COMMAND" == "default" ] || [ "$COMMAND" == "d" ]; then
+    install-llvm-version "$2"
+    use-llvm-version "$2"
+elif [ "$COMMAND" == "remove" ] || [ "$COMMAND" == "rm" ]; then
+    remove-llvm-version "$2"
+elif [ "$COMMAND" == "help" ] || [ "$COMMAND" == "h" ]; then
+    print-usage
+else
+    print-usage
+fi
