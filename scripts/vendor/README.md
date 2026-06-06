@@ -1,20 +1,57 @@
-# Vendor 脚本更新 SOP
+# Vendor 策略与更新 SOP
 
 ## 概述
 
-`scripts/vendor/` 目录存放从第三方项目 vendor 的脚本文件。
-这些脚本由我们审查后放入项目，确保软件供应链安全。
+`vendor/` 目录存放从第三方项目 vendor 的资源（二进制或脚本）。
+这些资源由我们审查后放入项目，确保供应链安全和构建稳定性。
 
-**核心原则**：脚本不自动更新，人审查后才更新。
+**核心原则**：vendor 只用于必要场景，人审查后才更新。
 
 ---
 
-## Vendor 清单
+## Vendor 准入条件
 
-| 脚本 | 来源 URL | Vendor 日期 | 说明 |
-|------|----------|------------|------|
-| `rustup-init.sh` | `https://rsproxy.cn/rustup-init.sh` | 2026-05-16 | Rustup 安装脚本 |
-| `cargo-binstall-install.sh` | `shells/scripts/vendor/`（项目内迁移） | 见 git log | cargo-binstall 安装脚本 |
+以下类型允许放入 `vendor/`：
+
+| 条件 | 说明 | 示例 |
+|------|------|------|
+| **自定义工具** | 无标准分发渠道，必须自行构建/打包 | `tool-installer`（Python zipapp）|
+| **供应链安全关键脚本** | 需要人工审查，避免 `curl \| sh` | `rustup-init.sh` |
+| **自举依赖** | 上层工具依赖它才能工作，且无法通过上层工具自身获取 | `tool-installer` 本身 |
+
+## 明确禁止 Vendor
+
+以下类型**禁止**放入 `vendor/`：
+
+- ❌ **主流生态工具的二进制**（cargo-binstall, xdotter 等）
+  - 这些工具有标准分发渠道（GitHub releases, crates.io）
+  - 应由 Layer 1 的对应 manager 自行获取
+  - Vendor 二进制增加维护负担（跨平台、版本更新、架构兼容）
+
+- ❌ **可由 tool-installer 自行下载的工具**
+  - tool-installer 的 `github-release` manager 已支持镜像回退
+  - `_download_binstall` 已实现 cargo-binstall 的自举下载
+  - 预装这些工具会掩盖 tool-installer 自身路径的 bug
+
+- ❌ **临时 workaround**
+  - 网络问题的修复应在工具内部解决（timeout、retry、镜像 fallback）
+  - 不应通过 vendor 二进制绕过
+
+---
+
+## 当前 Vendor 清单
+
+| 文件 | 类型 | 准入理由 | 状态 |
+|------|------|----------|------|
+| `tool-installer` | 自定义 zipapp | 无标准分发渠道，Layer 0 必须预装 | ✅ 保留 |
+| `rustup-init.sh` | 审查脚本 | 供应链安全，避免 `curl \| sh` | ✅ 保留 |
+
+## 已移除
+
+| 文件 | 移除原因 |
+|------|----------|
+| `cargo-binstall` | 违反 vendor 策略，应由 tool-installer 自行获取 |
+| `xdotter` | 违反 vendor 策略，应由 github-release manager 获取 |
 
 ---
 

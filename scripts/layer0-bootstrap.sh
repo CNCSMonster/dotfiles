@@ -105,15 +105,6 @@ install_tool_installer() {
         echo "❌ vendor/tool-installer 不存在，请先构建"
         return 1
     fi
-
-    # 预安装 vendored cargo-binstall（如果有），避免依赖 GitHub 下载
-    local binstall_artifact="${PROJECT_DIR}/vendor/cargo-binstall"
-    if [ -f "$binstall_artifact" ]; then
-        mkdir -p ~/.cargo/bin
-        cp "$binstall_artifact" ~/.cargo/bin/cargo-binstall
-        chmod +x ~/.cargo/bin/cargo-binstall
-        echo "✅ cargo-binstall 已从 vendor 安装到 ~/.cargo/bin/cargo-binstall"
-    fi
 }
 
 # ── 入口 ──
