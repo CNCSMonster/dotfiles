@@ -183,6 +183,9 @@ asset = "cargo-binstall-x86_64-unknown-linux-musl.tgz"
 bin = "cargo-binstall"
 install_name = "cargo-binstall"
 
+[cargo-binstall.linux.x86_64]
+sha256 = "4a50fcf01418862e2fa8e4076cb6cb80ff4061b0c0b1464e71a63ce01ee29bde"
+
 # ============================================================
 # CLI Tools (cargo-install, locked)
 # ============================================================
@@ -217,6 +220,9 @@ bin = "starship"
 [starship.linux.version_probe]
 command = ["{bin}", "--version"]
 regex = "^starship (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[starship.linux.x86_64]
+sha256 = "3f12f61883ff324c1dbe7b885fa125d5490960e5cad6a12eeaa34695ec1b5744"
 
 [zoxide]
 [zoxide.linux]
@@ -407,6 +413,9 @@ install_name = "zola"
 [zola.linux.version_probe]
 command = ["{bin}", "--version"]
 regex = "zola (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[zola.linux.x86_64]
+sha256 = "227df99b664421240a8ba77747067c51259b08159125d5603763b3b173b9a881"
 
 # ============================================================
 # Languages & Runtimes (via mise)
