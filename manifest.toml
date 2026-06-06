@@ -296,6 +296,8 @@ manager = "cargo-install"
 pkg = "tree-sitter-grep"
 locked = true
 binstall_first = true
+binstall_retry = 2
+binstall_fallback_compile = true
 
 [tree-sitter-show-ast]
 [tree-sitter-show-ast.linux]
@@ -303,6 +305,8 @@ manager = "cargo-install"
 pkg = "tree-sitter-show-ast"
 locked = true
 binstall_first = true
+binstall_retry = 2
+binstall_fallback_compile = true
 
 [macchina]
 [macchina.linux]
