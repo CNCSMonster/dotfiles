@@ -152,9 +152,9 @@ check_version nvim "Neovim"
 echo
 
 echo "=== 6. mise 运行时 ==="
-# mise 需要先激活
+# mise 需要先加载环境（hook-env 会立即修改 PATH，activate 只设置 hook）
 if command -v mise &> /dev/null; then
-    eval "$(mise activate bash 2>/dev/null)" || true
+    eval "$(mise hook-env -s bash 2>/dev/null)" || true
 fi
 check_version go
 check_version node

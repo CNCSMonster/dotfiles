@@ -32,7 +32,8 @@ install_system_packages() {
         # 检查所需包是否已安装，已装则跳过 sudo
         local missing=()
         for pkg in python3 curl gh build-essential pkg-config libssl-dev \
-                   libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev; do
+                   libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev \
+                   fzf ripgrep zsh tree git htop; do
             command -v "$pkg" &>/dev/null || dpkg -s "$pkg" &>/dev/null || missing+=("$pkg")
         done
         if [ ${#missing[@]} -eq 0 ]; then
