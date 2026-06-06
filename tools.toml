@@ -70,7 +70,7 @@ cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
 # ── Layer 1e: LSP 服务器 ──
 # 注意：不依赖 languages，因为 CI 中 node/uv 由前置步骤安装
 [lsp-servers]
-"typescript-lsp@5.3.0" = "TypeScript LSP"
+"typescript-lsp@5.3.0" = { desc = "TypeScript LSP", allow_fail = true }
 "pyright@1.1.410" = { desc = "Python LSP", allow_fail = true }
 "yaml-lsp@1.23.0" = "YAML LSP"
 "bash-lsp@5.6.0" = "Bash LSP"
