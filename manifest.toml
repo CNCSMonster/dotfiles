@@ -287,6 +287,8 @@ manager = "cargo-install"
 pkg = "tree-sitter-cli"
 locked = true
 binstall_first = true
+binstall_retry = 2
+binstall_fallback_compile = true
 
 [tree-sitter-grep]
 [tree-sitter-grep.linux]
