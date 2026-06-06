@@ -29,8 +29,8 @@ wild-linker = { desc = "快速链接器", allow_fail = true }
 "mdbook-mermaid@0.17.0" = "mdbook 图表"
 "gen-mdbook-summary@0.0.10" = "mdbook 目录"
 "tree-sitter-cli@0.26.8" = { desc = "语法解析器", allow_fail = true }
-"tree-sitter-grep@0.1.0" = "语法感知搜索"
-"tree-sitter-show-ast@0.0.2" = "AST 可视化"
+"tree-sitter-grep@0.1.0" = { desc = "语法感知搜索", allow_fail = true }
+"tree-sitter-show-ast@0.0.2" = { desc = "AST 可视化", allow_fail = true }
 "macchina@6.4.0" = "系统信息"
 "conceal@0.7.0" = "隐藏敏感信息"
 "rust-script@0.36.0" = "Rust 脚本运行器"
