@@ -162,7 +162,7 @@ bin = "yq_linux_amd64"
 install_name = "yq"
 [yq.linux.version_probe]
 command = ["{bin}", "--version"]
-regex = "version (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+regex = "version v?(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [yq.linux.x86_64]
 sha256 = "b4077cab0f9ee5ce8381e602d090daa69a0afb7e57eb9a5b20e9cb416d7f6794"
@@ -176,7 +176,7 @@ bin = "yq_darwin_arm64"
 install_name = "yq"
 [yq.macos.version_probe]
 command = ["{bin}", "--version"]
-regex = "version (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+regex = "version v?(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [yq.macos.aarch64]
 sha256 = "877de31753a4dd2401aa048937aa9a7fc4d5f6ce858cf31508c5802954297213"
