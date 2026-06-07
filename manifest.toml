@@ -256,7 +256,7 @@ command = ["{bin}", "--version"]
 regex = "zls (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [zls.macos.aarch64]
-sha256 = "b93ec549f8558a7e85984a840e9276d274f1059b54ade4254296ef4982958359"
+sha256 = "a6b3f1b10d77f37f3b9d962093f030334b083f48eb2607a4b3ccb72de2958133"
 
 [zls.macos.x86_64]
 asset = "zls-aarch64-macos.tar.xz"
@@ -291,7 +291,7 @@ command = ["{bin}", "--version"]
 regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [lua-lsp.macos.aarch64]
-sha256 = "cec99d70b1f612acec4a10a79a03664e3aa0c229d4d8a586cb3f928ec37d509e"
+sha256 = "a69ffcef61d3eb4ca7b7bc92d69cb85892c8af15120bf2815768ed0afe5ed3bc"
 
 [lua-lsp.macos.x86_64]
 asset = "lua-language-server-{version}-darwin-x64.tar.gz"
