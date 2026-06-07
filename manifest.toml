@@ -127,7 +127,7 @@ command = ["{bin}", "--version"]
 regex = "^zellij (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [zellij.linux.x86_64]
-sha256 = "669825021d529fca5d939888263c9d2a90762145191fa07581a15250e8af2b49"
+sha256 = "0f7c346788627f506c0a28296517768633cff24fc822a739f8264b640ecad751"
 
 
 [zellij.macos]
