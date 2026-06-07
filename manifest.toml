@@ -24,6 +24,15 @@ path = "scripts/install-rustup.sh"
 manager = "script"
 path = "scripts/install-rustup.sh"
 
+# 通过 mise 安装语言运行时（在 cargo-tools 之后执行）
+[mise-install]
+[mise-install.linux]
+manager = "script"
+path = "scripts/mise-install.sh"
+[mise-install.macos]
+manager = "script"
+path = "scripts/mise-install.sh"
+
 
 # 配置 Rust 工具链（rustup manager）
 [rust]

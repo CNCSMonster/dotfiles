@@ -58,14 +58,10 @@ cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
 "zellij@v0.44.3" = "终端复用器"
 "yq@v4.53.3" = "YAML/JSON 处理器"
 
-# ── Layer 1d: 语言运行时（独立）──
-[languages]
-"go@1.23.4" = "Go via mise"
-"node@22.22.3" = "Node.js via mise"
-"pnpm@10.20.0" = "pnpm via mise"
-"zig@0.16.0" = "Zig via mise"
-"yazi@26.1.22" = "终端文件管理器 via mise"
-"gopls@0.22.0" = "Go LSP via mise"
+# ── Layer 1d: 语言运行时（由 mise 管理，通过 script job 安装）──
+[mise-install]
+depends = ["cargo-tools"]
+"mise-install@1" = "Trust mise config and install all language runtimes"
 
 # ── Layer 1e: LSP 服务器 ──
 # 注意：不依赖 languages，因为 CI 中 node/uv 由前置步骤安装
@@ -85,4 +81,4 @@ cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
 
 # ── 全量安装 ──
 [dev]
-depends = ["build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "languages", "lsp-servers", "extras", "zola"]
+depends = ["build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "lsp-servers", "mise-install", "extras", "zola"]
