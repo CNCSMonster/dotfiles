@@ -175,6 +175,14 @@ asset = "xd-x86_64-unknown-linux-musl"
 bin = "xd-x86_64-unknown-linux-musl"
 install_name = "xd"
 
+[xdotter.linux.x86_64]
+sha256 = "3c83d328e8599dad1e0e1d33d07f7fc9b448ce318ebb791dfa095f9ba7290a9e"
+
+[xdotter.linux.aarch64]
+asset = "xd-aarch64-unknown-linux-gnu"
+bin = "xd-aarch64-unknown-linux-gnu"
+sha256 = "3c83d328e8599dad1e0e1d33d07f7fc9b448ce318ebb791dfa095f9ba7290a9e"
+
 [cargo-binstall]
 [cargo-binstall.linux]
 manager = "github-release"
@@ -185,6 +193,10 @@ install_name = "cargo-binstall"
 
 [cargo-binstall.linux.x86_64]
 sha256 = "4a50fcf01418862e2fa8e4076cb6cb80ff4061b0c0b1464e71a63ce01ee29bde"
+
+[cargo-binstall.linux.aarch64]
+asset = "cargo-binstall-aarch64-unknown-linux-musl.tgz"
+sha256 = "2001eee8da26705ad9627e57a25c23eb4639647521205f3e4a7b4e09d067d199"
 
 # ============================================================
 # CLI Tools (cargo-install, locked)
@@ -223,6 +235,10 @@ regex = "^starship (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [starship.linux.x86_64]
 sha256 = "3f12f61883ff324c1dbe7b885fa125d5490960e5cad6a12eeaa34695ec1b5744"
+
+[starship.linux.aarch64]
+asset = "starship-aarch64-unknown-linux-musl.tar.gz"
+sha256 = "56b9ff412bbf374d29b99e5ac09a849124cb37a0a13121e8470df32de53c1ea6"
 
 [zoxide]
 [zoxide.linux]
@@ -416,6 +432,10 @@ regex = "zola (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [zola.linux.x86_64]
 sha256 = "227df99b664421240a8ba77747067c51259b08159125d5603763b3b173b9a881"
+
+[zola.linux.aarch64]
+asset = "zola-v0.22.1-aarch64-unknown-linux-gnu.tar.gz"
+sha256 = "8af437ec6352f33ccd24d7a1cfcb54a3db95d3ce376dc69525b4ef3fb6b8c1d1"
 
 # ============================================================
 # Languages & Runtimes (via mise)
