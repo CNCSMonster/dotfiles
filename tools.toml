@@ -49,14 +49,14 @@ cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
 
 # ── Layer 1c: Shell 工具（独立，不需要 Rust）──
 [shell-tools]
-"starship@v1.24.2" = "Shell prompt"
+"starship@v1.25.1" = "Shell prompt"
 
 # ── Layer 1d: 编辑器和终端工具（独立，不需要 Rust）──
 [editors]
 "neovim@v0.12.2" = "Neovim 编辑器"
 "helix@25.07.1" = "Helix 编辑器"
-"zellij@v0.44.1" = "终端复用器"
-"yq@v4.52.4" = "YAML/JSON 处理器"
+"zellij@v0.44.3" = "终端复用器"
+"yq@v4.53.3" = "YAML/JSON 处理器"
 
 # ── Layer 1d: 语言运行时（独立）──
 [languages]
