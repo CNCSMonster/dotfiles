@@ -59,7 +59,7 @@ cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
 "yq@v4.53.3" = "YAML/JSON 处理器"
 
 # ── Layer 1d: 语言运行时（由 mise 管理，通过 script job 安装）──
-[mise-install]
+[languages]
 depends = ["cargo-tools"]
 "mise-install@1" = "Trust mise config and install all language runtimes"
 
@@ -81,4 +81,4 @@ depends = ["cargo-tools"]
 
 # ── 全量安装 ──
 [dev]
-depends = ["build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "lsp-servers", "mise-install", "extras", "zola"]
+depends = ["build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "lsp-servers", "languages", "extras", "zola"]
