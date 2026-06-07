@@ -171,8 +171,9 @@ do_install() {
     if [ -f "$cargo_config" ] && grep -qE 'rustc-wrapper|ld-path=wild' "$cargo_config" 2>/dev/null; then
         echo "🔧 临时禁用 sccache wrapper / wild linker（工具尚未安装）..."
         cp "$cargo_config" "$cargo_config.bak"
-        sed -i 's/^rustc-wrapper = "sccache"/#rustc-wrapper = "sccache"  # temporarily disabled during install/' "$cargo_config"
-        sed -i 's/--ld-path=wild/--ld-path=ld/' "$cargo_config"
+        sed -e 's/^rustc-wrapper = "sccache"/#rustc-wrapper = "sccache"  # temporarily disabled during install/' \
+            -e 's/--ld-path=wild/--ld-path=ld/' \
+            "$cargo_config.bak" > "$cargo_config"
         patched=true
     fi
 

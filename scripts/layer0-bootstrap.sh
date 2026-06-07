@@ -27,7 +27,7 @@ install_system_packages() {
             echo "安装 Homebrew..."
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         fi
-        brew install python3 gh
+        brew install python3 gh fzf ripgrep tree git
     else
         # 检查所需包是否已安装，已装则跳过 sudo
         local missing=()

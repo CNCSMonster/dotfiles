@@ -23,9 +23,7 @@ jobs:
   verify:
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        # TODO: add macos-latest when manifest.toml has .macos strategies
-        # for all tools in the dev module (~43 tools need macos entries)
+        os: [ubuntu-latest, macos-latest]
       fail-fast: false
     name: E2E full install on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -48,6 +46,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Disable GitHub mirrors for CI
+        run: perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
 
       - name: Run full install (setup-new.sh)
         run: |
