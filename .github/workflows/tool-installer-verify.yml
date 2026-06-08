@@ -303,3 +303,33 @@ jobs:
           typescript-language-server --version
           bash-language-server --version
           echo "=== All passed ==="
+
+  # ── 重复安装验证：在已安装过的环境中再次执行 install dev ──
+  # 验证 version_probe 等缓存/跳过逻辑的正确性，避免
+  # "首次安装成功但重复安装报错" 的问题（如 zls version_probe regex）
+  re-install:
+    name: "Re-install: dev (idempotency)"
+    needs: [full-install]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install mise (prerequisite)
+        run: |
+          curl https://mise.run | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install uv
+        run: pip install uv
+      - name: Pre-install npm LSP servers
+        run: npm install -g typescript-language-server typescript yaml-language-server bash-language-server
+      - name: Second install (should skip all satisfied tools)
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          python3 vendor/tool-installer install dev
