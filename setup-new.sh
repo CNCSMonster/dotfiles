@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 三层架构安装脚本（tool-installer 迁移版）
-# Layer 0: Bootstrap (bash) — 系统包 + gh 登录 + tool-installer
-# Layer 1: 工具安装 (tool-installer) — 声明式 TOML
-# Layer 2: 后置脚本 (bash) — 依赖 Layer 1 的工具
+# Layer 0: Bootstrap — 仅安装 tool-installer 二进制（vendor 目录）
+# Layer 1: 声明式安装 — tool-installer install dev（系统包 / 字体 / WezTerm / 工具链）
+# Layer 2: 后置脚本 — 依赖 Layer 1 工具的配置后处理
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,12 +13,6 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
     export DEBIAN_FRONTEND=noninteractive
     export TZ=Asia/Shanghai
 fi
-
-sudo_run() {
-    if [ "$EUID" -eq 0 ]; then "$@"
-    else sudo "$@"
-    fi
-}
 
 usage() {
     echo "用法: $0 [选项]"
@@ -97,61 +91,6 @@ ensure_xdotter() {
     return 1
 }
 
-install_fonts() {
-    echo "=========================================="
-    echo "安装字体..."
-    echo "=========================================="
-
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-        if command -v brew &>/dev/null; then
-            brew install --cask \
-                font-jetbrains-mono \
-                font-fira-code \
-                font-fira-code-nerd-font \
-                font-noto-sans-cjk \
-                font-noto-color-emoji \
-                2>/dev/null || echo "⚠️  部分字体可能已安装，继续..."
-        else
-            echo "⚠️  Homebrew 未安装，跳过字体安装"
-        fi
-    else
-        sudo_run apt-get update
-        sudo_run apt-get install -y --no-install-recommends \
-            fontconfig \
-            fonts-noto-cjk \
-            fonts-noto-color-emoji \
-            fonts-jetbrains-mono \
-            fonts-dejavu-core
-
-        if ! fc-list 2>/dev/null | grep -qi "FiraCode.*Nerd"; then
-            echo "安装 FiraCode Nerd Font..."
-            local fira_url="https://github.com/ryanoasis/nerd-fonts/releases/download/v7.0.0/FiraCode.zip"
-            local fira_tmp="/tmp/FiraCode-Nerd-Font.zip"
-            if wget --tries=3 --timeout=30 --connect-timeout=15 "$fira_url" -O "$fira_tmp" 2>/dev/null; then
-                local fira_dir="/usr/local/share/fonts/FiraCode-Nerd-Font"
-                sudo_run mkdir -p "$fira_dir"
-                if command -v unzip &>/dev/null; then
-                    sudo_run unzip -o "$fira_tmp" -d "$fira_dir"
-                else
-                    sudo_run apt-get install -y unzip
-                    sudo_run unzip -o "$fira_tmp" -d "$fira_dir"
-                fi
-                rm -f "$fira_tmp"
-            else
-                echo "⚠️  FiraCode Nerd Font 下载失败，跳过"
-            fi
-        else
-            echo "FiraCode Nerd Font 已安装，跳过"
-        fi
-
-        if command -v fc-cache &>/dev/null; then
-            echo "刷新字体缓存..."
-            sudo_run fc-cache -f
-        fi
-    fi
-    echo "✅ 字体安装完成"
-}
-
 do_deploy() {
     echo "=========================================="
     echo "部署配置文件（xdotter deploy）..."
@@ -160,7 +99,6 @@ do_deploy() {
     export PATH="$HOME/.local/bin:$PATH"
     if command -v xd &>/dev/null; then
         cd "${SCRIPT_DIR}" && xd deploy --force
-        install_fonts
         echo "✅ 配置部署完成"
     else
         echo "⚠️  xdotter 未安装，跳过配置部署（macOS 上可能需要手动安装）"

@@ -5,6 +5,11 @@ manifest = "./manifest.toml"
 [system-packages]
 "system-packages@1" = "基础系统包（apt/brew）"
 
+# ── Layer 0: 字体（体验增强，非必须）──
+[fonts]
+depends = ["system-packages"]
+"fonts@1" = "系统字体 + FiraCode Nerd Font（apt/brew + GitHub）"
+
 # ── Layer 1a: 编译基础设施 ──
 [build-base]
 depends = ["system-packages"]
@@ -87,4 +92,4 @@ depends = ["cargo-tools"]
 
 # ── 全量安装 ──
 [dev]
-depends = ["system-packages", "build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "lsp-servers", "languages", "extras", "zola"]
+depends = ["system-packages", "fonts", "build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "lsp-servers", "languages", "extras", "zola"]

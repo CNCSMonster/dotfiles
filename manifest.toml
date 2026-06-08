@@ -36,6 +36,18 @@ manager = "script"
 path = "scripts/install-system-packages.sh"
 
 # ============================================================
+# Fonts
+# ============================================================
+
+[fonts]
+[fonts.linux]
+manager = "script"
+path = "scripts/install-fonts.sh"
+[fonts.macos]
+manager = "script"
+path = "scripts/install-fonts.sh"
+
+# ============================================================
 # Languages & Toolchains
 # ============================================================
 
