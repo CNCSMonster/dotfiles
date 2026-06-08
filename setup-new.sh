@@ -136,8 +136,7 @@ do_bootstrap() {
     mkdir -p ~/.local/bin
     local artifact="${SCRIPT_DIR}/vendor/tool-installer"
     if [ -f "$artifact" ]; then
-        cp "$artifact" ~/.local/bin/tool-installer
-        chmod +x ~/.local/bin/tool-installer
+        install -m 755 "$artifact" ~/.local/bin/tool-installer
         echo "✅ tool-installer 已安装到 ~/.local/bin/tool-installer"
         ~/.local/bin/tool-installer --help | head -3
     else
@@ -179,8 +178,7 @@ ensure_xdotter() {
 
     # 方案 3: vendor 目录（仅 Linux x86_64）
     if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" && -f "${SCRIPT_DIR}/vendor/xdotter" ]]; then
-        cp "${SCRIPT_DIR}/vendor/xdotter" ~/.local/bin/xd
-        chmod +x ~/.local/bin/xd
+        install -m 755 "${SCRIPT_DIR}/vendor/xdotter" ~/.local/bin/xd
         echo "✅ xdotter 已从 vendor 目录安装"
         return 0
     fi
