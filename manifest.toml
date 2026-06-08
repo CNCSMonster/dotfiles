@@ -275,7 +275,7 @@ bin = "zls"
 install_name = "zls"
 [zls.linux.version_probe]
 command = ["{bin}", "--version"]
-regex = "zls (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [zls.linux.x86_64]
 sha256 = "3bb38f522cb23213e8c075ac6b170273fe49b4274b8c12b034cc496407400067"
@@ -289,7 +289,7 @@ bin = "zls"
 install_name = "zls"
 [zls.macos.version_probe]
 command = ["{bin}", "--version"]
-regex = "zls (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [zls.macos.aarch64]
 sha256 = "a6b3f1b10d77f37f3b9d962093f030334b083f48eb2607a4b3ccb72de2958133"
