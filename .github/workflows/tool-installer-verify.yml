@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Run Layer 0
-        run: bash scripts/layer0-bootstrap.sh
+        run: bash setup-new.sh --bootstrap
       - name: Verify
         run: |
           ~/.local/bin/tool-installer --help
