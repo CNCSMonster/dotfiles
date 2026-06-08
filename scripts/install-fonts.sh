@@ -35,10 +35,10 @@ if [[ "$OS" == "Linux" ]]; then
 
     if ! fc-list 2>/dev/null | grep -qi "FiraCode.*Nerd"; then
         echo "安装 FiraCode Nerd Font..."
-        local fira_url="https://github.com/ryanoasis/nerd-fonts/releases/download/v7.0.0/FiraCode.zip"
-        local fira_tmp="/tmp/FiraCode-Nerd-Font.zip"
+        fira_url="https://github.com/ryanoasis/nerd-fonts/releases/download/v7.0.0/FiraCode.zip"
+        fira_tmp="/tmp/FiraCode-Nerd-Font.zip"
         if wget --tries=3 --timeout=30 --connect-timeout=15 "$fira_url" -O "$fira_tmp" 2>/dev/null; then
-            local fira_dir="/usr/local/share/fonts/FiraCode-Nerd-Font"
+            fira_dir="/usr/local/share/fonts/FiraCode-Nerd-Font"
             sudo mkdir -p "$fira_dir" 2>/dev/null || true
             if command -v unzip &>/dev/null; then
                 sudo unzip -o "$fira_tmp" -d "$fira_dir" 2>/dev/null || echo "⚠️  FiraCode 解压失败"
