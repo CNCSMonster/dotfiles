@@ -1,8 +1,13 @@
 [tool-installer]
 manifest = "./manifest.toml"
 
+# ── Layer 0: 基础系统包（必须最先安装）──
+[system-packages]
+"system-packages@1" = "基础系统包（apt/brew）"
+
 # ── Layer 1a: 编译基础设施 ──
 [build-base]
+depends = ["system-packages"]
 rustup-install = "安装 rustup（vendor 脚本）"
 "rust@stable" = "Rust stable toolchain"
 
@@ -78,7 +83,8 @@ depends = ["cargo-tools"]
 # ── Layer 1f: 其他（独立）──
 [extras]
 "xdotter@v0.5.2" = "配置部署工具"
+"wezterm@20240203" = { desc = "终端模拟器（体验增强）", allow_fail = true }
 
 # ── 全量安装 ──
 [dev]
-depends = ["build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "lsp-servers", "languages", "extras", "zola"]
+depends = ["system-packages", "build-base", "cargo-binstall", "cargo-tools", "shell-tools", "editors", "lsp-servers", "languages", "extras", "zola"]

@@ -12,6 +12,30 @@ timeout = 120
 retry = 3
 
 # ============================================================
+# Experience / optional tools
+# ============================================================
+
+[wezterm]
+[wezterm.linux]
+manager = "script"
+path = "scripts/install-wezterm.sh"
+[wezterm.macos]
+manager = "script"
+path = "scripts/install-wezterm.sh"
+
+# ============================================================
+# System packages (managed by tool-installer)
+# ============================================================
+
+[system-packages]
+[system-packages.linux]
+manager = "script"
+path = "scripts/install-system-packages.sh"
+[system-packages.macos]
+manager = "script"
+path = "scripts/install-system-packages.sh"
+
+# ============================================================
 # Languages & Toolchains
 # ============================================================
 

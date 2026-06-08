@@ -43,7 +43,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - name: Run Layer 0
+      - name: Run Layer 0 (tool-installer binary only)
         run: bash setup-new.sh --bootstrap
       - name: Verify
         run: |
