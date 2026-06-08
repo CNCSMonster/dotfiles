@@ -16,10 +16,7 @@ fi
 
 sudo_run() {
     if [ "$EUID" -eq 0 ]; then "$@"
-    elif sudo -n true 2>/dev/null; then sudo "$@"
-    else
-        echo "⚠️  需要 sudo 权限，但当前用户无 NOPASSWD 配置"
-        return 1
+    else sudo "$@"
     fi
 }
 
