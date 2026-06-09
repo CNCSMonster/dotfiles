@@ -25,6 +25,8 @@ usage() {
     echo "  --dry-run     显示 tool-installer 安装计划"
 }
 
+export MISE_HTTP_TIMEOUT="${MISE_HTTP_TIMEOUT:-300}"
+
 do_bootstrap() {
     # ── 0a: 安装 tool-installer ──
     echo "=========================================="

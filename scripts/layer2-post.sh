@@ -5,6 +5,9 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# GitHub mirrors (same as install-functions.sh)
+GITHUB_MIRRORS="${GITHUB_MIRRORS:-https://mirror.ghproxy.com}"
+
 # ── 2a: Helix runtime（需要先安装 helix）──
 install_helix_runtime() {
     echo "=========================================="
@@ -29,15 +32,38 @@ install_helix_runtime() {
     tmp_dir=$(mktemp -d)
 
     echo "下载 Helix runtime (themes/queries/tutor)..."
+    local download_ok=false
+
+    # Try gh API tarball first
+    local tarball_url=""
     if command -v gh &>/dev/null; then
-        gh api "repos/helix-editor/helix/tarball/${hx_version}" \
-            --jq '.tarball_url' 2>/dev/null | \
-            xargs curl -fsSL | tar xz -C "${tmp_dir}" --strip-components=1 2>/dev/null || \
-            curl -fsSL "${repo_url}/archive/refs/tags/${hx_version}.tar.gz" | \
-            tar xz -C "${tmp_dir}" --strip-components=1
-    else
-        curl -fsSL "${repo_url}/archive/refs/tags/${hx_version}.tar.gz" | \
-            tar xz -C "${tmp_dir}" --strip-components=1
+        tarball_url=$(gh api "repos/helix-editor/helix/tarball/${hx_version}" \
+            --jq '.tarball_url' 2>/dev/null) || true
+    fi
+
+    if [[ -n "${tarball_url}" ]]; then
+        if curl -fsSL --retry 3 --retry-delay 5 --connect-timeout 30 --max-time 300 \
+            "${tarball_url}" | tar xz -C "${tmp_dir}" --strip-components=1 2>/dev/null; then
+            download_ok=true
+        fi
+    fi
+
+    # Fallback: try GitHub mirror then direct
+    if [ "${download_ok}" = false ]; then
+        local direct_url="${repo_url}/archive/refs/tags/${hx_version}.tar.gz"
+        for mirror in $GITHUB_MIRRORS; do
+            if curl -fsSL --retry 3 --retry-delay 5 --connect-timeout 30 --max-time 300 \
+                "${mirror}/${direct_url}" | tar xz -C "${tmp_dir}" --strip-components=1 2>/dev/null; then
+                download_ok=true
+                break
+            fi
+        done
+    fi
+
+    if [ "${download_ok}" = false ]; then
+        curl -fsSL --retry 3 --retry-delay 5 --connect-timeout 30 --max-time 300 \
+            "${repo_url}/archive/refs/tags/${hx_version}.tar.gz" | \
+            tar xz -C "${tmp_dir}" --strip-components=1 2>/dev/null || true
     fi
 
     # 复制 runtime 文件
@@ -86,9 +112,26 @@ install_llvm() {
         return 0
     fi
 
+    # Wait for dpkg lock (unattended-upgrade may be running)
+    echo "等待 dpkg 锁释放..."
+    local max_wait=300
+    local waited=0
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+        if [ $waited -ge $max_wait ]; then
+            echo "⚠️  dpkg 锁等待超时（${max_wait}s），跳过 LLVM 安装"
+            return 0
+        fi
+        sleep 5
+        waited=$((waited + 5))
+    done
+
     chmod +x "$llvmup"
-    "$llvmup" default 22
-    echo "✅ LLVM 22 / clangd 安装完成"
+    if "$llvmup" default 22; then
+        echo "✅ LLVM 22 / clangd 安装完成"
+    else
+        echo "⚠️  LLVM 22 安装失败，跳过"
+        return 0
+    fi
 }
 
 # ── 2d: 字体缓存刷新 ──

@@ -23,15 +23,32 @@ if [[ "$OS" == "Darwin" ]]; then
 fi
 
 if [[ "$OS" == "Linux" ]]; then
+    # Wait for dpkg lock before attempting install
+    max_wait=120
+    waited=0
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+        if [ $waited -ge $max_wait ]; then
+            echo "⚠️  dpkg 锁等待超时，跳过字体安装"
+            exit 0
+        fi
+        sleep 5
+        waited=$((waited + 5))
+    done
+
     echo "安装系统字体包..."
-    sudo apt-get update -qq || echo "⚠️  apt-get update 失败"
-    sudo apt-get install -y --no-install-recommends \
-        fontconfig \
-        fonts-noto-cjk \
-        fonts-noto-color-emoji \
-        fonts-jetbrains-mono \
-        fonts-dejavu-core \
-        2>/dev/null || echo "⚠️  部分字体包安装失败"
+    for i in {1..3}; do
+        if apt-get install -y --no-install-recommends \
+            fontconfig \
+            fonts-noto-cjk \
+            fonts-noto-color-emoji \
+            fonts-jetbrains-mono \
+            fonts-dejavu-core \
+            2>/dev/null; then
+            break
+        fi
+        echo "⚠️  字体包安装失败，等待锁释放..."
+        sleep 3
+    done || echo "⚠️  部分字体包安装失败"
 
     if ! fc-list 2>/dev/null | grep -qi "FiraCode.*Nerd"; then
         echo "安装 FiraCode Nerd Font..."
@@ -39,12 +56,12 @@ if [[ "$OS" == "Linux" ]]; then
         fira_tmp="/tmp/FiraCode-Nerd-Font.zip"
         if wget --tries=3 --timeout=30 --connect-timeout=15 "$fira_url" -O "$fira_tmp" 2>/dev/null; then
             fira_dir="/usr/local/share/fonts/FiraCode-Nerd-Font"
-            sudo mkdir -p "$fira_dir" 2>/dev/null || true
+            mkdir -p "$fira_dir" 2>/dev/null || true
             if command -v unzip &>/dev/null; then
-                sudo unzip -o "$fira_tmp" -d "$fira_dir" 2>/dev/null || echo "⚠️  FiraCode 解压失败"
+                unzip -o "$fira_tmp" -d "$fira_dir" 2>/dev/null || echo "⚠️  FiraCode 解压失败"
             else
-                sudo apt-get install -y unzip 2>/dev/null || true
-                sudo unzip -o "$fira_tmp" -d "$fira_dir" 2>/dev/null || echo "⚠️  FiraCode 解压失败"
+                apt-get install -y unzip 2>/dev/null || true
+                unzip -o "$fira_tmp" -d "$fira_dir" 2>/dev/null || echo "⚠️  FiraCode 解压失败"
             fi
             rm -f "$fira_tmp"
         else
@@ -56,7 +73,7 @@ if [[ "$OS" == "Linux" ]]; then
 
     if command -v fc-cache &>/dev/null; then
         echo "刷新字体缓存..."
-        sudo fc-cache -f 2>/dev/null || true
+        fc-cache -f 2>/dev/null || true
     fi
     exit 0
 fi

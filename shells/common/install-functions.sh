@@ -461,11 +461,50 @@ function install-common-rust-tools() {
 
 function install-yazi-plugins(){
     # 安装 yazi 插件（如果 yazi 配置目录存在）
-    if [ -d "${HOME}/.config/yazi" ] && command -v ya &> /dev/null; then
-        cd "${HOME}/.config/yazi" && ya pkg install
-        return $?
+    if [ ! -d "${HOME}/.config/yazi" ] || ! command -v ya &> /dev/null; then
+        return 0
     fi
-    return 0
+
+    local attempts=0
+    local max_attempts=3
+    local installed=false
+
+    while [ $attempts -lt $max_attempts ]; do
+        attempts=$((attempts + 1))
+        echo "安装 Yazi 插件（第 ${attempts}/${max_attempts} 次尝试）..."
+        
+        # 临时配置 git 使用镜像站（如果可用）
+        local git_mirror="${GITHUB_MIRRORS%% *}"
+        if [ -n "$git_mirror" ] && command -v git &>/dev/null; then
+            git config --local url."${git_mirror}/https://github.com/".insteadOf "https://github.com/" 2>/dev/null || true
+        fi
+
+        if cd "${HOME}/.config/yazi" && ya pkg install; then
+            installed=true
+            break
+        fi
+
+        # 清理临时 git 配置
+        if [ -n "$git_mirror" ] && command -v git &>/dev/null; then
+            git config --local --unset-all url."${git_mirror}/https://github.com/".insteadOf 2>/dev/null || true
+        fi
+
+        echo "⚠️  Yazi 插件安装失败，等待后重试..."
+        sleep $((attempts * 5))
+    done
+
+    # 最终清理 git 配置
+    if [ -n "$git_mirror" ] && command -v git &>/dev/null; then
+        git config --local --unset-all url."${git_mirror}/https://github.com/".insteadOf 2>/dev/null || true
+    fi
+
+    if [ "$installed" = true ]; then
+        echo "✅ Yazi 插件安装成功"
+        return 0
+    else
+        echo "⚠️  Yazi 插件安装失败（已重试 ${max_attempts} 次），跳过"
+        return 0
+    fi
 }
 
 function setup-cargo-fuzz() {
