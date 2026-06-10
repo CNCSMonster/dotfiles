@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # GitHub mirrors (same as install-functions.sh)
-GITHUB_MIRRORS="${GITHUB_MIRRORS:-https://mirror.ghproxy.com}"
+GITHUB_MIRRORS="${GITHUB_MIRRORS:-https://ghfast.top https://mirror.ghproxy.com}"
 
 # ── 2a: Helix runtime（需要先安装 helix）──
 install_helix_runtime() {

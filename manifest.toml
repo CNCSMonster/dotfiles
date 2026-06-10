@@ -303,39 +303,11 @@ sha256 = "a2daa860a0e0cd1410491ff9703c6aaca96defd833b88af6a9811d6ff04fc13b"
 
 [lua-lsp]
 [lua-lsp.linux]
-manager = "github-release"
-repo = "LuaLS/lua-language-server"
-asset = "lua-language-server-{version}-linux-x64.tar.gz"
-bin = "bin/lua-language-server"
-install_name = "lua-language-server"
-[lua-lsp.linux.version_probe]
-command = ["{bin}", "--version"]
-regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
-
-[lua-lsp.linux.x86_64]
-sha256 = "248b0858a0afc8233f2535e89b648398b2202cb96cf51ce187e3263923dd0223"
-
-
+manager = "script"
+path = "scripts/install-lua-lsp.sh"
 [lua-lsp.macos]
-manager = "github-release"
-repo = "LuaLS/lua-language-server"
-asset = "lua-language-server-{version}-darwin-arm64.tar.gz"
-bin = "bin/lua-language-server"
-install_name = "lua-language-server"
-[lua-lsp.macos.version_probe]
-command = ["{bin}", "--version"]
-regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
-
-[lua-lsp.macos.aarch64]
-sha256 = "a69ffcef61d3eb4ca7b7bc92d69cb85892c8af15120bf2815768ed0afe5ed3bc"
-
-[lua-lsp.macos.x86_64]
-asset = "lua-language-server-{version}-darwin-x64.tar.gz"
-sha256 = "TODO"
-
-[lua-lsp.linux.aarch64]
-asset = "lua-language-server-{version}-linux-arm64.tar.gz"
-sha256 = "680285a36d8cf7b17ca4be7a2f9c93643ebd8daec0b7425a6b7a02d003f3da81"
+manager = "script"
+path = "scripts/install-lua-lsp.sh"
 
 [xdotter]
 [xdotter.linux]

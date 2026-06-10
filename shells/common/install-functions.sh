@@ -17,7 +17,7 @@ VENDOR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../scripts/vendor"
 # 镜像站说明：
 #   - https://mirror.ghproxy.com (ghproxy) - 相对知名，较可信
 # 注意：使用第三方镜像站存在供应链攻击风险，如可直接访问 GitHub，建议禁用镜像
-GITHUB_MIRRORS="${GITHUB_MIRRORS:-https://mirror.ghproxy.com}"
+GITHUB_MIRRORS="${GITHUB_MIRRORS:-https://ghfast.top https://mirror.ghproxy.com}"
 
 # 从 GitHub 下载文件的通用函数（自动尝试多个镜像站 → 直连）
 github_download() {
@@ -472,31 +472,37 @@ function install-yazi-plugins(){
     while [ $attempts -lt $max_attempts ]; do
         attempts=$((attempts + 1))
         echo "安装 Yazi 插件（第 ${attempts}/${max_attempts} 次尝试）..."
-        
-        # 临时配置 git 使用镜像站（如果可用）
-        local git_mirror="${GITHUB_MIRRORS%% *}"
-        if [ -n "$git_mirror" ] && command -v git &>/dev/null; then
-            git config --local url."${git_mirror}/https://github.com/".insteadOf "https://github.com/" 2>/dev/null || true
+
+        if cd "${HOME}/.config/yazi"; then
+            if command -v git &>/dev/null; then
+                # 逐个 mirror 尝试 fallback
+                for git_mirror in $GITHUB_MIRRORS; do
+                    [ -n "$git_mirror" ] || continue
+                    echo "  使用镜像: $git_mirror"
+                    # 使用 GIT_CONFIG_COUNT 零副作用注入 git insteadOf 规则
+                    # 不创建文件、不碰 ~/.gitconfig、只影响当前进程树
+                    if GIT_CONFIG_COUNT=1 \
+                       GIT_CONFIG_KEY_0="url.${git_mirror}/https://github.com/.insteadof" \
+                       GIT_CONFIG_VALUE_0="https://github.com/" \
+                       ya pkg install; then
+                        installed=true
+                        break 2  # 跳出 for 和 while
+                    fi
+                    echo "  ⚠️  镜像 $git_mirror 失败，尝试下一个..."
+                done
+            else
+                if ya pkg install; then
+                    installed=true
+                    break
+                fi
+            fi
         fi
 
-        if cd "${HOME}/.config/yazi" && ya pkg install; then
-            installed=true
-            break
+        if [ "$installed" != true ]; then
+            echo "⚠️  Yazi 插件安装失败，等待后重试..."
+            sleep $((attempts * 5))
         fi
-
-        # 清理临时 git 配置
-        if [ -n "$git_mirror" ] && command -v git &>/dev/null; then
-            git config --local --unset-all url."${git_mirror}/https://github.com/".insteadOf 2>/dev/null || true
-        fi
-
-        echo "⚠️  Yazi 插件安装失败，等待后重试..."
-        sleep $((attempts * 5))
     done
-
-    # 最终清理 git 配置
-    if [ -n "$git_mirror" ] && command -v git &>/dev/null; then
-        git config --local --unset-all url."${git_mirror}/https://github.com/".insteadOf 2>/dev/null || true
-    fi
 
     if [ "$installed" = true ]; then
         echo "✅ Yazi 插件安装成功"
