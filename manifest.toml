@@ -404,12 +404,14 @@ binstall_first = true
 [fd-find.linux]
 manager = "cargo-install"
 pkg = "fd-find"
+bin = "fd"
 locked = true
 binstall_first = true
 
 [fd-find.macos]
 manager = "cargo-install"
 pkg = "fd-find"
+bin = "fd"
 locked = true
 binstall_first = true
 
@@ -555,12 +557,14 @@ binstall_first = true
 [gen-mdbook-summary.linux]
 manager = "cargo-install"
 pkg = "gen-mdbook-summary"
+bin = "gms"
 locked = true
 binstall_first = true
 
 [gen-mdbook-summary.macos]
 manager = "cargo-install"
 pkg = "gen-mdbook-summary"
+bin = "gms"
 locked = true
 binstall_first = true
 
@@ -568,6 +572,7 @@ binstall_first = true
 [tree-sitter-cli.linux]
 manager = "cargo-install"
 pkg = "tree-sitter-cli"
+bin = "tree-sitter"
 locked = true
 binstall_first = true
 binstall_retry = 2
@@ -576,6 +581,7 @@ binstall_fallback_compile = true
 [tree-sitter-cli.macos]
 manager = "cargo-install"
 pkg = "tree-sitter-cli"
+bin = "tree-sitter"
 locked = true
 binstall_first = true
 binstall_retry = 2
@@ -658,12 +664,14 @@ binstall_first = true
 [parallel-disk-usage.linux]
 manager = "cargo-install"
 pkg = "parallel-disk-usage"
+bin = "pdu"
 locked = true
 binstall_first = true
 
 [parallel-disk-usage.macos]
 manager = "cargo-install"
 pkg = "parallel-disk-usage"
+bin = "pdu"
 locked = true
 binstall_first = true
 
@@ -771,12 +779,14 @@ binstall_first = true
 [wild-linker.linux]
 manager = "cargo-install"
 pkg = "wild-linker"
+bin = "wild"
 locked = true
 binstall_first = true
 
 [wild-linker.macos]
 manager = "cargo-install"
 pkg = "wild-linker"
+bin = "wild"
 locked = true
 binstall_first = true
 

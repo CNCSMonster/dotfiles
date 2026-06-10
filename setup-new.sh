@@ -27,22 +27,78 @@ usage() {
 
 export MISE_HTTP_TIMEOUT="${MISE_HTTP_TIMEOUT:-300}"
 
+# 确保 tool-installer 是最新的（vendor 中的版本）
+# 适用于任何入口：全新环境、旧环境、或跳过 bootstrap 的 --install
+_ensure_tool_installer() {
+    local artifact="${SCRIPT_DIR}/vendor/tool-installer"
+    if [ ! -f "$artifact" ]; then
+        echo "❌ vendor/tool-installer 不存在于 ${SCRIPT_DIR}"
+        echo "   可能原因: 仓库未正确克隆或 vendor 文件被删除"
+        return 1
+    fi
+
+    mkdir -p "$HOME/.local/bin" || {
+        echo "❌ 无法创建 ~/.local/bin 目录"
+        return 1
+    }
+
+    local target="$HOME/.local/bin/tool-installer"
+    local need_update=false
+
+    if [ ! -f "$target" ]; then
+        echo "🆕 tool-installer 未安装，准备安装..."
+        need_update=true
+    elif [ "$artifact" -ef "$target" ]; then
+        # source 和 target 是同一个 inode（hardlink），需要重建
+        echo "⚠️  tool-installer 是 hardlink，需要重新创建..."
+        need_update=true
+    elif ! cmp -s "$artifact" "$target" 2>/dev/null; then
+        echo "🔄 tool-installer 版本不匹配，准备更新..."
+        need_update=true
+    fi
+
+    if [ "$need_update" = true ]; then
+        # 多级 fallback 确保可靠写入：
+        # 1. install -m 755（首选，处理 hardlink/symlink）
+        # 2. rm + install（处理文件被占用的情况）
+        # 3. cat + chmod（最后手段）
+        if install -m 755 "$artifact" "$target" 2>/dev/null; then
+            : # 成功
+        elif rm -f "$target" 2>/dev/null && install -m 755 "$artifact" "$target" 2>/dev/null; then
+            : # 成功
+        elif cat "$artifact" > "$target" 2>/dev/null && chmod +x "$target"; then
+            : # 成功
+        else
+            echo "❌ 无法更新 tool-installer（所有写入方式均失败）"
+            return 1
+        fi
+
+        # 验证：确保写入后的文件与 vendor 一致
+        if ! cmp -s "$artifact" "$target" 2>/dev/null; then
+            echo "❌ tool-installer 写入后校验失败（文件不完整或损坏）"
+            return 1
+        fi
+
+        echo "✅ tool-installer 已更新到 ${target}"
+    fi
+
+    # 验证可执行性
+    if ! "$target" --help &>/dev/null; then
+        echo "❌ ${target} 无法执行"
+        return 1
+    fi
+
+    return 0
+}
+
 do_bootstrap() {
     # ── 0a: 安装 tool-installer ──
     echo "=========================================="
     echo "Layer 0: 安装 tool-installer..."
     echo "=========================================="
 
-    mkdir -p ~/.local/bin
-    local artifact="${SCRIPT_DIR}/vendor/tool-installer"
-    if [ -f "$artifact" ]; then
-        install -m 755 "$artifact" ~/.local/bin/tool-installer
-        echo "✅ tool-installer 已安装到 ~/.local/bin/tool-installer"
-        ~/.local/bin/tool-installer --help | head -3
-    else
-        echo "❌ vendor/tool-installer 不存在，请先构建"
-        return 1
-    fi
+    _ensure_tool_installer || return 1
+    ~/.local/bin/tool-installer --help | head -3
 
     echo ""
     echo "✅ Layer 0 (Bootstrap) 完成"
@@ -112,8 +168,12 @@ do_install() {
     echo "Layer 1: 安装开发工具..."
     echo "=========================================="
     export PATH="$HOME/.local/bin:$PATH"
+
+    # 确保 tool-installer 是最新的（处理旧环境或跳过 bootstrap 的情况）
+    _ensure_tool_installer || exit 1
+
     if ! command -v tool-installer &>/dev/null; then
-        echo "❌ tool-installer 未安装，请先运行 --bootstrap"
+        echo "❌ tool-installer 未安装"
         exit 1
     fi
 
@@ -153,10 +213,7 @@ main() {
         --install)   do_install ;;
         --post)      do_post ;;
         --dry-run)
-            if ! command -v tool-installer &>/dev/null; then
-                echo "❌ tool-installer 未安装，请先运行 --bootstrap"
-                exit 1
-            fi
+            _ensure_tool_installer || exit 1
             tool-installer install dev --dry-run
             ;;
         --help|-h) usage; exit 0 ;;
