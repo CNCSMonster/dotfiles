@@ -74,5 +74,20 @@ y() {
     rm -f -- "$tmp"
 }
 
+# =============================================================================
+# mise - 交互式 shell 激活
+# =============================================================================
+# 职责：交互式 shell 中加载 [env] 环境变量并安装 prompt hook
+# 与 env.sh 的分工：
+#   - env.sh: 非交互式/所有场景的基础环境变量（PATH 等）
+#   - inter.sh: 交互式 shell 中加载 [env] 并安装 prompt hook
+# 为什么拆分：
+#   - activate 依赖 prompt 触发，每次 prompt 自动更新 PATH 和 [env]
+#   - 不适合非交互式 shell（CI、脚本），因为非交互式没有 prompt
+#   - 因此放在 inter.sh 中，仅在交互式 shell 中执行
+if command -v mise &>/dev/null; then
+    eval "$(mise activate $SH)" 2>/dev/null || true
+fi
+
 # 标记已完成加载
 INTER_DONE=1

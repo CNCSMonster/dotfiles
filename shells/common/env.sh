@@ -120,13 +120,13 @@ export EDITOR='hx'
 # =============================================================================
 # mise 版本管理工具
 # =============================================================================
-# 提供 npm/node/go/zig 等命令的环境变量
-# 注意：这是基础环境配置，交互式和非交互式环境都需要
-# 与 inter.sh 的区别：
-#   - env.sh: 基础环境变量（PATH 等），所有场景都需要
-#   - inter.sh: 交互式特性（prompt、快捷键），仅交互式 shell 需要
+# 职责：非交互式 shell 中立即注入 PATH/shims
+# 与 inter.sh 的分工：
+#   - env.sh: 非交互式/所有场景的基础环境变量（PATH 等）
+#   - inter.sh: 交互式 shell 中加载 [env] 并安装 prompt hook
+# 为什么拆分：
+#   - activate 依赖 prompt 触发，非交互式 shell 没有 prompt，不会立即生效
+#   - hook-env 能立即将 mise shims 注入 PATH，适合 CI、脚本等场景
 if command -v mise &>/dev/null; then
-    # 非交互式场景（CI、脚本）中 activate 只设置 prompt hook，不会立即生效
-    # hook-env 能立即将 mise shims 注入 PATH
     eval "$(mise hook-env -s $SH)" 2>/dev/null || true
 fi

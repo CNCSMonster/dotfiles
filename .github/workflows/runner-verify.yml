@@ -74,3 +74,9 @@ jobs:
               fi
             done
           fi
+
+      - name: Verify mise [env] in interactive shell
+        run: |
+          export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+          # 模拟新登录交互式 shell，验证 [env] 变量是否被正确注入
+          zsh -lic 'echo "STEP_API_KEY=${STEP_API_KEY:-(未设置)}"'
