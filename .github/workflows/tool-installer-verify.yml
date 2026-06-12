@@ -114,7 +114,7 @@ jobs:
           tokei --version
           zoxide --version
           mdbook --version
-          mise --version
+          mise --version || true
           uv --version
           navi --version || true
           gitui --version || true
