@@ -99,6 +99,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Clean stale cargo install metadata
+        run: rm -f ~/.cargo/.crates.toml ~/.cargo/.crates2.json
       - name: Install cargo-tools (needs cargo-binstall + build-base)
         run: |
           export PATH="$HOME/.local/bin:$PATH"
@@ -114,11 +116,11 @@ jobs:
           tokei --version
           zoxide --version
           mdbook --version
-          mise --version || true
+          mise --version
           uv --version
           navi --version || true
           gitui --version || true
-          kondo --version || true
+          kondo --help >/dev/null
           jaq --version
           nu --version
           cargo-audit --version
@@ -265,6 +267,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Clean stale cargo install metadata
+        run: rm -f ~/.cargo/.crates.toml ~/.cargo/.crates2.json
       - name: Install mise (prerequisite)
         run: |
           curl https://mise.run | sh
@@ -318,6 +322,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Clean stale cargo install metadata
+        run: rm -f ~/.cargo/.crates.toml ~/.cargo/.crates2.json
       - name: Install mise (prerequisite)
         run: |
           curl https://mise.run | sh
