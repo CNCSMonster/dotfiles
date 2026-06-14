@@ -14,7 +14,7 @@ if [[ "$OS" == "Darwin" ]]; then
         }
     fi
     echo "通过 Homebrew 安装基础系统包..."
-    brew install python3 gh fzf ripgrep tree git || echo "⚠️  部分包安装失败"
+    brew install --yes python3 gh fzf ripgrep tree git || echo "⚠️  部分包安装失败"
     exit 0
 fi
 

@@ -9,7 +9,7 @@ OS="$(uname -s)"
 if [[ "$OS" == "Darwin" ]]; then
     if command -v brew &>/dev/null; then
         echo "通过 Homebrew 安装字体..."
-        brew install --cask \
+        brew install --cask --yes \
             font-jetbrains-mono \
             font-fira-code \
             font-fira-code-nerd-font \
