@@ -59,7 +59,7 @@ ENV CARGO_BUILD_JOBS=${BUILD_JOBS}
 # apt 网络波动：重试 5 次、单次超时 300s，减少偶发超时失败
 COPY ./apt-retry.conf /etc/apt/apt.conf.d/99-retry-timeout.conf
 
-# Rust 镜像源由 setup-new.sh 内 do_deploy (xd deploy) 统一软链接 ~/.cargo/config.toml，此处不预 COPY 避免路径冲突
+# Rust 镜像源由 setup.sh 内 do_deploy (xd deploy) 统一软链接 ~/.cargo/config.toml，此处不预 COPY 避免路径冲突
 
 # 安装 ca-certificates：
 # - 国内 (USE_CHINA_MIRROR=1): 先用 HTTP 清华源安装，再切回 HTTPS
@@ -119,14 +119,14 @@ ENV CARGO_INSTALL_STRICT=${CARGO_INSTALL_STRICT}
 # 执行一键配置脚本
 # 此步骤会安装所有依赖、语言环境与工具
 # cargo 编译受 CARGO_BUILD_JOBS 限制，避免内存耗尽
-# CI=true: 供 tool-installer / setup-new.sh 内部识别 CI 环境
+# CI=true: 供 tool-installer / setup.sh 内部识别 CI 环境
 # --mount=secret: token 仅在本层可见，不会写入镜像层
 RUN --mount=type=secret,id=github_token,required=false \
     export CI=true && \
     if [ -f /run/secrets/github_token ]; then \
       export GITHUB_TOKEN=$(cat /run/secrets/github_token); \
     fi && \
-    chmod +x ./setup-new.sh && ./setup-new.sh && \
+    chmod +x ./setup.sh && ./setup.sh && \
     rm -rf \
       ~/.cargo/registry/src \
       ~/.cargo/registry/cache \

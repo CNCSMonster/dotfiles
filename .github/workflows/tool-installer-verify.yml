@@ -3,10 +3,10 @@ name: tool-installer Migration Verify
 on:
   push:
     branches:
-      - 'feat/tool-installer-migration'
+      - 'main'
   pull_request:
     branches:
-      - 'feat/tool-installer-migration'
+      - 'main'
   workflow_dispatch:
 
 concurrency:
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Run Layer 0 (tool-installer binary only)
-        run: bash setup-new.sh --bootstrap
+        run: bash setup.sh --bootstrap
       - name: Verify
         run: |
           ~/.local/bin/tool-installer --help

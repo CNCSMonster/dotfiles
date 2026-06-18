@@ -1,315 +1,248 @@
 #!/usr/bin/env bash
+# 三层架构安装脚本（tool-installer 迁移版）
+# Layer 0: Bootstrap — 仅安装 tool-installer 二进制（vendor 目录）
+# Layer 1: 声明式安装 — tool-installer install dev（系统包 / 字体 / WezTerm / 工具链）
+# Layer 2: 后置脚本 — 依赖 Layer 1 工具的配置后处理
+set -eo pipefail
 
-# 一键配置脚本 - 在干净的 Linux 系统上部署完整的开发环境
-# 使用方法：git clone 后直接运行 ./setup.sh
-#
-# 用法：
-#   ./setup.sh           部署配置 + 安装工具（默认）
-#   ./setup.sh --deploy  只部署配置文件
-#   ./setup.sh --install 只安装开发工具（配置已部署时）
-
-set -exo pipefail
-
-# --------- helpers ---------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-function sudo_run() {
-    if [ "$EUID" -eq 0 ]; then
-        "$@"
-    else
-        sudo "$@"
-    fi
+export PATH="$HOME/.local/bin:$PATH"
+
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Asia/Shanghai
+fi
+
+usage() {
+    echo "用法: $0 [选项]"
+    echo ""
+    echo "  无参数        完整安装（bootstrap + deploy + install + post）"
+    echo "  --bootstrap   仅 Layer 0：系统包 + gh 登录 + tool-installer"
+    echo "  --deploy      仅配置部署（xdotter）"
+    echo "  --install     仅 Layer 1：tool-installer 安装工具"
+    echo "  --post        仅 Layer 2：后置脚本"
+    echo "  --dry-run     显示 tool-installer 安装计划"
 }
 
-# 通用重试函数
-# 用法: retry_fn <max_retries> <description> <function_name> [args...]
-retry_fn() {
-    local max_retries=${1:-5}
-    local description=$2
-    local fn=$3
-    shift 3
-    local retry=0
+export MISE_HTTP_TIMEOUT="${MISE_HTTP_TIMEOUT:-300}"
 
-    while [ $retry -lt $max_retries ]; do
-        if $fn "$@"; then
+# 确保 tool-installer 是最新的（vendor 中的版本）
+# 适用于任何入口：全新环境、旧环境、或跳过 bootstrap 的 --install
+_ensure_tool_installer() {
+    local artifact="${SCRIPT_DIR}/vendor/tool-installer"
+    if [ ! -f "$artifact" ]; then
+        echo "❌ vendor/tool-installer 不存在于 ${SCRIPT_DIR}"
+        echo "   可能原因: 仓库未正确克隆或 vendor 文件被删除"
+        return 1
+    fi
+
+    mkdir -p "$HOME/.local/bin" || {
+        echo "❌ 无法创建 ~/.local/bin 目录"
+        return 1
+    }
+
+    local target="$HOME/.local/bin/tool-installer"
+    local need_update=false
+
+    if [ ! -f "$target" ]; then
+        echo "🆕 tool-installer 未安装，准备安装..."
+        need_update=true
+    elif [ "$artifact" -ef "$target" ]; then
+        # source 和 target 是同一个 inode（hardlink），需要重建
+        echo "⚠️  tool-installer 是 hardlink，需要重新创建..."
+        need_update=true
+    elif ! cmp -s "$artifact" "$target" 2>/dev/null; then
+        echo "🔄 tool-installer 版本不匹配，准备更新..."
+        need_update=true
+    fi
+
+    if [ "$need_update" = true ]; then
+        # 多级 fallback 确保可靠写入：
+        # 1. install -m 755（首选，处理 hardlink/symlink）
+        # 2. rm + install（处理文件被占用的情况）
+        # 3. cat + chmod（最后手段）
+        if install -m 755 "$artifact" "$target" 2>/dev/null; then
+            : # 成功
+        elif rm -f "$target" 2>/dev/null && install -m 755 "$artifact" "$target" 2>/dev/null; then
+            : # 成功
+        elif cat "$artifact" > "$target" 2>/dev/null && chmod +x "$target"; then
+            : # 成功
+        else
+            echo "❌ 无法更新 tool-installer（所有写入方式均失败）"
+            return 1
+        fi
+
+        # 验证：确保写入后的文件与 vendor 一致
+        if ! cmp -s "$artifact" "$target" 2>/dev/null; then
+            echo "❌ tool-installer 写入后校验失败（文件不完整或损坏）"
+            return 1
+        fi
+
+        echo "✅ tool-installer 已更新到 ${target}"
+    fi
+
+    # 验证可执行性
+    if ! "$target" --help &>/dev/null; then
+        echo "❌ ${target} 无法执行"
+        return 1
+    fi
+
+    return 0
+}
+
+do_bootstrap() {
+    # ── 0a: 安装 tool-installer ──
+    echo "=========================================="
+    echo "Layer 0: 安装 tool-installer..."
+    echo "=========================================="
+
+    _ensure_tool_installer || return 1
+    ~/.local/bin/tool-installer --help | head -3
+
+    echo ""
+    echo "✅ Layer 0 (Bootstrap) 完成"
+    echo "   下一步: tool-installer install dev"
+}
+
+# 确保 xdotter 已安装（bootstrap 后 tool-installer 可用，用其安装 extras 组）
+# 多重回退策略：tool-installer → 直接下载 → vendor
+ensure_xdotter() {
+    if command -v xd &>/dev/null; then
+        return 0
+    fi
+    echo "安装 xdotter..."
+
+    # 方案 1: tool-installer（最优，使用 GitHub API，可能被限流）
+    if command -v tool-installer &>/dev/null; then
+        if tool-installer install extras 2>/dev/null; then
+            command -v xd &>/dev/null && return 0
+        fi
+        echo "⚠️  tool-installer 安装 xdotter 失败，尝试直接下载..."
+    fi
+
+    # 方案 2: 直接 curl 下载 musl 静态二进制（仅 Linux x86_64）
+    if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
+        mkdir -p ~/.local/bin
+        local xd_url="https://github.com/CNCSMonster/xdotter/releases/latest/download/xd-x86_64-unknown-linux-musl"
+        if curl -fsSL --retry 3 --connect-timeout 15 "$xd_url" -o ~/.local/bin/xd 2>/dev/null; then
+            chmod +x ~/.local/bin/xd
+            echo "✅ xdotter 已通过直接下载安装"
             return 0
         fi
-        retry=$((retry + 1))
-        echo "${description}失败，重试 $retry/$max_retries..."
-        sleep 5
-    done
+    fi
 
-    echo "错误: ${description}失败，已达最大重试次数"
+    # 方案 3: vendor 目录（仅 Linux x86_64）
+    if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" && -f "${SCRIPT_DIR}/vendor/xdotter" ]]; then
+        install -m 755 "${SCRIPT_DIR}/vendor/xdotter" ~/.local/bin/xd
+        echo "✅ xdotter 已从 vendor 目录安装"
+        return 0
+    fi
+
+    # macOS 无回退，跳过 xdotter（deploy 会检查 xd 是否存在）
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "⚠️  macOS 上 xdotter 安装失败（无 vendor 兜底），将跳过 xd deploy"
+        return 0
+    fi
+
+    echo "❌ 所有安装方式均失败，无法继续"
     return 1
 }
 
-ensure_python3() {
-  if command -v python3 >/dev/null 2>&1; then
-    return 0
-  fi
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    if command -v brew >/dev/null 2>&1; then
-      brew install python3
-    else
-      echo "Python3 未安装，请先安装 Python3（推荐 Homebrew: brew install python3）"
-      return 1
-    fi
-  else
-    sudo_run apt-get update
-    sudo_run apt-get install -y python3
-  fi
-}
-
-download_xdotter() {
-  echo "安装 xdotter..."
-
-  # 1. musl 静态二进制: 无任何系统依赖，最可靠
-  if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
-    mkdir -p ~/.local/bin
-    local url="https://github.com/CNCSMonster/xdotter/releases/latest/download/xd-x86_64-unknown-linux-musl"
-    if curl -fsSL --retry 3 "$url" -o ~/.local/bin/xd 2>/dev/null && file ~/.local/bin/xd | grep -q ELF; then
-      chmod +x ~/.local/bin/xd
-      export PATH="$HOME/.local/bin:$PATH"
-      echo "✅ xdotter (musl) 安装成功"
-      return 0
-    fi
-    echo "musl 下载失败，尝试其他方式..."
-  fi
-
-  # 2. 从源码编译（需要 C 工具链）
-  if ! command -v cc >/dev/null 2>&1; then
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-      echo "⚠️  缺少 C 编译器，请运行: xcode-select --install"
-    else
-      sudo_run apt-get update -qq && sudo_run apt-get install -y -qq build-essential 2>/dev/null || true
-    fi
-  fi
-  cargo install xdotter --locked
-}
-
-deploy_dotfiles(){
-  mkdir -p ~/.cargo/bin
-
-  # 确保 cargo 可用，以便 xdotter 下载失败时能 fallback 到 cargo install
-  if ! command -v cargo >/dev/null 2>&1; then
-    echo "🔧 xdotter 需要 Rust 作为后备安装方式，正在安装最小 Rust 工具链..."
-    if [[ "$(uname -s)" != "Darwin" ]]; then
-      export DEBIAN_FRONTEND=noninteractive
-      export TZ=Asia/Shanghai
-    fi
-    load_install_functions
-    setup-rustup
-  fi
-
-  retry_fn 3 "下载 xdotter" download_xdotter
-  cd "${SCRIPT_DIR}" && xd deploy --force
-
-  # 部署字体配置后刷新缓存
-  install-fonts
-
-  # CI 环境自适应：GitHub Actions runner 位于国外，rsproxy.cn 反而慢
-  # 检测 CI 环境，覆盖 cargo 配置直连 crates.io
-  apply_cargo_mirror_override
-}
-
-# ========== 字体安装函数 ==========
-# 安装 wezterm 配置的字体及 Nerd Font 图标支持
-install-fonts() {
-  echo "=========================================="
-  echo "安装字体..."
-  echo "=========================================="
-
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    # macOS: 使用 Homebrew 安装字体
-    if ! command -v brew >/dev/null 2>&1; then
-      echo "⚠️  Homebrew 未安装，跳过字体安装"
-      return 0
-    fi
-    echo "使用 Homebrew 安装字体..."
-    brew install --cask \
-      font-jetbrains-mono \
-      font-fira-code \
-      font-fira-code-nerd-font \
-      font-noto-sans-cjk \
-      font-noto-color-emoji \
-      2>/dev/null || echo "⚠️  部分字体可能已安装，继续执行..."
-    echo "✅ 字体安装完成（macOS/Homebrew）"
-  else
-    # Linux: 通过 apt 安装 fontconfig（提供 fc-list/fc-cache）和字体包
-    sudo_run apt-get update
-    sudo_run apt-get install -y --no-install-recommends \
-      fontconfig \
-      fonts-noto-cjk \
-      fonts-noto-color-emoji \
-      fonts-jetbrains-mono \
-      fonts-dejavu-core
-
-    # 安装 FiraCode Nerd Font（带图标支持，apt 无此包，从 GitHub 下载）
-    if [ -x "$(command -v fc-list)" ] && fc-list | grep -qi "FiraCode.*Nerd"; then
-      echo "FiraCode Nerd Font 已安装，跳过"
-    else
-      echo "安装 FiraCode Nerd Font..."
-      local FIRACODE_VERSION="7.0.0"
-      local FIRACODE_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/v${FIRACODE_VERSION}/FiraCode.zip"
-      local FIRACODE_DEST="/tmp/FiraCode-Nerd-Font.zip"
-
-      echo "下载 FiraCode Nerd Font..."
-      if wget --tries=3 --timeout=30 --connect-timeout=15 "$FIRACODE_URL" -O "$FIRACODE_DEST" 2>/dev/null; then
-        local FIRACODE_DIR="/usr/local/share/fonts/FiraCode-Nerd-Font"
-        sudo_run mkdir -p "$FIRACODE_DIR"
-
-        # 解压到系统字体目录
-        if command -v unzip >/dev/null 2>&1; then
-          sudo_run unzip -o "$FIRACODE_DEST" -d "$FIRACODE_DIR"
-        else
-          sudo_run apt-get install -y unzip
-          sudo_run unzip -o "$FIRACODE_DEST" -d "$FIRACODE_DIR"
-        fi
-
-        rm -f "$FIRACODE_DEST"
-        echo "FiraCode Nerd Font 安装完成"
-      else
-        echo "⚠️  FiraCode Nerd Font 下载失败，跳过"
-      fi
-    fi
-
-    # 刷新字体缓存
-    if [ -x "$(command -v fc-cache)" ]; then
-      echo "刷新字体缓存..."
-      sudo_run fc-cache -f
-    fi
-    echo "✅ 字体安装完成"
-  fi
-}
-
-apply_cargo_mirror_override() {
-  # 检测是否在 GitHub Actions CI 环境
-  if [ -z "$GITHUB_ACTIONS" ] && [ -z "$CI" ]; then
-    return 0  # 非 CI 环境，无需覆盖
-  fi
-
-  echo "🌐 检测到 CI 环境，配置 cargo 直连 crates.io（跳过 rsproxy）"
-
-  # 生成覆盖配置到 ~/.cargo/config.toml（替换 xdotter 创建的 symlink）
-  local cargo_config="$HOME/.cargo/config.toml"
-  local original_target
-  # macOS readlink 不支持 -f，用 realpath 或手动处理
-  if command -v realpath >/dev/null 2>&1; then
-    original_target=$(realpath "$cargo_config" 2>/dev/null || echo "")
-  else
-    original_target=$(readlink -f "$cargo_config" 2>/dev/null || echo "")
-  fi
-
-  if [ -n "$original_target" ]; then
-    # 读取原配置内容，修改 source 部分
-    # 使用 sed 注释掉 replace-with 行
-    sed 's/^replace-with = "rsproxy-sparse"/# replace-with = "rsproxy-sparse"  # disabled in CI/' \
-      "$original_target" > "$cargo_config.tmp" && \
-      mv "$cargo_config.tmp" "$cargo_config"
-
-    echo "✅ Cargo 配置已切换为 CI 模式（直连 crates.io）"
-  else
-    echo "⚠️  未找到 ~/.cargo/config.toml，跳过 cargo 配置覆盖"
-  fi
-}
-
-load_install_functions() {
-  source "${SCRIPT_DIR}/shells/common/env.sh"
-  source "${SCRIPT_DIR}/shells/common/fn.sh"
-  source "${SCRIPT_DIR}/shells/common/install-functions.sh"
-}
-
-# ========== 第一部分：部署配置 ==========
 do_deploy() {
-  if [[ "$(uname -s)" != "Darwin" ]]; then
-    export DEBIAN_FRONTEND=noninteractive
-    export TZ=Asia/Shanghai
-  fi
-  echo "=========================================="
-  echo "部署 dotfiles 配置..."
-  echo "=========================================="
-  deploy_dotfiles
-  echo "✅ 配置部署完成"
-}
-
-# ========== 第二部分：安装工具 ==========
-do_install() {
-  if [[ "$(uname -s)" != "Darwin" ]]; then
-    export DEBIAN_FRONTEND=noninteractive
-    export TZ=Asia/Shanghai
-  fi
-
-  load_install_functions
-
-  echo "=========================================="
-  echo "安装开发工具..."
-  echo "=========================================="
-
-  install-common-tools
-
-  # Rust 工具链（第一公民）
-  retry_fn 5 "安装 Rust" install-rust stable
-
-  # Rust 工具安装
-  if ! retry_fn 3 "安装 Rust 工具" install-common-rust-tools; then
-    if [ "${CARGO_INSTALL_STRICT:-0}" = "1" ]; then
-      echo "❌ 错误：CARGO_INSTALL_STRICT=1，Rust 工具安装失败，终止脚本"
-      exit 1
+    echo "=========================================="
+    echo "部署配置文件（xdotter deploy）..."
+    echo "=========================================="
+    ensure_xdotter
+    export PATH="$HOME/.local/bin:$PATH"
+    if command -v xd &>/dev/null; then
+        cd "${SCRIPT_DIR}" && xd deploy --force
+        echo "✅ 配置部署完成"
+    else
+        echo "⚠️  xdotter 未安装，跳过配置部署（macOS 上可能需要手动安装）"
     fi
-    echo "⚠️  警告：Rust 工具安装失败，继续执行后续步骤..."
-  fi
-
-  retry_fn 3 "安装 cargo-fuzz" setup-cargo-fuzz
-
-  # 其他开发工具
-  retry_fn 3 "安装 Neovim" install-neovim
-  retry_fn 3 "安装 Helix" install-helix
-  retry_fn 3 "安装 Helix Runtime" install-helix-runtime
-  retry_fn 3 "安装 marksman" install-marksman
-  retry_fn 3 "安装 yq" install-yq
-
-  # LLVM 仅 Linux（llvmup 使用 apt-get，macOS 用 Homebrew 管理）
-  if [[ "$(uname -s)" != "Darwin" ]]; then
-    llvmup default 22
-  else
-    echo "macOS: 跳过 llvmup（LLVM 由 Homebrew 提供）"
-  fi
-
-  # 使用 mise 安装 go, zig, node, pnpm 等工具
-  mise trust && mise install
-  eval "$(mise hook-env -s $SH)" 2>/dev/null || true
-
-  retry_fn 3 "安装 Helix LSP" install-helix-lsp
-
-  # 安装 Zellij 终端复用器
-  retry_fn 3 "安装 Zellij" install-zellij
-
-  retry_fn 3 "安装 Yazi 插件" install-yazi-plugins
-
-  echo ""
-  echo "=========================================="
-  echo "✅ 所有工具安装完成"
-  echo "=========================================="
 }
 
-# ========== 入口 ==========
-main() {
-  if [[ $# -eq 0 ]]; then
-    do_deploy
-    do_install
-  else
-    case "$1" in
-      --deploy)  do_deploy ;;
-      --install) do_install ;;
-      *)
-        echo "用法: $0 [--deploy|--install]"
-        echo "  无参数    部署配置 + 安装工具（默认）"
-        echo "  --deploy  只部署配置文件"
-        echo "  --install 只安装开发工具"
+do_install() {
+    echo "=========================================="
+    echo "Layer 1: 安装开发工具..."
+    echo "=========================================="
+    export PATH="$HOME/.local/bin:$PATH"
+
+    # 加载环境变量（注入 mise shims 等 PATH，确保 npm/uv 等工具可找到）
+    if [ -f "$HOME/.config/shells/common/env.sh" ]; then
+        source "$HOME/.config/shells/common/env.sh"
+    elif [ -f "${SCRIPT_DIR}/shells/common/env.sh" ]; then
+        source "${SCRIPT_DIR}/shells/common/env.sh"
+    fi
+
+    # 确保 tool-installer 是最新的（处理旧环境或跳过 bootstrap 的情况）
+    _ensure_tool_installer || exit 1
+
+    if ! command -v tool-installer &>/dev/null; then
+        echo "❌ tool-installer 未安装"
         exit 1
-        ;;
+    fi
+
+    # 如果 xdotter 已在 deploy 阶段部署了 ~/.cargo/config.toml，
+    # 其中的 sccache wrapper / wild linker 此时尚未安装，会阻断 cargo 编译。
+    # 临时禁用这些配置，等 sccache/wild 安装完成后自动恢复。
+    local cargo_config="$HOME/.cargo/config.toml"
+    local patched=false
+    if [ -f "$cargo_config" ] && grep -qE 'rustc-wrapper|ld-path=wild' "$cargo_config" 2>/dev/null; then
+        echo "🔧 临时禁用 sccache wrapper / wild linker（工具尚未安装）..."
+        cp "$cargo_config" "$cargo_config.bak"
+        sed -e 's/^rustc-wrapper = "sccache"/#rustc-wrapper = "sccache"  # temporarily disabled during install/' \
+            -e 's/--ld-path=wild/--ld-path=ld/' \
+            "$cargo_config.bak" > "$cargo_config"
+        patched=true
+    fi
+
+    # tool-installer 失败时也要恢复原始配置
+    if $patched; then
+        local rc=0
+        tool-installer install dev || rc=$?
+        mv "$cargo_config.bak" "$cargo_config"
+        return $rc
+    else
+        tool-installer install dev
+    fi
+}
+
+do_post() {
+    bash "${SCRIPT_DIR}/scripts/layer2-post.sh"
+}
+
+main() {
+    case "${1:-}" in
+        --bootstrap) do_bootstrap ;;
+        --deploy)    do_deploy ;;
+        --install)   do_install ;;
+        --post)      do_post ;;
+        --dry-run)
+            _ensure_tool_installer || exit 1
+            tool-installer install dev --dry-run
+            ;;
+        --help|-h) usage; exit 0 ;;
+        "")
+            echo "=========================================="
+            echo "完整安装：三层架构"
+            echo "=========================================="
+            do_bootstrap
+            do_deploy
+            do_install
+            do_post
+            echo ""
+            echo "=========================================="
+            echo "✅ 全部安装完成"
+            echo "=========================================="
+            ;;
+        *)
+            echo "未知选项: $1"
+            usage
+            exit 1
+            ;;
     esac
-  fi
 }
 
 main "$@"

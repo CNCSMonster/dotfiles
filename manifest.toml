@@ -783,12 +783,6 @@ bin = "wild"
 locked = true
 binstall_first = true
 
-[wild-linker.macos]
-manager = "cargo-install"
-pkg = "wild-linker"
-bin = "wild"
-locked = true
-binstall_first = true
 
 [zola]
 [zola.linux]

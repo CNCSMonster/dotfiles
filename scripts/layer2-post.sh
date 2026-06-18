@@ -86,12 +86,48 @@ install_yazi_plugins() {
         return 0
     fi
 
-    # 保留现有插件安装逻辑
-    if [ -f "${PROJECT_DIR}/shells/common/install-functions.sh" ]; then
-        source "${PROJECT_DIR}/shells/common/install-functions.sh"
-        install-yazi-plugins
+    # 安装 yazi 插件（带 GitHub 镜像 fallback）
+
+    local attempts=0
+    local max_attempts=3
+    local installed=false
+
+    while [ $attempts -lt $max_attempts ]; do
+        attempts=$((attempts + 1))
+        echo "安装 Yazi 插件（第 ${attempts}/${max_attempts} 次尝试）..."
+
+        if cd "${HOME}/.config/yazi"; then
+            if command -v git &>/dev/null; then
+                for git_mirror in $GITHUB_MIRRORS; do
+                    [ -n "$git_mirror" ] || continue
+                    echo "  使用镜像: $git_mirror"
+                    if GIT_CONFIG_COUNT=1 \
+                       GIT_CONFIG_KEY_0="url.${git_mirror}/https://github.com/.insteadof" \
+                       GIT_CONFIG_VALUE_0="https://github.com/" \
+                       ya pkg install; then
+                        installed=true
+                        break 2
+                    fi
+                    echo "  ⚠️  镜像 $git_mirror 失败，尝试下一个..."
+                done
+            else
+                if ya pkg install; then
+                    installed=true
+                    break
+                fi
+            fi
+        fi
+
+        if [ "$installed" != true ]; then
+            echo "⚠️  Yazi 插件安装失败，等待后重试..."
+            sleep $((attempts * 5))
+        fi
+    done
+
+    if [ "$installed" = true ]; then
+        echo "✅ Yazi 插件安装成功"
     else
-        echo "⚠️  install-functions.sh 不存在，跳过"
+        echo "⚠️  Yazi 插件安装失败（已重试 ${max_attempts} 次），跳过"
     fi
 }
 

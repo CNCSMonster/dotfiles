@@ -19,11 +19,11 @@
 
 ## 2. 目标架构
 
-迁移到 **三层声明式架构**，由 `setup-new.sh` 统一编排：
+迁移到 **三层声明式架构**，由 `setup.sh` 统一编排：
 
 ```
 ┌─────────────────────────────────────────┐
-│  setup-new.sh（编排入口）                │
+│  setup.sh（编排入口）                │
 │  do_bootstrap → do_deploy → do_install  │
 └─────────────────────────────────────────┘
                     │
@@ -203,7 +203,7 @@ tool-installer 的 `cargo-install` manager 已实现 `_ensure_binstall`：
 
 ### 7.1 CI 超时事件（Run 26939026915）
 
-**现象：** `setup-new.sh` 在 ubuntu-latest 上运行 1 小时后超时取消。
+**现象：** `setup.sh` 在 ubuntu-latest 上运行 1 小时后超时取消。
 
 **表面原因：** 29 个 cargo 工具全部从源码编译，`CARGO_BUILD_JOBS=2` 下耗时过长。
 

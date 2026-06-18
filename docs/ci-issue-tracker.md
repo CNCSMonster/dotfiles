@@ -10,7 +10,7 @@
 | 项目 | 内容 |
 |------|------|
 | **发现时间** | 2026-06-10 |
-| **发现场景** | root 用户本地执行 `setup-new.sh`，已有 `~/.local/bin/zls` |
+| **发现场景** | root 用户本地执行 `setup.sh`，已有 `~/.local/bin/zls` |
 | **错误信息** | `❌ Error: Check failed for zls with manager github-release` |
 | **根因** | `zls --version` 输出是 `0.15.1`（纯版本号），但 manifest 正则是 `zls (?P<version>...)`，期望带 `zls ` 前缀，永远匹配不上 |
 | **为什么 CI 没发现** | CI runner 是全新环境，`~/.local/bin/zls` 不存在 → version_probe 不被调用 → 直接安装，跳过检查 |
@@ -24,7 +24,7 @@
 | 项目 | 内容 |
 |------|------|
 | **发现时间** | 2026-06-10 |
-| **发现场景** | 本地执行 `setup-new.sh` 调用 `install-fonts.sh` |
+| **发现场景** | 本地执行 `setup.sh` 调用 `install-fonts.sh` |
 | **错误信息** | `local: can only be used in a function` → `❌ Error: Script failed for fonts` |
 | **根因** | `install-fonts.sh` 顶层代码使用 `local` 声明变量，`set -u` 启用后报错 |
 | **修复** | `e297bf1` → 移除 `scripts/install-fonts.sh` 中的 `local` 关键字 |
@@ -52,7 +52,7 @@
 | 项目 | 内容 |
 |------|------|
 | **发现时间** | 2026-06-09 |
-| **发现场景** | 非 root 用户执行 `setup-new.sh`（无 NOPASSWD） |
+| **发现场景** | 非 root 用户执行 `setup.sh`（无 NOPASSWD） |
 | **错误信息** | `⚠️  需要 sudo 权限，但当前用户无 NOPASSWD 配置` |
 | **根因** | `sudo_run` 使用 `sudo -n true` 检测，只允许 NOPASSWD |
 | **修复** | `b269bbd` → 与 main 分支一致：`if root: direct; else: sudo` |
@@ -64,7 +64,7 @@
 | 项目 | 内容 |
 |------|------|
 | **发现时间** | 2026-06-09 |
-| **发现场景** | 非 root 用户执行 `setup-new.sh` bootstrap |
+| **发现场景** | 非 root 用户执行 `setup.sh` bootstrap |
 | **错误信息** | `cp: 'vendor/tool-installer' and '~/.local/bin/tool-installer' are the same file` |
 | **根因** | 目标文件已是源文件的符号链接 |
 | **修复** | `7d0e928` → `cp + chmod` 改为 `install -m 755` |
@@ -77,7 +77,7 @@
 |------|------|
 | **发现时间** | 2026-06-10 |
 | **发现场景** | 安装后 `langs/rust/cargo/config.toml` 被修改 |
-| **根因** | `setup-new.sh` 的 `do_install()` 临时禁用 sccache/wild linker，但某些情况下未恢复 |
+| **根因** | `setup.sh` 的 `do_install()` 临时禁用 sccache/wild linker，但某些情况下未恢复 |
 | **影响** | git 工作树出现意外修改，需手动 `git checkout` 恢复 |
 | **状态** | 已观察，未修复（当前恢复逻辑看起来正确，需进一步确认） |
 

@@ -25,7 +25,7 @@ rustup-install = "安装 rustup（vendor 脚本）"
 [cargo-tools]
 depends = ["build-base", "cargo-binstall"]
 "sccache@0.15.0" = { desc = "编译缓存", allow_fail = true }
-wild-linker = { desc = "快速链接器", allow_fail = true }
+"wild-linker@0.9.0" = { desc = "快速链接器", allow_fail = true }
 "bat@0.26.1" = "Cat 替代品"
 "eza@0.23.4" = "ls 替代品"
 "fd-find@10.4.2" = "find 替代品"
@@ -49,9 +49,9 @@ wild-linker = { desc = "快速链接器", allow_fail = true }
 "uv@0.11.18" = "Python 包管理器"
 "mise@2026.4.5" = "版本管理器"
 "cargo-audit@0.22.1" = "依赖审计"
-cargo-fuzz = { desc = "模糊测试", allow_fail = true }
-grcov = { desc = "代码覆盖率", allow_fail = true }
-cargo-tarpaulin = { desc = "代码覆盖率", allow_fail = true }
+"cargo-fuzz@0.13.2" = { desc = "模糊测试", allow_fail = true }
+"grcov@0.10.7" = { desc = "代码覆盖率", allow_fail = true }
+"cargo-tarpaulin@0.35.4" = { desc = "代码覆盖率", allow_fail = true }
 
 # ── Layer 1f: 静态网站工具（独立，github-release 预编译）──
 [zola]

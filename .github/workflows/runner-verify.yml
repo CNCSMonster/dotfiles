@@ -1,6 +1,6 @@
 name: E2E Full Install
 
-# 端到端完整安装测试：在干净 GitHub runner 上一键运行 setup-new.sh
+# 端到端完整安装测试：在干净 GitHub runner 上一键运行 setup.sh
 # 覆盖 Layer 0 (bootstrap) + Layer 1 (deploy + install) + Layer 2 (post)
 # 并验证所有关键工具是否正确安装
 #
@@ -50,14 +50,14 @@ jobs:
       - name: Disable GitHub mirrors for CI
         run: perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
 
-      - name: Run full install (setup-new.sh)
+      - name: Run full install (setup.sh)
         run: |
-          chmod +x ./setup-new.sh
-          ./setup-new.sh
+          chmod +x ./setup.sh
+          ./setup.sh
 
       - name: Verify all installed tools
         run: |
-          # 加载 dotfiles 环境变量（setup-new.sh 已部署符号链接）
+          # 加载 dotfiles 环境变量（setup.sh 已部署符号链接）
           export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
 
           if [ -f "./scripts/verify-docker-build.sh" ]; then
