@@ -243,6 +243,9 @@ repo = "artempyanykh/marksman"
 asset = "marksman-linux-x64"
 bin = "marksman-linux-x64"
 install_name = "marksman"
+[marksman.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "(?P<version>[0-9]{4}-[0-9]{2}-[0-9]{2})"
 
 [marksman.linux.x86_64]
 sha256 = "be5098e8213219269c47fc0d916a66fa31ce0602ec967475c722260aabf26087"
@@ -254,6 +257,9 @@ repo = "artempyanykh/marksman"
 asset = "marksman-macos"
 bin = "marksman-macos"
 install_name = "marksman"
+[marksman.macos.version_probe]
+command = ["{bin}", "--version"]
+regex = "(?P<version>[0-9]{4}-[0-9]{2}-[0-9]{2})"
 
 [marksman.macos.aarch64]
 sha256 = "6a801c17b5ac0dba69787c5282b3b3bd416e66c96253fae098d311c6bbd1833b"
@@ -316,6 +322,9 @@ repo = "CNCSMonster/xdotter"
 asset = "xd-x86_64-unknown-linux-musl"
 bin = "xd-x86_64-unknown-linux-musl"
 install_name = "xd"
+[xdotter.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "^xd (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [xdotter.linux.x86_64]
 sha256 = "1c549083a47f02a1e7f6a89dc9189f77440d801448e78f6b98d4e080f63f3d1c"
@@ -327,6 +336,9 @@ repo = "CNCSMonster/xdotter"
 asset = "xd-arm64-apple-darwin"
 bin = "xd-arm64-apple-darwin"
 install_name = "xd"
+[xdotter.macos.version_probe]
+command = ["{bin}", "--version"]
+regex = "^xd (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [xdotter.macos.aarch64]
 sha256 = "1c767f90daf5a78f0788a45724aa2a006db0b1e002937108f8d1be12688c64df"
@@ -347,6 +359,9 @@ repo = "cargo-bins/cargo-binstall"
 asset = "cargo-binstall-x86_64-unknown-linux-musl.tgz"
 bin = "cargo-binstall"
 install_name = "cargo-binstall"
+[cargo-binstall.linux.version_probe]
+command = ["{bin}", "-V"]
+regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [cargo-binstall.linux.x86_64]
 sha256 = "4a50fcf01418862e2fa8e4076cb6cb80ff4061b0c0b1464e71a63ce01ee29bde"
@@ -358,6 +373,9 @@ repo = "cargo-bins/cargo-binstall"
 asset = "cargo-binstall-aarch64-apple-darwin.zip"
 bin = "cargo-binstall"
 install_name = "cargo-binstall"
+[cargo-binstall.macos.version_probe]
+command = ["{bin}", "-V"]
+regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [cargo-binstall.macos.aarch64]
 sha256 = "bf9da6a27e432784f361cfbc70a6d04e548abc548470ae9a7587c3cffb8fb0a7"
