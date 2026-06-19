@@ -31,7 +31,7 @@ if [[ "$OS" == "Linux" ]]; then
         exit 0
     fi
     export DEBIAN_FRONTEND=noninteractive
-    local sudo_cmd="sudo"
+    sudo_cmd="sudo"
     command -v sudo &>/dev/null || sudo_cmd=""
     $sudo_cmd apt-get update -qq || echo "⚠️  apt-get update 失败"
     $sudo_cmd apt-get install -y "${missing[@]}" || echo "⚠️  部分包安装失败"
