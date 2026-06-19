@@ -4,20 +4,23 @@
 # 不依赖 GitHub，适合国内网络环境
 set -eo pipefail
 
-# 检查是否已安装
+# 固定版本号（与 tools.toml 同步）
+UV_VERSION="0.11.18"
+
+# 检查是否已安装相同版本
 if command -v uv &>/dev/null; then
     INSTALLED_VER=$(uv --version 2>&1 | head -1 || echo "")
-    if [ -n "$INSTALLED_VER" ]; then
-        echo "uv 已安装：$INSTALLED_VER，跳过"
+    if echo "$INSTALLED_VER" | grep -q "$UV_VERSION"; then
+        echo "uv $UV_VERSION 已安装，跳过"
         exit 0
     fi
 fi
 
-echo "安装 uv（从 astral.sh 下载）..."
+echo "安装 uv $UV_VERSION（从 astral.sh 下载）..."
 mkdir -p ~/.cargo/bin
 
-# 官方安装脚本（会检测架构和操作系统）
-curl -LsSf https://astral.sh/uv/install.sh 2>/dev/null | sh
+# 使用指定版本安装（astral.sh 支持 UV_VERSION 环境变量）
+UV_VERSION="$UV_VERSION" curl -LsSf https://astral.sh/uv/install.sh 2>/dev/null | sh
 
 # 验证安装结果
 if command -v uv &>/dev/null; then

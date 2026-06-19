@@ -415,7 +415,7 @@ function install-common-rust-tools() {
         parallel-disk-usage@0.22.0 \
         bat@0.26.1 \
         navi@2.24.0 \
-        starship@1.24.2 \
+        starship@1.25.1 \
         eza@0.23.4 \
         conceal@0.7.0 \
         zoxide@0.9.9 \
@@ -518,7 +518,7 @@ function setup-cargo-fuzz() {
   # 设置编译环境（自动计算 CARGO_BUILD_JOBS）
   setup-cargo-build-env
   # 使用统一的 cargo 安装函数
-  cargo_install_common cargo-fuzz grcov cargo-tarpaulin
+  cargo_install_common cargo-fuzz@0.13.2 grcov@0.10.7 cargo-tarpaulin@0.35.4
   return $?
 }
 

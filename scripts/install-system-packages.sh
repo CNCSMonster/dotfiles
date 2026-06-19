@@ -21,7 +21,7 @@ fi
 if [[ "$OS" == "Linux" ]]; then
     echo "检查并安装基础系统包..."
     missing=()
-    for pkg in python3 curl gh build-essential pkg-config libssl-dev \
+    for pkg in python3 curl gnupg software-properties-common gh build-essential pkg-config libssl-dev \
                libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev \
                fzf ripgrep zsh tree git htop; do
         command -v "$pkg" &>/dev/null || dpkg -s "$pkg" &>/dev/null || missing+=("$pkg")
@@ -31,8 +31,10 @@ if [[ "$OS" == "Linux" ]]; then
         exit 0
     fi
     export DEBIAN_FRONTEND=noninteractive
-    sudo apt-get update -qq || echo "⚠️  apt-get update 失败"
-    sudo apt-get install -y "${missing[@]}" || echo "⚠️  部分包安装失败"
+    local sudo_cmd="sudo"
+    command -v sudo &>/dev/null || sudo_cmd=""
+    $sudo_cmd apt-get update -qq || echo "⚠️  apt-get update 失败"
+    $sudo_cmd apt-get install -y "${missing[@]}" || echo "⚠️  部分包安装失败"
     exit 0
 fi
 
