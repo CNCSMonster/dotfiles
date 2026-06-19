@@ -58,6 +58,11 @@ if command -v opencode >/dev/null 2>&1; then
     eval "$(opencode completion "$SH" 2>/dev/null)"
 fi
 
+# just - 命令运行器补全
+if command -v just >/dev/null 2>&1; then
+    eval "$(JUST_COMPLETE="$SH" just)"
+fi
+
 # =============================================================================
 # Yazi - 文件管理器 shell 集成
 # =============================================================================

@@ -198,6 +198,40 @@ sha256 = "6f028bb569d29be968c961249c5f80d5336ad4ad4b3cd79af8e32afab57b0948"
 # GitHub Release Tools
 # ============================================================
 
+[just]
+[just.linux]
+manager = "github-release"
+repo = "casey/just"
+asset = "just-{version}-x86_64-unknown-linux-musl.tar.gz"
+bin = "just"
+[just.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "^just (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[just.linux.x86_64]
+sha256 = "7fedeb22c7e14d9ef1551e8b793700866d80f409f9884b0e80ebb65c11d4874d"
+
+[just.linux.aarch64]
+asset = "just-{version}-aarch64-unknown-linux-musl.tar.gz"
+sha256 = "f29d8e72380bc144465f632c7d59da311205eef2923d57511708b05b82f2e64f"
+
+[just.macos]
+manager = "github-release"
+repo = "casey/just"
+asset = "just-{version}-aarch64-apple-darwin.tar.gz"
+bin = "just"
+[just.macos.version_probe]
+command = ["{bin}", "--version"]
+regex = "^just (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[just.macos.aarch64]
+sha256 = "27f1361f2e4fb5d733837f1a9f80f85c237e5a36c75ee14961e59141713aa4ed"
+
+[just.macos.x86_64]
+asset = "just-{version}-x86_64-apple-darwin.tar.gz"
+sha256 = "bc345a26d40ae4697cb6b2f2ca04cdf1fbdc8c50eba1b40684c8bf3f98555d72"
+
+
 [yq]
 [yq.linux]
 manager = "github-release"
