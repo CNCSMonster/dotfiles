@@ -29,10 +29,88 @@ eval "$(zoxide init $SH)"
 # starship - Shell 提示符（仅交互式显示）
 eval "$(starship init $SH)"
 
-# 历史搜索使用 shell 自带的 Ctrl+R + fzf，无需额外工具
+# =============================================================================
+# 历史搜索（fzf 增强，替换 Ctrl+R）
+# =============================================================================
+# 设计原则：稳定性优先，不引入 atuin/mcfly 等外部工具
+# 详见：docs/history-search.md
+#
+# 工作方式：
+#   1. precmd hook 将每条命令的 PWD + 命令写入 sidecar 文件
+#   2. Ctrl+R 从 sidecar 读取，fzf 展示时带目录信息
+#   3. 当前目录的命令排在前面（fzf 对靠前条目有匹配加权）
+
+mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}" 2>/dev/null
 if [ ! -f "$HOME/.cache/zsh/histfile" ]; then
     mkdir -p "$HOME/.cache/zsh"
     touch "$HOME/.cache/zsh/histfile"
+fi
+
+_fhd_track() {
+  local cmd
+  if [[ -n "$ZSH_VERSION" ]]; then
+    cmd=$(fc -ln -1 2>/dev/null) || return 0
+    cmd="${cmd#"${cmd%%[![:space:]]*}"}"
+  else
+    cmd=$(HISTTIMEFORMAT='' history 1 2>/dev/null | sed 's/^[[:space:]]*[0-9]*[[:space:]]*//') || return 0
+  fi
+  [[ -n "$cmd" ]] && printf '%s\t%s\n' "$PWD" "$cmd" >> "${XDG_CACHE_HOME:-$HOME/.cache}/shell-cwd-history" 2>/dev/null
+  return 0
+}
+
+if [[ -n "$ZSH_VERSION" ]]; then
+  precmd_functions+=(_fhd_track)
+else
+  PROMPT_COMMAND="_fhd_track${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+fi
+
+_fhd_source() {
+  local sidecar="${XDG_CACHE_HOME:-$HOME/.cache}/shell-cwd-history"
+  local sh_hist="${HISTFILE:-$HOME/.cache/zsh/histfile}"
+
+  {
+    if [[ -f "$sidecar" ]]; then
+      awk -F'\t' -v cwd="$PWD" '
+        { dir=$1; cmd=$2
+          if (dir == cwd && !seen_cwd[cmd]++) lines[++n_cwd]=cmd
+          if (!seen_all[cmd]++) lines_all[++n_all]=cmd
+        }
+        END {
+          for (i=n_cwd; i>0; i--) print lines[i]
+          for (i=n_all; i>0; i--)
+            if (!seen_cwd[lines_all[i]]++) print lines_all[i]
+        }
+      ' "$sidecar"
+    fi
+    if [[ -f "$sh_hist" ]]; then
+      { tac "$sh_hist" 2>/dev/null || tail -r "$sh_hist" 2>/dev/null; } \
+        | sed 's/^: [0-9][0-9]*:[0-9][0-9]*;//'
+    fi
+  } | awk '!seen[$0]++'
+}
+
+if [[ -n "$ZSH_VERSION" ]]; then
+  _fhd_widget() {
+    local selected
+    selected=$(_fhd_source | fzf --height 50% --layout=reverse --border --tiebreak=index)
+    if [[ -n "$selected" ]]; then
+      LBUFFER="$selected"
+      RBUFFER=""
+    fi
+    zle reset-prompt
+  }
+  zle -N _fhd_widget
+  bindkey '^R' _fhd_widget
+else
+  _fhd_widget() {
+    local selected
+    selected=$(_fhd_source | fzf --height 50% --layout=reverse --border --tiebreak=index)
+    if [[ -n "$selected" ]]; then
+      READLINE_LINE="$selected"
+      READLINE_POINT=${#selected}
+    fi
+  }
+  bind -x '"\C-r": _fhd_widget'
 fi
 
 # navi - 命令快捷键（Ctrl+N）

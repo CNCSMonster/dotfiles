@@ -63,7 +63,7 @@ eval "$(mise activate $SH)"
 - Shell 提示符（starship）
 - 快捷键绑定（navi Ctrl+N）
 - 命令增强（zoxide cd 增强）
-- 历史搜索增强（fzf Ctrl+R）
+- 历史搜索增强（fzf Ctrl+R 目录感知）
 - 第三方命令补全（xd、llm-proxy、codex、opencode）
 
 **示例：**
@@ -299,7 +299,7 @@ source shells/common/install-functions.sh
 | **env.sh** | 基础环境 | 所有场景 | PATH, mise, 镜像源 |
 | **fn.sh** | 功能函数 | 需要时 | log_info, retry_fn |
 | **install-functions.sh** | 安装函数 | 安装脚本 | install-rust, install-neovim |
-| **inter.sh** | 交互特性+补全 | 仅交互式 | starship, navi, **xd/codex/opencode completion** |
+| **inter.sh** | 交互特性+补全 | 仅交互式 | starship, navi, **fzf 历史搜索增强**, **xd/codex/opencode completion** |
 | **alias.sh** | 命令别名 | 仅交互式 | ll, gs |
 
 **核心原则：**
