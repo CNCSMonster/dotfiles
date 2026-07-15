@@ -84,7 +84,7 @@ _fhd_source() {
     fi
     if [[ -f "$sh_hist" ]]; then
       { tac "$sh_hist" 2>/dev/null || tail -r "$sh_hist" 2>/dev/null; } \
-        | sed 's/^: [0-9][0-9]*:[0-9][0-9]*;//'
+        | LC_ALL=C sed 's/^: [0-9][0-9]*:[0-9][0-9]*;//'
     fi
   } | awk '!seen[$0]++'
 }
