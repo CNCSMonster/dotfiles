@@ -1,5 +1,7 @@
 # Helix Editor Configuration
 
+theme = "base16_transparent"
+
 [editor]
 # Enable soft-wrap for long lines
 soft-wrap.enable = true
