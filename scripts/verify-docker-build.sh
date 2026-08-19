@@ -137,6 +137,10 @@ check_cmd navi
 check_cmd tokei
 echo
 
+echo "=== 3b. 用户工具 (精确锁定) ==="
+check_version gh "GitHub CLI"
+echo
+
 echo "=== 4. LLVM 工具链 ==="
 if [ -d "/usr/lib/llvm" ]; then
     check_cmd /usr/lib/llvm/bin/clang "clang (via llvm)"

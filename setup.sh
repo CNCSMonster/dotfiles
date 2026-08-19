@@ -100,9 +100,9 @@ do_bootstrap() {
     _ensure_tool_installer || return 1
     ~/.local/bin/tool-installer --help | head -3
 
-    # ── 0b: 安装系统基础包（确保后续步骤的 gpg 等依赖）──
+    # ── 0b: 安装系统基础包与构建工具链（确保后续步骤的 gpg 等依赖）──
     echo ""
-    echo "安装系统基础包..."
+    echo "安装系统基础包与构建工具链..."
     ~/.local/bin/tool-installer install system-packages || echo "⚠️  部分系统包安装失败"
 
     echo ""

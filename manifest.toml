@@ -198,6 +198,64 @@ sha256 = "6f028bb569d29be968c961249c5f80d5336ad4ad4b3cd79af8e32afab57b0948"
 # GitHub Release Tools
 # ============================================================
 
+[gh]
+[gh.linux]
+manager = "github-release"
+repo = "cli/cli"
+asset = "gh_2.97.0_linux_amd64.tar.gz"
+bin = "gh_2.97.0_linux_amd64/bin/gh"
+[gh.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "gh version (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+[gh.linux.x86_64]
+sha256 = "a2c9b8497e1f85b1ad0dfcb78b5a622e098801b8e461e459e88e1ee12f018112"
+
+[gh.macos]
+manager = "github-release"
+repo = "cli/cli"
+asset = "gh_2.97.0_macOS_arm64.zip"
+bin = "gh_2.97.0_macOS_arm64/bin/gh"
+[gh.macos.version_probe]
+command = ["{bin}", "--version"]
+regex = "gh version (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+[gh.macos.aarch64]
+sha256 = "a58b8fd77b417a38f47a0b54d1370c59b0fcdb324ccc9ca002b0998f7c4c999e"
+
+[gh.macos.x86_64]
+asset = "gh_{version}_macOS_amd64.zip"
+bin = "gh_{version}_macOS_amd64/bin/gh"
+sha256 = "TODO"
+
+[gh.linux.aarch64]
+asset = "gh_{version}_linux_arm64.tar.gz"
+bin = "gh_{version}_linux_arm64/bin/gh"
+sha256 = "TODO"
+
+[ripgrep]
+[ripgrep.linux]
+manager = "github-release"
+repo = "BurntSushi/ripgrep"
+asset = "ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz"
+bin = "ripgrep-15.2.0-x86_64-unknown-linux-musl/rg"
+install_name = "rg"
+[ripgrep.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "ripgrep (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+[ripgrep.linux.x86_64]
+sha256 = "33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c"
+
+[ripgrep.macos]
+manager = "github-release"
+repo = "BurntSushi/ripgrep"
+asset = "ripgrep-15.2.0-aarch64-apple-darwin.tar.gz"
+bin = "ripgrep-15.2.0-aarch64-apple-darwin/rg"
+install_name = "rg"
+[ripgrep.macos.version_probe]
+command = ["{bin}", "--version"]
+regex = "ripgrep (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+[ripgrep.macos.aarch64]
+sha256 = "3750b2e93f37e0c692657da574d7019a101c0084da05a790c83fd335bad973e4"
+
 [just]
 [just.linux]
 manager = "github-release"

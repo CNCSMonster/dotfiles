@@ -13,21 +13,23 @@ if [[ "$OS" == "Darwin" ]]; then
             exit 0
         }
     fi
-    echo "通过 Homebrew 安装基础系统包..."
-    brew install python3 gh fzf ripgrep tree git || echo "⚠️  部分包安装失败"
+    echo "通过 Homebrew 安装系统基础包与构建工具链..."
+    # gh、ripgrep → user-tools 模块 (github-release 精确锁定)
+    brew install python3 fzf tree git || echo "⚠️  部分包安装失败"
     exit 0
 fi
 
 if [[ "$OS" == "Linux" ]]; then
-    echo "检查并安装基础系统包..."
+    echo "检查并安装系统基础包与构建工具链..."
     missing=()
-    for pkg in python3 curl gnupg software-properties-common gh build-essential pkg-config libssl-dev \
-               libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev \
-               fzf ripgrep zsh tree git htop; do
+    # gh、ripgrep → user-tools 模块 (github-release 精确锁定)
+    for pkg in python3 curl gnupg software-properties-common build-essential gcc g++ cmake ninja-build pkg-config libssl-dev \
+               libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev iproute2 \
+               fzf zsh tree git htop; do
         command -v "$pkg" &>/dev/null || dpkg -s "$pkg" &>/dev/null || missing+=("$pkg")
     done
     if [ ${#missing[@]} -eq 0 ]; then
-        echo "✅ 基础系统包已就绪"
+        echo "✅ 系统基础包与构建工具链已就绪"
         exit 0
     fi
     export DEBIAN_FRONTEND=noninteractive
