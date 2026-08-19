@@ -27,13 +27,34 @@ git clone https://github.com/cncsmonster/dotfiles.git && cd dotfiles && ./setup.
 | **终端** | WezTerm + Zellij + Yazi + macchina + navi + Nerd Fonts |
 | **Rust 生态** | 20+ 工具：sccache, cargo-binstall, gitui, tokei, uv, nu 等 |
 
+## Termux（Android）最小远程开发环境
+
+Termux 仅提供手机连接远程开发环境所需的工具，不安装完整的本地语言运行时、编辑器生态或 AI CLI。首次使用时先在 Termux 中安装 Git 并获取仓库：
+
+```bash
+pkg update
+pkg install -y git
+
+git clone https://github.com/CNCSMonster/dotfiles.git
+cd dotfiles
+./setup-termux.sh
+```
+
+安装 `openssh`、`git`、`tmux`、`fzf`、`ripgrep`、`zoxide`、`yazi`、`vim` 和 `tree`。脚本只安装缺失的包，不默认执行全量系统升级；Termux 包版本跟随 Termux 软件源。
+
+支持预览待安装包：
+
+```bash
+./setup-termux.sh --dry-run
+```
+
 ## 工作原理
 
 [xdotter](https://github.com/CNCSMonster/xdotter) 通过符号链接部署配置 → `setup.sh` 按序安装工具链。两者解耦，改配置不重装工具，加工具不改配置。
 
 ## 支持平台
 
-Ubuntu 22.04/24.04 · WSL2 · macOS (arm64/x86_64)
+Ubuntu 22.04/24.04 · WSL2 · macOS (arm64/x86_64) · Termux（Android，最小远程开发工具集）
 
 ## 文档
 

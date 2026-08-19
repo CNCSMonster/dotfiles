@@ -1,0 +1,15 @@
+# Termux/Android 最小远程开发配置
+# 用途：手机连接远程开发环境
+# 安装方式：setup-termux.sh（直接使用 Termux pkg）
+# 版本策略：Termux 基础包跟随 Termux 软件源，不做跨发行版精确 pin
+
+[packages]
+"openssh" = "SSH 客户端/服务端"
+"git" = "版本控制"
+"tmux" = "远程会话保持"
+"fzf" = "模糊搜索"
+"ripgrep" = "快速搜索"
+"zoxide" = "目录跳转"
+"yazi" = "终端文件管理器"
+"vim" = "终端文本编辑器"
+"tree" = "目录树查看"

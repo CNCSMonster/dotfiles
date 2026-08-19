@@ -4,6 +4,7 @@ nvims/**/lazy-lock.json
 
 # Docker build artifacts
 build.log
+docker-build.log
 # Build artifacts
 .buildx-cache/
 build-monitor.log
