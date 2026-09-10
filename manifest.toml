@@ -416,7 +416,7 @@ bin = "xd-x86_64-unknown-linux-musl"
 install_name = "xd"
 [xdotter.linux.version_probe]
 command = ["{bin}", "--version"]
-regex = "^xd (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+regex = "^(?:xd|xdotter) (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [xdotter.linux.x86_64]
 sha256 = "1c549083a47f02a1e7f6a89dc9189f77440d801448e78f6b98d4e080f63f3d1c"
@@ -430,7 +430,7 @@ bin = "xd-arm64-apple-darwin"
 install_name = "xd"
 [xdotter.macos.version_probe]
 command = ["{bin}", "--version"]
-regex = "^xd (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+regex = "^(?:xd|xdotter) (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [xdotter.macos.aarch64]
 sha256 = "1c767f90daf5a78f0788a45724aa2a006db0b1e002937108f8d1be12688c64df"

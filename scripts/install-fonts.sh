@@ -74,7 +74,8 @@ install_system_fonts() {
 install_fira_code() {
     local user_font_dir="$HOME/.local/share/fonts/FiraCode-Nerd-Font"
 
-    if fc-list 2>/dev/null | grep -qi "FiraCode.*Nerd"; then
+    if ( [ -d "$user_font_dir" ] && compgen -G "$user_font_dir/*.ttf" >/dev/null 2>&1 ) || \
+       ( command -v fc-list &>/dev/null && fc-list 2>/dev/null | grep -qi "FiraCode.*Nerd" ); then
         echo "FiraCode Nerd Font 已安装，跳过"
         return 0
     fi
