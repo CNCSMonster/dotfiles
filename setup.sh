@@ -7,6 +7,9 @@ set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# deploy 冲突（如目标是已存在的非空真实目录）不阻断后续 Layer，最后汇总报告
+DEPLOY_CONFLICT=false
+
 export PATH="$HOME/.local/bin:$PATH"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
@@ -161,8 +164,14 @@ do_deploy() {
     ensure_xdotter
     export PATH="$HOME/.local/bin:$PATH"
     if command -v xd &>/dev/null; then
-        cd "${SCRIPT_DIR}" && xd deploy --force
-        echo "✅ 配置部署完成"
+        cd "${SCRIPT_DIR}"
+        if xd deploy --force; then
+            echo "✅ 配置部署完成"
+        else
+            DEPLOY_CONFLICT=true
+            echo "⚠️  部分配置未部署（xdotter 出于安全不会递归删除非空真实目录）"
+            echo "   其余配置已生效。请手动处理冲突目标后重跑: ./setup.sh --deploy"
+        fi
     else
         echo "⚠️  xdotter 未安装，跳过配置部署（macOS 上可能需要手动安装）"
     fi
@@ -221,7 +230,10 @@ do_post() {
 main() {
     case "${1:-}" in
         --bootstrap) do_bootstrap ;;
-        --deploy)    do_deploy ;;
+        --deploy)
+            do_deploy
+            if [ "$DEPLOY_CONFLICT" = true ]; then exit 1; fi
+            ;;
         --install)   do_install ;;
         --post)      do_post ;;
         --dry-run)
@@ -238,6 +250,13 @@ main() {
             do_install
             do_post
             echo ""
+            if [ "$DEPLOY_CONFLICT" = true ]; then
+                echo "=========================================="
+                echo "⚠️  工具安装完成，但有配置因冲突未部署"
+                echo "   处理冲突后请重跑: ./setup.sh --deploy"
+                echo "=========================================="
+                exit 1
+            fi
             echo "=========================================="
             echo "✅ 全部安装完成"
             echo "=========================================="
