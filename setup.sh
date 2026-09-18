@@ -30,6 +30,68 @@ usage() {
 
 export MISE_HTTP_TIMEOUT="${MISE_HTTP_TIMEOUT:-300}"
 
+# ── 预检：sudo 凭证 ──
+# 一次性提升/探测 sudo，避免各安装脚本在非交互环境各自静默跳过 apt 步骤
+preflight_sudo() {
+    [[ "$(uname -s)" == "Linux" ]] || return 0
+    [ "$(id -u)" -eq 0 ] && return 0
+    if sudo -n true 2>/dev/null; then
+        return 0
+    fi
+    if [ -t 0 ]; then
+        echo "🔐 提前提升 sudo 权限（后续 apt 安装不再重复提示）..."
+        sudo -v || echo "⚠️  sudo 失败，apt 相关包将由后续预检门禁报告"
+    else
+        echo "⚠️  非交互环境且无 sudo 缓存：Layer 0/2 的 apt 步骤会跳过"
+        echo "   请在终端手动执行: sudo apt-get update && sudo apt-get install -y libclang-dev libicu-dev unzip"
+    fi
+}
+
+# ── 预检：Layer 1 工具的运行时依赖 ──
+# marksman(.NET/ICU)、tree-sitter-cli(bindgen/libclang) 等缺依赖时会编译/探测失败，
+# 但往往要等整个安装序列跑到最后才暴露。此处 fail-fast 并给出精确修复命令。
+preflight_runtime_deps() {
+    [[ "$(uname -s)" == "Linux" ]] || return 0
+    command -v dpkg &>/dev/null || return 0
+
+    local missing=()
+    local pkg
+    for pkg in libclang-dev libicu-dev unzip; do
+        dpkg -s "$pkg" &>/dev/null || missing+=("$pkg")
+    done
+    [ ${#missing[@]} -eq 0 ] && return 0
+
+    echo "🔍 缺少 Layer 1 运行时依赖: ${missing[*]}"
+    local sudo_cmd
+    if [ "$(id -u)" -eq 0 ]; then
+        sudo_cmd=""
+    elif sudo -n true 2>/dev/null; then
+        sudo_cmd="sudo"
+    else
+        echo "❌ 无法自动安装（需要 sudo 终端）。请执行后重跑 setup:"
+        echo "   sudo apt-get update && sudo apt-get install -y ${missing[*]}"
+        return 1
+    fi
+    $sudo_cmd apt-get update -qq || true
+    if DEBIAN_FRONTEND=noninteractive $sudo_cmd apt-get install -y --no-install-recommends "${missing[@]}"; then
+        echo "✅ 运行时依赖已补齐"
+    else
+        echo "❌ 运行时依赖安装失败: ${missing[*]}"
+        return 1
+    fi
+}
+
+# ── 收尾自检：仓库是否被安装器穿透 symlink 污染 ──
+check_repo_pollution() {
+    git -C "${SCRIPT_DIR}" rev-parse --git-dir &>/dev/null || return 0
+    local dirty
+    dirty="$(git -C "${SCRIPT_DIR}" status --porcelain --untracked-files=no 2>/dev/null)"
+    if [ -n "$dirty" ]; then
+        echo "⚠️  dotfiles 仓库工作区存在改动（若有安装器穿透 symlink 写源文件，会出现在此）:"
+        echo "$dirty" | sed 's/^/   /'
+    fi
+}
+
 # 确保 tool-installer 是最新的（vendor 中的版本）
 # 适用于任何入口：全新环境、旧环境、或跳过 bootstrap 的 --install
 _ensure_tool_installer() {
@@ -183,6 +245,8 @@ do_install() {
     echo "=========================================="
     export PATH="$HOME/.local/bin:$PATH"
 
+    preflight_runtime_deps || exit 1
+
     # 加载环境变量（注入 mise shims 等 PATH，确保 npm/uv 等工具可找到）
     if [ -f "$HOME/.config/shells/common/env.sh" ]; then
         source "$HOME/.config/shells/common/env.sh"
@@ -199,15 +263,25 @@ do_install() {
     fi
 
     # 如果 xdotter 已在 deploy 阶段部署了 ~/.cargo/config.toml，
-    # 其中的 sccache wrapper / wild linker 此时尚未安装，会阻断 cargo 编译。
-    # 临时禁用这些配置，等 sccache/wild 安装完成后自动恢复。
+    # 其中的 sccache wrapper / wild linker / clang linker wrapper 此时尚未安装，
+    # 会阻断 cargo 编译（clang 要到 Layer 2 的 llvmup 才有；--ld-path 是 clang 专属参数，
+    # gcc 驱动不认识，必须整行禁用让 rustc 用默认 cc）。
+    # 临时禁用这些配置，等 sccache/wild/LLVM 安装完成后自动恢复。
     local cargo_config="$HOME/.cargo/config.toml"
     local patched=false
-    if [ -f "$cargo_config" ] && grep -qE 'rustc-wrapper|ld-path=wild' "$cargo_config" 2>/dev/null; then
-        echo "🔧 临时禁用 sccache wrapper / wild linker（工具尚未安装）..."
+    local cargo_config_link_target=""
+    if [ -f "$cargo_config" ] && grep -qE 'rustc-wrapper|ld-path=|^linker = "clang"' "$cargo_config" 2>/dev/null; then
+        echo "🔧 临时禁用 sccache wrapper / 自定义 linker（工具尚未安装）..."
         cp "$cargo_config" "$cargo_config.bak"
+        # ~/.cargo/config.toml 是 xdotter 部署的 symlink；直接写会污染 dotfiles 源文件。
+        # 替换为真实文件再写入，安装结束后恢复 symlink。
+        if [ -L "$cargo_config" ]; then
+            cargo_config_link_target="$(readlink -f "$cargo_config")"
+            rm "$cargo_config"
+        fi
         sed -e 's/^rustc-wrapper = "sccache"/#rustc-wrapper = "sccache"  # temporarily disabled during install/' \
-            -e 's/--ld-path=wild/--ld-path=ld/' \
+            -e 's/^linker = "clang"/#linker = "clang"  # temporarily disabled during install/' \
+            -e 's/^rustflags = .*\-\-ld-path.*$/#rustflags disabled during install (clang-only --ld-path)/' \
             "$cargo_config.bak" > "$cargo_config"
         patched=true
     fi
@@ -216,14 +290,28 @@ do_install() {
     if $patched; then
         local rc=0
         tool-installer install dev || rc=$?
-        mv "$cargo_config.bak" "$cargo_config"
+        rm -rf /tmp/cargo-install* 2>/dev/null || true
+        if [ -n "$cargo_config_link_target" ]; then
+            rm -f "$cargo_config"
+            ln -s "$cargo_config_link_target" "$cargo_config"
+            rm -f "$cargo_config.bak"
+        else
+            mv "$cargo_config.bak" "$cargo_config"
+        fi
         return $rc
     else
         tool-installer install dev
+        rm -rf /tmp/cargo-install* 2>/dev/null || true
     fi
 }
 
 do_post() {
+    # Layer 2 依赖 Layer 1 工具的 shim（yazi/ya、helix 等），需先注入 mise PATH
+    if [ -f "$HOME/.config/shells/common/env.sh" ]; then
+        source "$HOME/.config/shells/common/env.sh"
+    elif [ -f "${SCRIPT_DIR}/shells/common/env.sh" ]; then
+        source "${SCRIPT_DIR}/shells/common/env.sh"
+    fi
     bash "${SCRIPT_DIR}/scripts/layer2-post.sh"
 }
 
@@ -245,10 +333,12 @@ main() {
             echo "=========================================="
             echo "完整安装：三层架构"
             echo "=========================================="
+            preflight_sudo
             do_bootstrap
             do_deploy
             do_install
             do_post
+            check_repo_pollution
             echo ""
             if [ "$DEPLOY_CONFLICT" = true ]; then
                 echo "=========================================="

@@ -168,7 +168,13 @@ function use-llvm-version() {
         echo "LLVM ${VERSION} 未安装，正在自动安装..."
         install-llvm-version "$VERSION"
     fi
-    
+
+    # 已指向目标版本则跳过，避免无谓的 sudo 调用（非交互环境会失败）
+    if [ -L /usr/lib/llvm ] && [ "$(readlink /usr/lib/llvm)" == "/usr/lib/llvm-${VERSION}" ]; then
+        echo "已在使用 LLVM ${VERSION}，跳过切换"
+        return 0
+    fi
+
     sudo_run rm /usr/lib/llvm || true
     sudo_run ln -s /usr/lib/llvm-$VERSION /usr/lib/llvm
     echo "已切换到 LLVM ${VERSION}"

@@ -24,7 +24,7 @@ if [[ "$OS" == "Linux" ]]; then
     missing=()
     # gh、ripgrep → user-tools 模块 (github-release 精确锁定)
     for pkg in python3 curl gnupg software-properties-common build-essential gcc g++ cmake ninja-build pkg-config libssl-dev \
-               libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev iproute2 \
+               libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev libclang-dev libicu-dev unzip iproute2 \
                fzf zsh tree git htop; do
         command -v "$pkg" &>/dev/null || dpkg -s "$pkg" &>/dev/null || missing+=("$pkg")
     done
