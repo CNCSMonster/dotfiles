@@ -2,7 +2,7 @@
 # =============================================================================
 # Docker 构建脚本 - 根据系统资源动态限制构建过程
 # =============================================================================
-# 用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--no-china-mirror]
+# 用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--base-image ubuntu:26.04] [--no-china-mirror]
 #
 # ## BuildKit 资源限制架构说明
 #
@@ -264,13 +264,22 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --use-china-image)
-            BASE_IMAGE="docker.m.daocloud.io/library/ubuntu:24.04"
-            log_info "使用中国镜像站拉取基础镜像"
+            BASE_IMAGE="docker.m.daocloud.io/library/${BASE_IMAGE}"
+            log_info "使用中国镜像站拉取基础镜像: $BASE_IMAGE"
             shift
+            ;;
+        --base-image)
+            if [[ -z "${2:-}" ]]; then
+                log_error "--base-image 需要一个参数（如 ubuntu:26.04）"
+                exit 1
+            fi
+            BASE_IMAGE="$2"
+            log_info "基础镜像: ${BASE_IMAGE}"
+            shift 2
             ;;
         *)
             log_error "未知参数: $1"
-                log_info "用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--no-china-mirror] [--use-china-image]"
+                log_info "用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--base-image ubuntu:26.04] [--no-china-mirror] [--use-china-image]"
             exit 1
             ;;
     esac

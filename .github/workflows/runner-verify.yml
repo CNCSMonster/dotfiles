@@ -1,12 +1,15 @@
 name: E2E Full Install
 
-# 端到端完整安装测试：在干净 GitHub runner 上一键运行 setup.sh
+# 端到端完整安装测试：在最小容器镜像内一键运行 setup.sh
 # 覆盖 Layer 0 (bootstrap) + Layer 1 (deploy + install) + Layer 2 (post)
 # 并验证所有关键工具是否正确安装
 #
-# 对比 Docker 构建方式：
-#   - Docker 构建平均耗时：~32 分钟（成功）/ ~6 分钟（失败）
-#   - Runner 直接运行预计：~10-15 分钟（跳过镜像构建，runner 已有基础工具）
+# 为什么用容器而不是 runner 裸机：
+#   ubuntu-latest runner 镜像预装了 clang/libicu/unzip 等大量工具，
+#   会掩盖 setup.sh 对环境的隐含假设（历史上多次"CI 绿、本机 WSL/最小系统挂"）。
+#   ubuntu:24.04 / ubuntu:26.04 官方镜像只有 apt+base-files，能真实验证
+#   install-system-packages.sh / llvmup / tool-installer 自己补齐依赖。
+# macOS 仍跑在 runner 裸机（macOS 容器不可行）。
 
 on:
   push:
@@ -23,11 +26,20 @@ jobs:
   verify:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - name: ubuntu-24.04-minimal
+            os: ubuntu-latest
+            container: ubuntu:24.04
+          - name: ubuntu-26.04-minimal
+            os: ubuntu-latest
+            container: ubuntu:26.04
+          - name: macos-latest
+            os: macos-latest
       fail-fast: false
-    name: E2E full install on ${{ matrix.os }}
+    name: E2E full install (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: ${{ matrix.os == 'macos-latest' && 120 || 60 }}
+    container: ${{ matrix.container }}
+    timeout-minutes: ${{ matrix.os == 'macos-latest' && 120 || 90 }}
     permissions:
       contents: read
     env:
@@ -37,18 +49,26 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # cargo 编译并行度
       # macOS: 4 核 14GB，4 并行（4 × 1.5GB = 6GB）
-      # Ubuntu: 2 核 7GB，2 并行（2 × 1.5GB = 3GB）
+      # Ubuntu 容器: 2 核 7GB，2 并行（2 × 1.5GB = 3GB）
       CARGO_BUILD_JOBS: ${{ matrix.os == 'macos-latest' && 4 || 2 }}
       # CI 环境使用官方 PyPI（清华源对海外 runner 返回 403）
       UV_INDEX_URL: "https://pypi.org/simple"
       # CI runner 可直连 GitHub，禁用镜像站避免引入不稳定因素
       GITHUB_MIRRORS: ""
     steps:
+      # 容器模式只预装 actions 自身的最小依赖（curl/git），
+      # 其余全部交给 setup.sh——这正是被测内容；裸 apt 源即可工作
+      - name: Install CI harness prerequisites (container only)
+        if: matrix.container != ''
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends ca-certificates curl git
+
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Disable GitHub mirrors for CI
-        run: perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
+        run: sed -i 's/^github_mirrors/#github_mirrors/' manifest.toml
 
       - name: Run full install (setup.sh)
         run: |

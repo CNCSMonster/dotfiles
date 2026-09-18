@@ -63,12 +63,14 @@ COPY ./apt-retry.conf /etc/apt/apt.conf.d/99-retry-timeout.conf
 
 # 安装 ca-certificates：
 # - 国内 (USE_CHINA_MIRROR=1): 先用 HTTP 清华源安装，再切回 HTTPS
-# - 海外 (USE_CHINA_MIRROR=0): 直接用默认源（已有系统 CA 证书）
-RUN rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null; true && \
+#   （codename 从 /etc/os-release 动态获取，兼容 ubuntu:24.04/26.04 等不同基镜像）
+# - 海外 (USE_CHINA_MIRROR=0): 保留基镜像自带官方源，仅安装系统已带的 ca-certificates
+RUN . /etc/os-release && \
     if [ "${USE_CHINA_MIRROR}" = "1" ]; then \
-      echo 'deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ noble main restricted universe multiverse' > /etc/apt/sources.list && \
-      echo 'deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ noble-updates main restricted universe multiverse' >> /etc/apt/sources.list && \
-      echo 'deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ noble-security main restricted universe multiverse' >> /etc/apt/sources.list; \
+      rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null; true; \
+      echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ ${VERSION_CODENAME} main restricted universe multiverse" > /etc/apt/sources.list && \
+      echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ ${VERSION_CODENAME}-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+      echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ ${VERSION_CODENAME}-security main restricted universe multiverse" >> /etc/apt/sources.list; \
     fi && \
     for i in 1 2 3 4 5; do \
       apt-get update && apt-get install -y --no-install-recommends ca-certificates && break; \
@@ -78,15 +80,19 @@ RUN rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/de
       sed -i 's|http://mirrors.tuna.tsinghua.edu.cn|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list; \
     fi
 
-# 清理默认源配置（避免冲突）
-RUN rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null; true
+# 清理默认源配置（仅在国内镜像模式下需要，官方模式保留基镜像源）
+# 上一段 mirror=1 分支已删除 .sources 并写入 sources.list，这里不再重复删除，
+# 避免误删 mirror=0 模式正在使用的 ubuntu.sources
 
+# 清理默认源配置（避免冲突）
 # 安装基础工具（带重试）
 # 国内: 走 HTTPS 清华源（已安装 ca-certificates）
 # 海外: 走默认源
-# 包含 gcc/build-essential/clang，用于编译需要 C 编译器的 Rust 工具（如 tree-sitter-cli）
+# 包含 gcc/build-essential/python3（setup.sh 引导所需的绝对最小集合）
+# 注意：不预装 clang/libicu/unzip——这些正是本镜像要验证的"环境假设"，
+# 必须由 setup.sh Layer 0 (install-system-packages) / Layer 2 (llvmup) 自行装好
 RUN for i in 1 2 3 4 5; do \
-      apt-get update && apt-get install -y --no-install-recommends wget git curl gcc build-essential clang python3 && break; \
+      apt-get update && apt-get install -y --no-install-recommends wget git curl gcc build-essential python3 && break; \
       [ "$i" -eq 5 ] && exit 1; echo "apt 失败，15s 后重试 $i/5"; sleep 15; \
     done
 

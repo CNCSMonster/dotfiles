@@ -2,6 +2,7 @@ name: Dockerfile Build Check
 
 # push/PR 时不自动触发，避免每次推送跑 35 分钟
 # 通过 GitHub Actions 页面手动触发，用于完整构建验证
+# 矩阵覆盖 Ubuntu 24.04 / 26.04 两个基镜像（与 E2E Full Install 的最小容器矩阵一致）
 on:
   workflow_dispatch:
 
@@ -11,7 +12,11 @@ concurrency:
 
 jobs:
   build:
-    name: Build Dockerfile
+    strategy:
+      matrix:
+        base_image: [ubuntu:24.04, ubuntu:26.04]
+      fail-fast: false
+    name: Build Dockerfile (${{ matrix.base_image }})
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
@@ -25,6 +30,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # GitHub runner 可直连 GitHub，禁用镜像站避免容器内构建撞死镜像超时
+      - name: Disable GitHub mirrors for CI
+        run: sed -i 's/^github_mirrors/#github_mirrors/' manifest.toml
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -36,15 +45,16 @@ jobs:
           platforms: linux/amd64
           push: false
           load: true
-          tags: dotfiles-env:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: dotfiles-env:ci-${{ matrix.base_image == 'ubuntu:24.04' && '2404' || '2604' }}
+          cache-from: type=gha,scope=${{ matrix.base_image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.base_image }}
           build-args: |
+            BASE_IMAGE=${{ matrix.base_image }}
+            USE_CHINA_MIRROR=0
             CARGO_INSTALL_STRICT=1
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify installation
         run: |
-          docker run --rm dotfiles-env:ci /root/dotfiles/scripts/verify-docker-build.sh
-
+          docker run --rm dotfiles-env:ci-${{ matrix.base_image == 'ubuntu:24.04' && '2404' || '2604' }} /root/dotfiles/scripts/verify-docker-build.sh

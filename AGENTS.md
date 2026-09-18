@@ -48,7 +48,7 @@ Use the lightest verification that proves the change:
 - Shell changes: run `bash -n` on changed shell files where applicable.
 - xdotter changes: run `xd validate` and `xd deploy --dry-run` when available.
 - Full local Docker verification: `./scripts/docker-build-test.sh`, then run the verification command printed by the script.
-- CI runner verification runs `./setup.sh` on Ubuntu and macOS.
+- CI E2E runs `./setup.sh` inside minimal `ubuntu:24.04` / `ubuntu:26.04` containers (plus macOS on the runner); minimal containers intentionally expose environment assumptions the fat runner image hides.
 
 ## Commit discipline
 
