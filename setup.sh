@@ -95,6 +95,18 @@ check_repo_pollution() {
 # 确保 tool-installer 是最新的（vendor 中的版本）
 # 适用于任何入口：全新环境、旧环境、或跳过 bootstrap 的 --install
 _ensure_tool_installer() {
+    # tool-installer 是 python zipapp；裸系统（Ubuntu 最小镜像/全新安装）可能没有 python3
+    if ! command -v python3 &>/dev/null && command -v apt-get &>/dev/null; then
+        echo "🐍 缺少 python3（tool-installer 运行所需），通过 apt 预装..."
+        if [ "$(id -u)" -eq 0 ]; then
+            DEBIAN_FRONTEND=noninteractive apt-get update -qq && \
+                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3
+        elif sudo -n true 2>/dev/null; then
+            DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq && \
+                DEBIAN_FRONTEND=noninteractive sudo apt-get install -y --no-install-recommends python3
+        fi
+    fi
+
     local artifact="${SCRIPT_DIR}/vendor/tool-installer"
     if [ ! -f "$artifact" ]; then
         echo "❌ vendor/tool-installer 不存在于 ${SCRIPT_DIR}"

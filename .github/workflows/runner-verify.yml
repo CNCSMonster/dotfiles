@@ -68,7 +68,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Disable GitHub mirrors for CI
-        run: sed -i 's/^github_mirrors/#github_mirrors/' manifest.toml
+        run: perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
 
       - name: Run full install (setup.sh)
         run: |
