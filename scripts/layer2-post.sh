@@ -184,12 +184,44 @@ refresh_fonts() {
     fi
 }
 
+# ── 2e: git 全局配置优先级修复 ──
+# gh 等工具会写 ~/.gitconfig；而 git 只要 ~/.gitconfig 存在就不再读
+# XDG 的 ~/.config/git/config，导致 dotfiles 部署的 git 配置失效。
+# 用 include.path 把 dotfiles 配置挂接进去（非破坏性，不删除用户文件）。
+ensure_git_config_include() {
+    echo "=========================================="
+    echo "Layer 2: 检查 git 全局配置优先级..."
+    echo "=========================================="
+
+    command -v git &>/dev/null || return 0
+    local xdg_cfg="${HOME}/.config/git/config"
+    [ -f "${xdg_cfg}" ] || return 0
+    if [ ! -f "${HOME}/.gitconfig" ]; then
+        echo "✅ 无 ~/.gitconfig，git 直接读取 XDG 配置"
+        return 0
+    fi
+
+    if git config --global --get-all include.path 2>/dev/null | grep -q "\.config/git/config"; then
+        echo "✅ ~/.gitconfig 已 include dotfiles git 配置"
+        return 0
+    fi
+
+    git config --global include.path "${xdg_cfg}"
+    echo "✅ 已在 ~/.gitconfig 中添加 include.path -> ${xdg_cfg}"
+    local name
+    name=$(git config --global user.name 2>/dev/null) || true
+    if [ -z "${name}" ]; then
+        echo "⚠️  include 后仍未读到 user.name，请检查 ${xdg_cfg}"
+    fi
+}
+
 # ── 入口 ──
 main() {
     install_helix_runtime
     install_yazi_plugins
     install_llvm
     refresh_fonts
+    ensure_git_config_include
     echo ""
     echo "✅ Layer 2 (后置脚本) 完成"
 }
