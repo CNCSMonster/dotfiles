@@ -1,3 +1,5 @@
 # AI Assistant local configurations
 **/.claude/settings.local.json
 .qwen/
+AGENTS.local.md
+*.local.md

@@ -35,7 +35,8 @@ helix = "helix"
 "navi" = "~/.local/share/navi/cheats"
 "yazi/yazi.toml" = "~/.config/yazi/yazi.toml"
 "yazi/keymap.toml" = "~/.config/yazi/keymap.toml"
-"git" = "~/.config/git"
+"git/config" = "~/.config/git/config"
+"git/.gitignore_global" = "~/.config/git/.gitignore_global"
 ```
 
 ## 常用命令
