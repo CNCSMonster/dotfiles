@@ -517,7 +517,10 @@ class CargoInstallManager(CommandManager):
 
     def _cargo_install_command(self, item: PlanItem) -> List[str]:
         fields = item.strategy.fields
-        command = ["cargo", "install", fields["pkg"]]
+        # --force: we only install when the check says not satisfied; a stale
+        # binary already in ~/.cargo/bin (runner images ship some crates) is
+        # exactly what we are reconciling, so overwrite instead of erroring.
+        command = ["cargo", "install", "--force", fields["pkg"]]
         if fields.get("locked") is True:
             command.append("--locked")
         if "git" in fields:
