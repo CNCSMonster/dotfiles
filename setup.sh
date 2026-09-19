@@ -82,14 +82,33 @@ preflight_runtime_deps() {
 }
 
 # ── 收尾自检：仓库是否被安装器穿透 symlink 污染 ──
+# CI 会在跑 setup.sh 前执行 scripts/ci-disable-mirrors.sh，故意注释掉镜像行，
+# 因此 manifest.toml / cargo config 的这一类改动是预期状态而非污染，需放行；
+# 其余任何改动都可能来自穿透写入，照报。
+_only_mirror_preprocessing() {
+    local path
+    for path in $(git -C "${SCRIPT_DIR}" diff --name-only -- . 2>/dev/null); do
+        case "$path" in
+            manifest.toml|langs/rust/cargo/config.toml) ;;
+            *) return 1 ;;
+        esac
+    done
+    ! git -C "${SCRIPT_DIR}" diff -U0 -- manifest.toml langs/rust/cargo/config.toml 2>/dev/null \
+        | grep -E '^[+-][^+-]' \
+        | grep -qvE '^[+-][[:space:]]*#?(github_mirrors|replace-with = "rsproxy-sparse")'
+}
+
 check_repo_pollution() {
     git -C "${SCRIPT_DIR}" rev-parse --git-dir &>/dev/null || return 0
     local dirty
     dirty="$(git -C "${SCRIPT_DIR}" status --porcelain --untracked-files=no 2>/dev/null)"
-    if [ -n "$dirty" ]; then
-        echo "⚠️  dotfiles 仓库工作区存在改动（若有安装器穿透 symlink 写源文件，会出现在此）:"
-        echo "$dirty" | sed 's/^/   /'
+    [ -n "$dirty" ] || return 0
+    if _only_mirror_preprocessing; then
+        echo "✅ 工作区改动仅为 CI 镜像预处理（ci-disable-mirrors.sh），非污染"
+        return 0
     fi
+    echo "⚠️  dotfiles 仓库工作区存在改动（若有安装器穿透 symlink 写源文件，会出现在此）:"
+    echo "$dirty" | sed 's/^/   /'
 }
 
 # 确保 tool-installer 是最新的（vendor 中的版本）
