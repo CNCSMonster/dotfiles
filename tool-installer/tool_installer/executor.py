@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import sys
-from typing import Mapping
+from typing import List, Mapping
 
 from .errors import InstallationError
 from .managers.base import CheckResult
@@ -23,6 +24,7 @@ def _format_warning(item: PlanItem, phase: str, reason: str) -> str:
 
 def execute_plan(plan: InstallPlan, managers: Mapping[str, Manager]) -> None:
     token_reported = False
+    tolerated: List[str] = []
     for item in plan.items:
         manager = managers[item.strategy.manager]
         try:
@@ -32,10 +34,17 @@ def execute_plan(plan: InstallPlan, managers: Mapping[str, Manager]) -> None:
         except InstallationError as exc:
             if item.tool.allow_fail:
                 print(_format_warning(item, "install", str(exc)), file=sys.stderr)
+                tolerated.append(item.tool.reference.name)
                 if item.strategy.manager == "github-release":
                     token_reported = True
                 continue
             raise
+    # Fail at the end rather than immediately: later tools are independent,
+    # and CI gets the complete failure list in one run.
+    if tolerated and os.environ.get("TOOL_INSTALLER_STRICT") == "1":
+        raise InstallationError(
+            f"strict mode: allow_fail tool(s) failed: {', '.join(tolerated)}"
+        )
 
 
 def _execute_item(item: PlanItem, manager: Manager, token_reported: bool) -> None:

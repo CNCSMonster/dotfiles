@@ -497,68 +497,10 @@ class CargoInstallManager(CommandManager):
                 delay = 2 ** attempt  # exponential backoff: 1s, 2s
                 time.sleep(delay)
 
-        # All retries failed - try registry fallback (disable custom registry)
-        if self._try_registry_fallback(item):
-            return
-
         raise InstallationError(
             f"Install failed for {item.tool.reference.name} with manager {item.strategy.manager} "
-            f"after {1 + max_retries} attempts + registry fallback"
+            f"after {1 + max_retries} attempts"
         )
-
-    def _try_registry_fallback(self, item: PlanItem) -> bool:
-        """Try cargo install with registry fallback (disable custom registry).
-
-        When a custom registry (e.g., rsproxy-sparse) is unreachable,
-        temporarily comment out the replace-with directive and retry
-        cargo install against the official crates.io registry.
-        """
-        cargo_config = Path.home() / ".cargo" / "config.toml"
-        if not cargo_config.exists():
-            return False
-
-        try:
-            content = cargo_config.read_text()
-        except OSError:
-            return False
-
-        # Check if there's a replace-with directive
-        if "replace-with" not in content:
-            return False
-
-        # Comment out replace-with lines
-        lines = content.split("\n")
-        modified_lines = []
-        changed = False
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith("replace-with") and not stripped.startswith("#"):
-                modified_lines.append(f"# {line}  # temporarily disabled for registry fallback")
-                changed = True
-            else:
-                modified_lines.append(line)
-
-        if not changed:
-            return False
-
-        # Write modified config
-        try:
-            cargo_config.write_text("\n".join(modified_lines))
-        except OSError:
-            return False
-
-        print(f"  ⚠️  Registry fallback: retrying {item.tool.reference.name} with official crates.io")
-
-        # Retry cargo install
-        try:
-            result = self.runner.run(self._cargo_install_command(item), check=False)
-            return result.returncode == 0
-        finally:
-            # Restore original config
-            try:
-                cargo_config.write_text(content)
-            except OSError:
-                pass
 
     def _cargo_bin_dirs(self) -> List[Path]:
         """Return common cargo binary directories."""
