@@ -22,3 +22,7 @@ git/ignore
 # Yazi plugins (managed by ya pkg install, not version control)
 yazi/plugins/
 .tmp/
+
+# Python bytecode, produced by building the tool-installer zipapp from source
+__pycache__/
+*.py[cod]
