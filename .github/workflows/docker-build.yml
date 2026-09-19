@@ -32,8 +32,10 @@ jobs:
 
       # GitHub runner 可直连 GitHub，禁用镜像站避免容器内构建撞死镜像超时
       # perl 在 macOS runner 与 ubuntu 基础镜像（perl-base）都可用，BSD/GNU sed -i 不通用故不用 sed
-      - name: Disable GitHub mirrors for CI
-        run: perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
+      - name: Disable mirrors for CI
+        run: |
+          perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
+          perl -pi -e 's/^replace-with = "rsproxy-sparse"/#replace-with = "rsproxy-sparse"  # disabled for CI/' langs/rust/cargo/config.toml
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4

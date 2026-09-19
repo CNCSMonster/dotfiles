@@ -67,8 +67,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Disable GitHub mirrors for CI
-        run: perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
+      - name: Disable mirrors for CI
+        run: |
+          # GitHub release 下载直连，不走 ghfast 镜像
+          perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
+          # crates.io 直连，不走 rsproxy（海外访问国内镜像偶发 504，曾挂 CI）
+          perl -pi -e 's/^replace-with = "rsproxy-sparse"/#replace-with = "rsproxy-sparse"  # disabled for CI/' langs/rust/cargo/config.toml
 
       - name: Run full install (setup.sh)
         run: |

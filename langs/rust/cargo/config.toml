@@ -2,8 +2,8 @@
 # Cargo 配置
 # ============================================================
 # 默认使用 rsproxy.cn 国内镜像加速
-# CI 环境（GitHub Actions）中，setup.sh 会生成 ~/.cargo/config.toml
-# 覆盖此配置，直连 crates.io
+# CI 环境（GitHub Actions / 海外部署）：工作流的 "Disable mirrors for CI"
+# 步骤会注释掉下方 replace-with 行，直连 crates.io
 # ============================================================
 
 [source]
