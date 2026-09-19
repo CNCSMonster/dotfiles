@@ -214,6 +214,10 @@ check_cmd hx "Helix"
 # 运行时冒烟检查：二进制存在但启动即崩（缺 ICU/libclang 等）也算失败
 check_runs marksman "marksman (Markdown LSP, .NET/ICU)"
 check_runs tree-sitter "tree-sitter-cli (libclang)"
+# npm-global LSP 曾因裸容器 PATH 无 npm 而静默失败（allow_fail 吞掉），补验
+check_runs typescript-language-server "TypeScript LSP"
+check_runs yaml-language-server "YAML LSP"
+check_runs bash-language-server "Bash LSP"
 echo
 
 echo "=== 10. 功能测试 ==="
