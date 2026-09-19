@@ -29,14 +29,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Dry-run dev (full)
-        run: python3 vendor/tool-installer install dev --dry-run
+      # 模块名单从 tools.toml 枚举，不在此处维护第二份列表（否则新增 opt-in
+      # 组会静默不被校验）。排除的 [tool-installer] 是配置表而非模块；
+      # [dev] 是 depends 聚合组，随之覆盖全部默认安装链。
       - name: Dry-run each module
         run: |
-          for module in system-packages fonts build-base cargo-binstall cargo-tools user-tools shell-tools editors languages lsp-servers ai-clis extras zola; do
+          mapfile -t modules < <(python3 -c "
+          import tomllib
+          with open('tools.toml', 'rb') as f:
+              tables = tomllib.load(f)
+          print('\n'.join(name for name in tables if name != 'tool-installer'))")
+          for module in "${modules[@]}"; do
             echo "--- $module ---"
             python3 vendor/tool-installer install "$module" --dry-run
           done
+          echo "覆盖 ${#modules[@]} 个模块：${modules[*]}"
 
   # ── vendor zipapp 与源码同步守卫（改源码忘重建 vendor 会让 CI 装旧二进制）──
   vendor-sync:
