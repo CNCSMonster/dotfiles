@@ -340,7 +340,12 @@ main() {
             do_deploy
             if [ "$DEPLOY_CONFLICT" = true ]; then exit 1; fi
             ;;
-        --install)   do_install ;;
+        --install)
+            do_install
+            # 单跑 --install 同样会临时改写 ~/.cargo/config.toml（symlink），
+            # 是穿透污染最可能发生的路径，因此与完整安装一样做检测。
+            check_repo_pollution
+            ;;
         --post)      do_post ;;
         --dry-run)
             _ensure_tool_installer || exit 1
