@@ -31,7 +31,7 @@ jobs:
         run: python3 vendor/tool-installer install dev --dry-run
       - name: Dry-run each module
         run: |
-          for module in cargo-binstall build-base cargo-tools shell-tools editors languages lsp-servers extras; do
+          for module in system-packages fonts build-base cargo-binstall cargo-tools user-tools shell-tools editors languages lsp-servers ai-clis extras zola; do
             echo "--- $module ---"
             python3 vendor/tool-installer install "$module" --dry-run
           done

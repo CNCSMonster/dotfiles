@@ -96,6 +96,10 @@ Vendor 目录只存放满足以下条件之一的资源：
 | **供应链安全关键脚本** | 需要人工审查，避免 `curl \| sh` | `rustup-init.sh` |
 | **自举依赖** | 上层工具依赖它才能工作，且无法通过上层工具自身获取 | `tool-installer` 本身 |
 
+> **维护方式：** tool-installer 源码在本仓库 `tool-installer/` 目录内维护（事实 fork，无上游同步义务）。
+> 修改源码后必须运行 `./scripts/build-tool-installer.sh` 重建 `vendor/tool-installer` 并一并提交——
+> setup.sh 按字节比较判断是否更新已安装副本，漏跑脚本会导致改动不生效。
+
 ### 3.2 明确不 Vendor 的内容
 
 以下类型**禁止**放入 vendor：
