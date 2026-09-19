@@ -17,6 +17,12 @@ git clone https://github.com/cncsmonster/dotfiles.git && cd dotfiles && ./setup.
 ./setup.sh --install  # 只装工具，配置已部署时
 ```
 
+按需模块默认不装，需要时单独安装（模块清单见 `tools.toml`）：
+
+```bash
+tool-installer install network-tools   # 目前是 rathole（NAT 穿透 / 隧道反向代理）
+```
+
 ## 包含什么
 
 | 类别 | 内容 |

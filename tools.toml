@@ -105,6 +105,12 @@ depends = ["languages"]
 "xdotter@v0.5.2" = "配置部署工具"
 "wezterm@20240203" = { desc = "终端模拟器（体验增强）", allow_fail = true }
 
+# ── Opt-in: 按需安装（故意不列入下面的 [dev]，CI 也不覆盖）──
+# 用法：tool-installer install network-tools
+# rathole 走 git+rev（见 manifest.toml），git 策略要求选择器为 latest，故不写 @版本
+[network-tools]
+rathole = "内网穿透 / 隧道反向代理"
+
 # ── 全量安装 ──
 [dev]
 depends = ["system-packages", "fonts", "build-base", "cargo-binstall", "cargo-tools", "user-tools", "shell-tools", "editors", "lsp-servers", "ai-clis", "languages", "extras", "zola"]

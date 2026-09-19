@@ -1108,3 +1108,27 @@ bin = "pyright"
 manager = "uv-tool"
 pkg = "pyright"
 bin = "pyright"
+
+# ============================================================
+# Opt-in tools (不在 [dev] 依赖里，需显式安装)
+# ============================================================
+
+# rathole: 内网穿透 / 隧道反向代理（rathole-org/rathole）
+# 不用 crates.io 的 0.5.0：其 Cargo.lock 钉住 time<=0.3.29，在 rustc 1.80+ 上
+# 编译失败（E0282），rustc 1.98.1 实测同样挂；且 v0.5.0 预编译包缺
+# aarch64-apple-darwin（macOS x86_64 包在 Apple Silicon 上依赖 Rosetta）。
+# git 策略要求 tools.toml 选择器为 latest，可复现性由下面的 rev 承担。
+[rathole]
+[rathole.linux]
+manager = "cargo-install"
+pkg = "rathole"
+git = "https://github.com/rathole-org/rathole"
+rev = "a292f7ed5402f840415fc6a53827da2f34337856"
+locked = true
+
+[rathole.macos]
+manager = "cargo-install"
+pkg = "rathole"
+git = "https://github.com/rathole-org/rathole"
+rev = "a292f7ed5402f840415fc6a53827da2f34337856"
+locked = true
