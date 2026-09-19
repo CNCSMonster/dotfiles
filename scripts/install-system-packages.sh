@@ -23,7 +23,9 @@ if [[ "$OS" == "Linux" ]]; then
     echo "检查并安装系统基础包与构建工具链..."
     missing=()
     # gh、ripgrep → user-tools 模块 (github-release 精确锁定)
-    for pkg in python3 curl gnupg software-properties-common build-essential gcc g++ cmake ninja-build pkg-config libssl-dev \
+    # clang: cargo 配置 linker=clang + verify 编译测试；Layer 2 llvmup 需要 sudo 终端，
+    # 非交互环境由这里的 apt clang 兜底（llvmup 成功时装 LLVM 22 覆盖）
+    for pkg in python3 curl wget gnupg software-properties-common build-essential gcc g++ clang cmake ninja-build pkg-config libssl-dev \
                libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev libclang-dev libicu-dev unzip iproute2 \
                fzf zsh tree git htop; do
         command -v "$pkg" &>/dev/null || dpkg -s "$pkg" &>/dev/null || missing+=("$pkg")
