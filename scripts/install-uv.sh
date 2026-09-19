@@ -19,8 +19,9 @@ fi
 echo "安装 uv $UV_VERSION（从 astral.sh 下载）..."
 mkdir -p ~/.cargo/bin
 
-# 使用指定版本安装（astral.sh 支持 UV_VERSION 环境变量）
-UV_VERSION="$UV_VERSION" curl -LsSf https://astral.sh/uv/install.sh 2>/dev/null | sh
+# 使用指定版本安装（astral.sh 支持 UV_VERSION 环境变量）。
+# 注意：`VAR=x curl | sh` 只把变量给 curl；必须 env 到管道另一端的 sh 才生效
+curl -LsSf https://astral.sh/uv/install.sh 2>/dev/null | env UV_VERSION="$UV_VERSION" sh
 
 # 验证安装结果
 if command -v uv &>/dev/null; then
