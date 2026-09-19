@@ -223,19 +223,27 @@ set_default_shell_zsh() {
     echo "Layer 2: 设置默认 shell..."
     echo "=========================================="
 
+    # 以 PATH 为准，别硬编码：Linux 发行版间 zsh 路径不一致（/usr/bin、/usr/local/bin、nix store）
     local zsh_path
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-        zsh_path="/bin/zsh"
-    else
-        zsh_path="/usr/bin/zsh"
-    fi
+    zsh_path="$(command -v zsh 2>/dev/null || true)"
+    [ -z "$zsh_path" ] && zsh_path="/bin/zsh"   # macOS 兜底：/bin/zsh 必定存在
 
     if [ ! -x "$zsh_path" ]; then
-        echo "⚠️  zsh 未找到（$zsh_path），跳过"
+        echo "⚠️  zsh 未找到，跳过"
         return 0
     fi
 
-    if [ "$SHELL" = "$zsh_path" ]; then
+    # 查真实登录 shell，而非 $SHELL —— 后者只是当前会话继承的环境变量，
+    # 在容器/CI 里常是 /bin/bash，会误判成"还没设置"从而重复 chsh。
+    local _user current=""
+    _user="$(id -un 2>/dev/null || true)"
+    if command -v dscl >/dev/null 2>&1; then
+        current="$(dscl . -read "/Users/${_user}" UserShell 2>/dev/null | awk '{print $2}')"
+    elif command -v getent >/dev/null 2>&1 && [ -n "$_user" ]; then
+        current="$(getent passwd "$_user" 2>/dev/null | cut -d: -f7)"
+    fi
+
+    if [ "$current" = "$zsh_path" ]; then
         echo "✅ 默认 shell 已经是 zsh"
         return 0
     fi
