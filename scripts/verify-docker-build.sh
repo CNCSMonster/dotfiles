@@ -44,6 +44,31 @@ check_version() {
     fi
 }
 
+# 与 check_version 的区别：要求 --version 退出码为 0。
+# 能抓住"二进制在 PATH 但运行即崩"的工具（如 .NET 缺 ICU 的 marksman、
+# bindgen 缺 libclang 编译出的 tree-sitter），check_version 会把崩溃输出当版本号 PASS 掉
+check_runs() {
+    local cmd=$1
+    local desc=${2:-$1}
+    if ! command -v "$cmd" &> /dev/null; then
+        echo -e "${RED}[FAIL]${NC} $desc: 未找到"
+        ((FAIL++))
+        return 0
+    fi
+    local output rc
+    output=$("$cmd" --version 2>&1)
+    rc=$?
+    output=$(printf '%s\n' "$output" | head -n1)
+    if [ "$rc" -eq 0 ]; then
+        echo -e "${GREEN}[PASS]${NC} $desc: $output"
+        ((PASS++))
+    else
+        echo -e "${RED}[FAIL]${NC} $desc: 运行失败 (exit $rc): $output"
+        ((FAIL++))
+    fi
+    return 0
+}
+
 check_symlink() {
     local link=$1
     local desc=${2:-$1}
@@ -185,6 +210,10 @@ echo "=== 9. 额外工具验证 ==="
 # setup.sh 安装但之前未检查的工具
 check_cmd cargo-fuzz "cargo-fuzz"
 check_cmd uv "uv"
+check_cmd hx "Helix"
+# 运行时冒烟检查：二进制存在但启动即崩（缺 ICU/libclang 等）也算失败
+check_runs marksman "marksman (Markdown LSP, .NET/ICU)"
+check_runs tree-sitter "tree-sitter-cli (libclang)"
 echo
 
 echo "=== 10. 功能测试 ==="
