@@ -298,23 +298,29 @@ do_install() {
         patched=true
     fi
 
-    # tool-installer 失败时也要恢复原始配置
-    if $patched; then
-        local rc=0
-        tool-installer install dev || rc=$?
+    # tool-installer 失败、甚至 Ctrl-C 中断时，都必须恢复 symlink 与原始配置，
+    # 否则 ~/.cargo/config.toml 会以"临时禁用"状态的真实文件遗留下来，与仓库脱钩。
+    _install_cleanup() {
         rm -rf /tmp/cargo-install* 2>/dev/null || true
-        if [ -n "$cargo_config_link_target" ]; then
-            rm -f "$cargo_config"
-            ln -s "$cargo_config_link_target" "$cargo_config"
-            rm -f "$cargo_config.bak"
-        else
-            mv "$cargo_config.bak" "$cargo_config"
+        if [ "$patched" = true ]; then
+            patched=false
+            if [ -n "$cargo_config_link_target" ]; then
+                rm -f "$cargo_config"
+                ln -s "$cargo_config_link_target" "$cargo_config"
+                rm -f "$cargo_config.bak"
+            elif [ -f "$cargo_config.bak" ]; then
+                mv "$cargo_config.bak" "$cargo_config"
+            fi
         fi
-        return $rc
-    else
-        tool-installer install dev
-        rm -rf /tmp/cargo-install* 2>/dev/null || true
-    fi
+        trap - EXIT INT TERM
+    }
+    trap '_install_cleanup' EXIT
+    trap '_install_cleanup; exit 130' INT
+    trap '_install_cleanup; exit 143' TERM
+
+    # set -e：安装失败时退出码自然传播，EXIT trap 负责恢复
+    tool-installer install dev
+    _install_cleanup
 }
 
 do_post() {

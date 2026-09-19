@@ -111,12 +111,13 @@ WORKDIR /root/dotfiles
 # -----------------------------------------------------------------------------
 # CI 严格模式（默认启用）
 # -----------------------------------------------------------------------------
-# CARGO_INSTALL_STRICT=1 时，任何 Rust 工具安装失败都会终止构建。
+# TOOL_INSTALLER_STRICT=1 时，allow_fail 工具失败不再静默吞掉：
+# 安装跑完后以完整失败清单汇总并非零退出（终止构建）。
 # 禁用方式：./scripts/docker-build-test.sh --no-strict
-#   或：docker buildx build --build-arg CARGO_INSTALL_STRICT=0 ...
+#   或：docker buildx build --build-arg TOOL_INSTALLER_STRICT=0 ...
 # -----------------------------------------------------------------------------
-ARG CARGO_INSTALL_STRICT=1
-ENV CARGO_INSTALL_STRICT=${CARGO_INSTALL_STRICT}
+ARG TOOL_INSTALLER_STRICT=1
+ENV TOOL_INSTALLER_STRICT=${TOOL_INSTALLER_STRICT}
 
 #   或: docker buildx build --secret id=github_token,env=GITHUB_TOKEN ...
 # 不传则匿名访问，下载失败的 crate 会 fallback 到源码编译。

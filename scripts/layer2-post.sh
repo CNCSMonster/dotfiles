@@ -5,8 +5,13 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# GitHub mirrors (same as install-functions.sh)
-GITHUB_MIRRORS="${GITHUB_MIRRORS:-https://ghfast.top https://mirror.ghproxy.com}"
+# GitHub 镜像列表：单一事实来源是 manifest.toml 的 [_github-release].github_mirrors
+# （CI 由 scripts/ci-disable-mirrors.sh 注释该行 → 解析结果为空 → 直连）。
+# 显式设置 GITHUB_MIRRORS 环境变量仍可覆盖（含设为空以禁用）。
+if [ -z "${GITHUB_MIRRORS+x}" ]; then
+    GITHUB_MIRRORS="$(sed -n 's/^github_mirrors = \(.*\)/\1/p' "${PROJECT_DIR}/manifest.toml" \
+        | head -1 | tr -d '[]"' | tr ',' ' ')"
+fi
 
 # ── 2a: Helix runtime（需要先安装 helix）──
 install_helix_runtime() {

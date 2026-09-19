@@ -39,10 +39,10 @@ if [ -z "${CI:-}" ] && [ -z "${GITHUB_ACTIONS:-}" ]; then
 fi
 
 
-# Rust 工具安装失败控制
-# CARGO_INSTALL_STRICT=1 时，任何工具安装失败都会终止整个 setup.sh 脚本
-# 默认值为 0，允许部分工具失败，继续安装后续工具
-# export CARGO_INSTALL_STRICT=1
+# tool-installer 严格模式
+# TOOL_INSTALLER_STRICT=1 时，allow_fail 工具失败不再静默放过：
+# 安装跑完后以完整失败清单汇总并非零退出（默认关闭，CI 显式开启）
+# export TOOL_INSTALLER_STRICT=1
 # go路径
 export GOBIN="$HOME/go/bin"
 export PATH="$GOBIN:$PATH"

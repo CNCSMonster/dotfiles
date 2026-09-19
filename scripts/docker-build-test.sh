@@ -2,7 +2,7 @@
 # =============================================================================
 # Docker 构建脚本 - 根据系统资源动态限制构建过程
 # =============================================================================
-# 用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--base-image ubuntu:26.04] [--no-china-mirror]
+# 用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--base-image ubuntu:26.04] [--no-china-mirror] [--no-strict]
 #
 # ## BuildKit 资源限制架构说明
 #
@@ -59,6 +59,7 @@
 #   --file <dockerfile>  指定 Dockerfile 路径（默认: Dockerfile）
 #   --tag <image-tag>    指定镜像标签（默认: dotfiles:test）
 #   --no-china-mirror    使用官方源（海外 CI 模式，默认使用中国镜像源）
+#   --no-strict          关闭严格模式（默认开启：allow_fail 工具失败会使构建失败）
 # =============================================================================
 
 set -eo pipefail
@@ -81,8 +82,8 @@ RETRY_BUILD=1
 DOCKERFILE_PATH="Dockerfile"
 IMAGE_TAG="dotfiles:test"
 GH_TOKEN=""
-# CI 默认启用严格模式，任何 Rust 工具安装失败都会终止构建
-CARGO_INSTALL_STRICT="${CARGO_INSTALL_STRICT:-1}"
+# CI 严格模式默认开启：allow_fail 工具失败会在安装结束时使构建失败
+TOOL_INSTALLER_STRICT=1
 # 默认使用中国镜像源（国内构建），--no-china-mirror 切换为官方源
 USE_CHINA_MIRROR=1
 # 基础镜像，默认使用官方源，--use-china-image 切换为中国镜像站
@@ -263,6 +264,11 @@ while [[ $# -gt 0 ]]; do
             log_info "使用官方源（海外 CI 模式）"
             shift
             ;;
+        --no-strict)
+            TOOL_INSTALLER_STRICT=0
+            log_info "关闭严格模式（allow_fail 工具失败不阻断构建）"
+            shift
+            ;;
         --use-china-image)
             BASE_IMAGE="docker.m.daocloud.io/library/${BASE_IMAGE}"
             log_info "使用中国镜像站拉取基础镜像: $BASE_IMAGE"
@@ -279,7 +285,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             log_error "未知参数: $1"
-                log_info "用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--base-image ubuntu:26.04] [--no-china-mirror] [--use-china-image]"
+                log_info "用法: ./scripts/docker-build-test.sh [--no-cache] [--retry <n>] [--gh-token <token>] [--file <dockerfile>] [--tag <image-tag>] [--base-image ubuntu:26.04] [--no-china-mirror] [--use-china-image] [--no-strict]"
             exit 1
             ;;
     esac
@@ -387,6 +393,7 @@ for BUILD_ATTEMPT in $(seq 1 "$RETRY_BUILD"); do
         --build-arg BASE_IMAGE=${BASE_IMAGE} \
         --build-arg BUILD_JOBS=${BUILD_JOBS} \
         --build-arg USE_CHINA_MIRROR=${USE_CHINA_MIRROR} \
+        --build-arg TOOL_INSTALLER_STRICT=${TOOL_INSTALLER_STRICT} \
         --load \
         "${CACHE_FROM_ARGS[@]}" \
         "${CACHE_TO_ARGS[@]}" \

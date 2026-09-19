@@ -69,7 +69,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            CARGO_INSTALL_STRICT=1
+            # 注意：发布镜像面向国内用户，构建仍走镜像站、不禁用（与 docker-build 测试构建不同）
+            TOOL_INSTALLER_STRICT=1
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
 

@@ -43,8 +43,8 @@ jobs:
     permissions:
       contents: read
     env:
-      # 启用 CI 严格模式，任何 Rust 工具安装失败都会终止构建
-      CARGO_INSTALL_STRICT: 1
+      # 启用 CI 严格模式：allow_fail 工具失败会在安装结束时使构建失败
+      TOOL_INSTALLER_STRICT: 1
       # GitHub Token，避免 cargo-binstall 触发 API 限流
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # cargo 编译并行度
@@ -53,8 +53,6 @@ jobs:
       CARGO_BUILD_JOBS: ${{ matrix.os == 'macos-latest' && 4 || 2 }}
       # CI 环境使用官方 PyPI（清华源对海外 runner 返回 403）
       UV_INDEX_URL: "https://pypi.org/simple"
-      # CI runner 可直连 GitHub，禁用镜像站避免引入不稳定因素
-      GITHUB_MIRRORS: ""
     steps:
       # 容器模式只预装 actions 自身的最小依赖（curl/git），
       # 其余全部交给 setup.sh——这正是被测内容；裸 apt 源即可工作
@@ -68,11 +66,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Disable mirrors for CI
-        run: |
-          # GitHub release 下载直连，不走 ghfast 镜像
-          perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
-          # crates.io 直连，不走 rsproxy（海外访问国内镜像偶发 504，曾挂 CI）
-          perl -pi -e 's/^replace-with = "rsproxy-sparse"/#replace-with = "rsproxy-sparse"  # disabled for CI/' langs/rust/cargo/config.toml
+        run: ./scripts/ci-disable-mirrors.sh
 
       - name: Run full install (setup.sh)
         run: |

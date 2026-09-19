@@ -99,6 +99,10 @@ Vendor 目录只存放满足以下条件之一的资源：
 > **维护方式：** tool-installer 源码在本仓库 `tool-installer/` 目录内维护（事实 fork，无上游同步义务）。
 > 修改源码后必须运行 `./scripts/build-tool-installer.sh` 重建 `vendor/tool-installer` 并一并提交——
 > setup.sh 按字节比较判断是否更新已安装副本，漏跑脚本会导致改动不生效。
+> 提交前后可用 `./scripts/check-tool-installer-sync.sh` 守卫一致性（CI 的
+> "Vendor zipapp in sync" job 每次都会跑，zip 时间戳不参与比较）。
+> 严格模式：`TOOL_INSTALLER_STRICT=1` 时 allow_fail 工具不再静默放过，安装结束时
+> 汇总失败清单并以非零退出；CI 三条工作流与 Dockerfile 默认开启。
 
 ### 3.2 明确不 Vendor 的内容
 

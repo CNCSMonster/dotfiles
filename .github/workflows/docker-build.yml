@@ -24,18 +24,16 @@ jobs:
       # 允许读取仓库内容，用于 GitHub API 认证（避免 mise/cargo-binstall 限流）
     env:
       DOCKER_BUILDKIT: 1
-      # 启用 CI 严格模式，任何 Rust 工具安装失败都会终止构建
-      CARGO_INSTALL_STRICT: 1
+      # 启用 CI 严格模式：allow_fail 工具失败会在镜像构建结束时使其失败
+      TOOL_INSTALLER_STRICT: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       # GitHub runner 可直连 GitHub，禁用镜像站避免容器内构建撞死镜像超时
-      # perl 在 macOS runner 与 ubuntu 基础镜像（perl-base）都可用，BSD/GNU sed -i 不通用故不用 sed
+      # 单一实现在 scripts/ci-disable-mirrors.sh（tool-installer-verify 等共用）
       - name: Disable mirrors for CI
-        run: |
-          perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
-          perl -pi -e 's/^replace-with = "rsproxy-sparse"/#replace-with = "rsproxy-sparse"  # disabled for CI/' langs/rust/cargo/config.toml
+        run: ./scripts/ci-disable-mirrors.sh
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -54,7 +52,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ matrix.base_image }}
             USE_CHINA_MIRROR=0
-            CARGO_INSTALL_STRICT=1
+            TOOL_INSTALLER_STRICT=1
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
 
