@@ -5,6 +5,7 @@
 # that depends on main.lua and script/ at runtime.
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERSION="${TOOL_INSTALLER_VERSION:-3.17.1}"
 OS="$(uname -s)"
 ARCH="$(uname -m)"
@@ -57,16 +58,15 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 echo "下载 lua-language-server ${VERSION} (${ASSET})..."
 
 downloaded=false
-for mirror in "https://ghfast.top/https://github.com/LuaLS/lua-language-server/releases/download/${VERSION}/${ASSET}" \
-              "https://mirror.ghproxy.com/https://github.com/LuaLS/lua-language-server/releases/download/${VERSION}/${ASSET}" \
-              "https://github.com/LuaLS/lua-language-server/releases/download/${VERSION}/${ASSET}"; do
-    echo "尝试下载: $mirror"
-    if wget --tries=2 --timeout=180 --connect-timeout=15 "$mirror" -O "$TMP_DIR/$ASSET" 2>/dev/null; then
+lua_url="https://github.com/LuaLS/lua-language-server/releases/download/${VERSION}/${ASSET}"
+while IFS= read -r cand; do
+    echo "尝试下载: $cand"
+    if wget --tries=2 --timeout=180 --connect-timeout=15 "$cand" -O "$TMP_DIR/$ASSET" 2>/dev/null; then
         downloaded=true
         break
     fi
     echo "⚠️  该镜像失败，尝试下一个..."
-done
+done < <("$SCRIPT_DIR/github-mirror-urls.sh" "$lua_url")
 
 if [ "$downloaded" != true ]; then
     echo "⚠️  lua-language-server 下载失败，跳过"

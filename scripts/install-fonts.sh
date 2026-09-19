@@ -4,6 +4,7 @@
 # Always exits 0; prints warnings on failure instead of failing.
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OS="$(uname -s)"
 
 if [[ "$OS" == "Darwin" ]]; then
@@ -89,16 +90,16 @@ install_fira_code() {
     rm -f "$fira_tmp"
 
     local downloaded=false
-    for mirror in "https://ghfast.top/https://github.com/${fira_repo}/releases/download/${fira_version}/${fira_asset}" \
-                  "https://mirror.ghproxy.com/https://github.com/${fira_repo}/releases/download/${fira_version}/${fira_asset}" \
-                  "https://github.com/${fira_repo}/releases/download/${fira_version}/${fira_asset}"; do
-        echo "尝试下载: $mirror"
-        if wget --tries=2 --timeout=180 --connect-timeout=15 "$mirror" -O "$fira_tmp" 2>/dev/null; then
+    local fira_url="https://github.com/${fira_repo}/releases/download/${fira_version}/${fira_asset}"
+    local cand
+    while IFS= read -r cand; do
+        echo "尝试下载: $cand"
+        if wget --tries=2 --timeout=180 --connect-timeout=15 "$cand" -O "$fira_tmp" 2>/dev/null; then
             downloaded=true
             break
         fi
         echo "⚠️  该镜像失败，尝试下一个..."
-    done
+    done < <("$SCRIPT_DIR/github-mirror-urls.sh" "$fira_url")
 
     if [ "$downloaded" != true ]; then
         echo "⚠️  FiraCode Nerd Font 下载失败，跳过"
