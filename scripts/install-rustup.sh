@@ -7,8 +7,9 @@ set -e
 # CI 环境（GitHub Actions 等海外 runner）直连官方源，rsproxy.cn 可能超时
 # 非 CI 环境使用 rsproxy.cn（字节跳动维护）作为 Rust 下载镜像
 if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
-    export RUSTUP_DIST_SERVER="${RUSTUP_DIST_SERVER:-https://static.rust-lang.org}"
-    export RUSTUP_UPDATE_ROOT="${RUSTUP_UPDATE_ROOT:-https://static.rust-lang.org/rustup}"
+    # 强制官方源：env.sh 等上游可能已导出 rsproxy 值，:- 默认值顶不过
+    export RUSTUP_DIST_SERVER="https://static.rust-lang.org"
+    export RUSTUP_UPDATE_ROOT="https://static.rust-lang.org/rustup"
 else
     export RUSTUP_DIST_SERVER="${RUSTUP_DIST_SERVER:-https://rsproxy.cn}"
     export RUSTUP_UPDATE_ROOT="${RUSTUP_UPDATE_ROOT:-https://rsproxy.cn/rustup}"

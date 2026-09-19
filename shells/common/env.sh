@@ -30,8 +30,13 @@ fi
 
 
 # rust 工具链镜像源 (rsproxy.cn - 字节跳动维护)
-export RUSTUP_DIST_SERVER='https://rsproxy.cn'
-export RUSTUP_UPDATE_ROOT='https://rsproxy.cn/rustup'
+# 注意：env.sh 会被 setup.sh source 进安装进程，若无条件导出会覆盖
+# install-rustup.sh 的 CI 判断，导致海外 runner 也走国内镜像（曾 504 挂 CI）。
+# 因此：CI 环境跳过；用户已显式设置的值不覆盖。
+if [ -z "${CI:-}" ] && [ -z "${GITHUB_ACTIONS:-}" ]; then
+    export RUSTUP_DIST_SERVER="${RUSTUP_DIST_SERVER:-https://rsproxy.cn}"
+    export RUSTUP_UPDATE_ROOT="${RUSTUP_UPDATE_ROOT:-https://rsproxy.cn/rustup}"
+fi
 
 
 # Rust 工具安装失败控制
