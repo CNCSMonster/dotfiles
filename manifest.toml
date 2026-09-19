@@ -1041,14 +1041,58 @@ manager = "npm-global"
 pkg = "@qwen-code/qwen-code"
 bin = "qwen"
 
-# ============================================================
-# Python Tools (uv-tool)
-# ============================================================
-
 [qwen-code.macos]
 manager = "npm-global"
 pkg = "@qwen-code/qwen-code"
 bin = "qwen"
+
+# ============================================================
+# AI CLI 工具 (npm-global)
+# ============================================================
+
+[claude-code]
+[claude-code.linux]
+manager = "npm-global"
+pkg = "@anthropic-ai/claude-code"
+bin = "claude"
+
+[claude-code.macos]
+manager = "npm-global"
+pkg = "@anthropic-ai/claude-code"
+bin = "claude"
+
+[codex]
+[codex.linux]
+manager = "npm-global"
+pkg = "@openai/codex"
+bin = "codex"
+
+[codex.macos]
+manager = "npm-global"
+pkg = "@openai/codex"
+bin = "codex"
+
+[dsh]
+[dsh.linux]
+manager = "npm-global"
+pkg = "@deepseek-ai/dsh"
+bin = "dsh"
+
+[dsh.macos]
+manager = "npm-global"
+pkg = "@deepseek-ai/dsh"
+bin = "dsh"
+
+[pi-coding-agent]
+[pi-coding-agent.linux]
+manager = "npm-global"
+pkg = "@earendil-works/pi-coding-agent"
+bin = "pi"
+
+[pi-coding-agent.macos]
+manager = "npm-global"
+pkg = "@earendil-works/pi-coding-agent"
+bin = "pi"
 
 # ============================================================
 # Python Tools (uv-tool)

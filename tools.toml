@@ -90,7 +90,15 @@ depends = ["languages"]
 "marksman@2026-02-08" = "Markdown LSP"
 "zls@0.15.1" = "Zig LSP"
 "lua-lsp@3.17.1" = "Lua LSP"
-"qwen-code@0.17.0" = { desc = "Qwen Code", allow_fail = true }
+
+# ── Layer 1e-ai: AI CLI 工具（npm 全局，node 大版本切换后需重装）──
+[ai-clis]
+depends = ["languages"]
+"claude-code@2.1.277" = { desc = "Claude Code", allow_fail = true }
+"codex@0.155.1" = { desc = "OpenAI Codex CLI", allow_fail = true }
+"dsh@0.1.5-rc.2" = { desc = "DeepSeek 终端助手", allow_fail = true }
+"pi-coding-agent@0.85.1" = { desc = "Pi Coding Agent", allow_fail = true }
+"qwen-code@0.24.0" = { desc = "Qwen Code", allow_fail = true }
 
 # ── Layer 1f: 其他（独立）──
 [extras]
@@ -99,4 +107,4 @@ depends = ["languages"]
 
 # ── 全量安装 ──
 [dev]
-depends = ["system-packages", "fonts", "build-base", "cargo-binstall", "cargo-tools", "user-tools", "shell-tools", "editors", "lsp-servers", "languages", "extras", "zola"]
+depends = ["system-packages", "fonts", "build-base", "cargo-binstall", "cargo-tools", "user-tools", "shell-tools", "editors", "lsp-servers", "ai-clis", "languages", "extras", "zola"]
