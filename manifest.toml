@@ -1,5 +1,5 @@
 # Manifest for dotfiles development environment
-# Migrated from: dotfiles/shells/common/install-functions.sh
+# History: migrated off the legacy shell installers (see docs/tool-installer-migration-plan.md)
 # Tool count: 45+ tools across 6 manager types
 
 # ============================================================

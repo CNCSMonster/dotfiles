@@ -56,13 +56,13 @@ cargo install <package> --locked
 
 ### 4. 更新配置文件
 
-如果希望固定新版本，更新 `shells/common/install-functions.sh`：
+如果希望固定新版本，更新仓库根目录 `tools.toml` 中对应模块（通常为 `[cargo-tools]`）的版本 pin：
 
-```bash
-local CRATES=(
-    ...
-    <package>@<new-version>
-)
+```toml
+[cargo-tools]
+...
+<package> = { desc = "...", ... }        # 去掉 @x.y.z 即跟随最新
+"<package>@<new-version>" = "..."         # 或改写版本 pin
 ```
 
 ## 常见问题
@@ -119,6 +119,7 @@ ls ~/.cargo/bin | head -20
 
 ## 相关文件
 
-- 安装配置: `shells/common/install-functions.sh`
+- 版本 pin: 仓库根目录 `tools.toml`（`[cargo-tools]` 等模块）
+- 安装策略: `manifest.toml`（每个工具的 manager / binstall 参数）
 - 安装记录: `~/.cargo/.crates.toml`
 - 二进制目录: `~/.cargo/bin/`

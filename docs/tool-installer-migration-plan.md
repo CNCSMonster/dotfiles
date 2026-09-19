@@ -8,7 +8,7 @@
 
 ## 1. 背景
 
-当前 `setup.sh` + `shells/common/install-functions.sh` 中硬编码了 45+ 个工具的 shell 安装逻辑，存在以下问题：
+迁移前，`setup.sh` + `shells/common/install-functions.sh`（现已删除）中硬编码了 45+ 个工具的 shell 安装逻辑，存在以下问题：
 
 - **难以维护**：新增/修改工具需要写 shell 函数，重复代码多
 - **跨平台困难**：Linux/macOS 分支逻辑散落在各处

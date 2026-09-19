@@ -67,7 +67,7 @@ Verifies setup.sh runs correctly in a clean Ubuntu container.
 Two phases:
 
 1. **Config Deployment** — [xdotter](https://github.com/CNCSMonster/xdotter) reads `xdotter.toml` and deploys config files to standard locations like `~/.config/` via symlinks
-2. **Tool Installation** — `setup.sh` calls `install-functions.sh` to install the Rust toolchain, editors, LSP servers, language runtimes, etc. in order
+2. **Tool Installation** — `setup.sh` calls the vendored `tool-installer` (driven by `tools.toml` + `manifest.toml`) to install the Rust toolchain, editors, LSP servers, language runtimes, etc. in order
 
 Config and installation are decoupled: changing configs doesn't require reinstalling tools, and adding tools doesn't require changing configs.
 

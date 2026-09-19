@@ -61,8 +61,3 @@ function use-npm-official() {
     echo "✅ 已切换到官方源"
 }
 
-# 如果调用则载入 install-functions.sh, 获取用于安装各种软件的函数
-function load_setup() {
-    source "$HOME/.config/shells/common/install-functions.sh"
-}
-

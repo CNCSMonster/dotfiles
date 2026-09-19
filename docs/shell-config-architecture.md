@@ -12,10 +12,11 @@
 shells/common/
 ├── env.sh              # 基础环境变量配置
 ├── fn.sh               # 功能函数库
-├── install-functions.sh # 安装函数集合
 ├── inter.sh            # 交互式 shell 配置
 └── alias.sh            # 命令别名
 ```
+
+> 工具安装**不属于** shell 配置层：它由 `setup.sh` 调用 vendored `tool-installer`（zipapp）完成，读取 `tools.toml` + `manifest.toml`。历史上这层逻辑放在 `shells/common/install-functions.sh`，现已移除（见 `docs/tool-installer-migration-plan.md`）。
 
 ---
 
@@ -125,32 +126,7 @@ function use-npm-mirror() { ... }  # 切换到淘宝镜像
 
 ---
 
-### 4. install-functions.sh - 安装函数集合
-
-**职责：** 提供系统工具和开发环境的安装函数
-
-**加载时机：** 安装脚本中（如 setup.sh）
-
-**包含内容：**
-- 系统工具安装（apt、wget、curl）
-- 开发工具安装（Neovim、Helix、Rust）
-- LSP 语言服务器安装
-
-**示例：**
-```bash
-# install-functions.sh 提供安装函数
-function install-neovim() { ... }
-function install-rust() { ... }
-function install-typescript-lsp() { ... }
-```
-
-**依赖关系：**
-- ✅ 依赖 `env.sh`（mise 环境已初始化）
-- ✅ 不依赖 `inter.sh`（支持非交互式环境）
-
----
-
-### 5. alias.sh - 命令别名
+### 4. alias.sh - 命令别名
 
 **职责：** 设置常用命令的快捷别名
 
@@ -205,21 +181,19 @@ alias gs='git status'
 
 ---
 
-### 决策 3：install-functions.sh 不依赖 inter.sh
+### 决策 3：工具安装与 shell 配置分离
 
 **原因：**
-1. 安装脚本常在非交互式环境运行（Docker、CI）
-2. inter.sh 第一行就会 return
-3. 但需要 mise 环境（由 env.sh 提供）
+1. 安装脚本常在非交互式环境运行（Docker、CI），需要稳定的执行入口
+2. 安装逻辑（版本锁定、下载、fallback）属于声明式配置，不应散落在 sourced shell 函数里
+3. mise 环境仍由 `env.sh` 提供，供安装器在需要 node/npm 时调用
 
-**正确依赖链：**
+**安装入口：**
 ```
 setup.sh
   ↓
-source env.sh           # ✅ mise 环境已激活
-source fn.sh            # ✅ 工具函数
-source install-functions.sh  # ✅ 使用 npm/node 安装
-# 不 source inter.sh    # ❌ 非交互式会 return
+source env.sh            # ✅ mise 环境已激活
+tool-installer install dev   # ✅ 读取 tools.toml + manifest.toml
 ```
 
 ---
@@ -243,8 +217,7 @@ source shells/common/inter.sh    # 4. 交互式配置
 setup.sh
   ↓
 source shells/common/env.sh      # 1. 基础环境（包括 mise）
-source shells/common/fn.sh       # 2. 工具函数
-source shells/common/install-functions.sh  # 3. 安装函数
+python3 vendor/tool-installer install dev  # 2. 工具安装（非 shell 配置层）
 # 不加载 inter.sh（交互式特性不需要）
 ```
 
@@ -278,17 +251,17 @@ eval "$(starship init $SH)"  # ❌ 非交互式会失败
 
 ---
 
-### ❌ 错误 3：install-functions.sh 依赖 inter.sh
+### ❌ 错误 3：在非交互式环境依赖 inter.sh 才有的能力
 
 ```bash
-# setup.sh（错误）
+# 安装流程（错误）
 source shells/common/inter.sh  # ❌ 非交互式直接 return
-source shells/common/install-functions.sh
+npm install -g <lsp>           # mise/npm 环境可能未就绪
 ```
 
 **问题：** mise 环境未激活，npm 命令找不到
 
-**修正：** 在 `env.sh` 中激活 mise
+**修正：** 在 `env.sh` 中激活 mise（安装器依赖它），不要把交互式特性拉进非交互路径
 
 ---
 
@@ -297,15 +270,16 @@ source shells/common/install-functions.sh
 | 文件 | 职责 | 加载时机 | 示例内容 |
 |------|------|----------|----------|
 | **env.sh** | 基础环境 | 所有场景 | PATH, mise, 镜像源 |
-| **fn.sh** | 功能函数 | 需要时 | log_info, retry_fn |
-| **install-functions.sh** | 安装函数 | 安装脚本 | install-rust, install-neovim |
+| **fn.sh** | 功能函数 | 需要时 | fj, npm-cn, use-npm-mirror |
 | **inter.sh** | 交互特性+补全 | 仅交互式 | starship, navi, **fzf 历史搜索增强**, **xd/codex/opencode completion** |
 | **alias.sh** | 命令别名 | 仅交互式 | ll, gs |
+
+> 工具安装不在此表：由 `setup.sh` 调用 `tool-installer` 完成（`tools.toml` + `manifest.toml`）。
 
 **核心原则：**
 1. **env.sh** - 所有场景都需要的基础配置
 2. **inter.sh** - 仅交互式 shell 的特性配置
-3. **install-functions.sh** - 依赖 env.sh，不依赖 inter.sh
+3. **安装逻辑** - 独立于 shell 配置层，交给 tool-installer
 
 ---
 

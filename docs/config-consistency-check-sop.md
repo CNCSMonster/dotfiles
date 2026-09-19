@@ -41,20 +41,21 @@
 
 ### 1. 生成已安装工具清单
 
-#### 1.1 从安装脚本提取
+#### 1.1 从安装声明提取
+
+以 `tool-installer` 的 dry-run 计划为权威来源（反映 `tools.toml` + `manifest.toml` 的实际解析结果），apt 系统包则来自 `scripts/install-system-packages.sh`：
 
 ```bash
-# 从 install-functions.sh 提取 cargo 安装的工具
-grep 'cargo_install_common' shells/common/install-functions.sh \
-    | grep -oP '[\w-]+(?:@[\d.]+)?' \
-    | grep -v 'cargo_install' | sort -u > /tmp/installed-cargo.txt
+# cargo 安装的工具（dry-run 计划里 manager=cargo-install 的行）
+python3 vendor/tool-installer install dev --dry-run \
+    | grep 'manager=cargo-install' | grep -oP 'tool=\K\S+' | sort -u > /tmp/installed-cargo.txt
 
 # 从 mise/config.toml 提取
 grep -oP '^\w+' mise/config.toml | sort -u > /tmp/installed-mise.txt
 
-# 从 apt 安装提取（install-common-tools）
-grep -A5 'function install-common-tools' shells/common/install-functions.sh \
-    | grep -oP '[a-z][a-z0-9-]+' | sort -u > /tmp/installed-apt.txt
+# 从系统包脚本提取 apt 包（for pkg in ... 列表，过滤 shell 关键字）
+sed -n '/for pkg in/,/do$/p' scripts/install-system-packages.sh \
+    | grep -oP '\b[a-z][a-z0-9-]{2,}\b' | grep -vwE 'for|pkg' | sort -u > /tmp/installed-apt.txt
 ```
 
 #### 1.2 从运行时环境提取（更准确）

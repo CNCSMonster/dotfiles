@@ -59,7 +59,7 @@ sha256sum /tmp/test.tar.xz
 
 本项目**不依赖任何外部插件仓库**，采用以下方式：
 
-- 直接在 `install-functions.sh` 中实现下载和安装逻辑
+- 安装逻辑集中在 `tool-installer`（Python 包）与声明式 `manifest.toml` / `tools.toml`
 - 从官方源下载（GitHub Releases、官方镜像）
 - 固定版本号，避免意外升级
 - 对关键工具进行 SHA256 校验
