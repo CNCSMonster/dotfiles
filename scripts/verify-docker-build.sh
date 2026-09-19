@@ -218,6 +218,7 @@ check_runs tree-sitter "tree-sitter-cli (libclang)"
 check_runs typescript-language-server "TypeScript LSP"
 check_runs yaml-language-server "YAML LSP"
 check_runs bash-language-server "Bash LSP"
+check_runs pyright "Pyright LSP (uv-tool)"
 echo
 
 echo "=== 10. 功能测试 ==="

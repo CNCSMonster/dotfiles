@@ -298,20 +298,6 @@ do_install() {
         patched=true
     fi
 
-    # 裸系统上 mise/node 要等 Layer 1 的 languages 组才装上，而函数开头的
-    # env.sh 注入发生在那之前，npm 始终不在 PATH → manager=npm-global 的工具
-    # 在 check() 阶段就报 "Check failed"（allow_fail 下静默丢失）。
-    # 因此先单独跑 languages 组，再重新注入环境，让后续 dev 能看到 npm。
-    if ! command -v npm &>/dev/null; then
-        echo "🧩 未检测到 npm，预装 languages 组（mise/node）以恢复 npm/uv PATH..."
-        tool-installer install languages || true
-        if [ -f "$HOME/.config/shells/common/env.sh" ]; then
-            source "$HOME/.config/shells/common/env.sh"
-        elif [ -f "${SCRIPT_DIR}/shells/common/env.sh" ]; then
-            source "${SCRIPT_DIR}/shells/common/env.sh"
-        fi
-    fi
-
     # tool-installer 失败时也要恢复原始配置
     if $patched; then
         local rc=0

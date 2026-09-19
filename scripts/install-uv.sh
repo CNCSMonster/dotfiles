@@ -19,9 +19,10 @@ fi
 echo "安装 uv $UV_VERSION（从 astral.sh 下载）..."
 mkdir -p ~/.cargo/bin
 
-# 使用指定版本安装（astral.sh 支持 UV_VERSION 环境变量）。
-# 注意：`VAR=x curl | sh` 只把变量给 curl；必须 env 到管道另一端的 sh 才生效
-curl -LsSf https://astral.sh/uv/install.sh 2>/dev/null | env UV_VERSION="$UV_VERSION" sh
+# 锁版方式：astral 的 install.sh 无版本参数、也不读 UV_VERSION（裸 URL 永远指向 latest），
+# 官方锁版姿势是使用带版本号的安装器 URL（已验证返回 "installer for uv <版本>"）。
+# --no-modify-path：rc 文件已由 dotfiles 统一管理，禁止安装脚本改写（会顺符号链接污染仓库源文件）
+curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" 2>/dev/null | sh -s -- --no-modify-path
 
 # 验证安装结果
 if command -v uv &>/dev/null; then
