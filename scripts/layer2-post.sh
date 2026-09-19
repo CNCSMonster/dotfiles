@@ -217,6 +217,36 @@ ensure_git_config_include() {
     fi
 }
 
+# ── 2f: 设置默认 shell 为 zsh ──
+set_default_shell_zsh() {
+    echo "=========================================="
+    echo "Layer 2: 设置默认 shell..."
+    echo "=========================================="
+
+    local zsh_path
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        zsh_path="/bin/zsh"
+    else
+        zsh_path="/usr/bin/zsh"
+    fi
+
+    if [ ! -x "$zsh_path" ]; then
+        echo "⚠️  zsh 未找到（$zsh_path），跳过"
+        return 0
+    fi
+
+    if [ "$SHELL" = "$zsh_path" ]; then
+        echo "✅ 默认 shell 已经是 zsh"
+        return 0
+    fi
+
+    if chsh -s "$zsh_path"; then
+        echo "✅ 默认 shell 已设置为 zsh（重新登录生效）"
+    else
+        echo "⚠️  chsh 失败，可手动执行: chsh -s $zsh_path"
+    fi
+}
+
 # ── 入口 ──
 main() {
     install_helix_runtime
@@ -224,6 +254,7 @@ main() {
     install_llvm
     refresh_fonts
     ensure_git_config_include
+    set_default_shell_zsh
     echo ""
     echo "✅ Layer 2 (后置脚本) 完成"
 }
