@@ -54,8 +54,16 @@ xd deploy --dry-run
 # 移除已部署的 dotfiles
 xd undeploy
 
-# 验证配置文件
-xd validate
+# 检查部署状态（xdotter 没有 validate 子命令，体检靠 status）
+xd status
+```
+
+`xd status` 输出一行总览加七类异常计数，全为 0 才算部署无漂移：
+
+```
+Status: 31/31 deployed
+Not deployed / Wrong links / Broken links / Source missing
+Source type invalid / Non-symlink paths / Permission issues
 ```
 
 ## 版本要求
