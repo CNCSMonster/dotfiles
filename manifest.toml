@@ -1094,6 +1094,17 @@ manager = "npm-global"
 pkg = "@earendil-works/pi-coding-agent"
 bin = "pi"
 
+[qoder-cli]
+[qoder-cli.linux]
+manager = "npm-global"
+pkg = "@qoder-ai/qodercli"
+bin = "qoder"
+
+[qoder-cli.macos]
+manager = "npm-global"
+pkg = "@qoder-ai/qodercli"
+bin = "qoder"
+
 # ============================================================
 # Python Tools (uv-tool)
 # ============================================================
