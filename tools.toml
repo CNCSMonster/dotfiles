@@ -8,7 +8,7 @@ manifest = "./manifest.toml"
 # ── Layer 0: 字体（体验增强，非必须）──
 [fonts]
 depends = ["system-packages"]
-"fonts@1" = "系统字体 + FiraCode Nerd Font（apt/brew + GitHub）"
+"fonts@1" = "系统字体 + IBM Plex + FiraCode Nerd Font（apt/brew + GitHub）"
 
 # ── Layer 1a: 编译基础设施 ──
 [build-base]
@@ -56,6 +56,10 @@ depends = ["build-base", "cargo-binstall"]
 # ── Layer 1f: 静态网站工具（独立，github-release 预编译）──
 [zola]
 "zola@v0.22.1" = "静态网站生成器"
+
+# ── Layer 1f: 文档排版工具（独立，github-release 预编译）──
+[typst]
+"typst@v0.15.1" = "Typst 排版编译器（简历 → PDF 渲染）"
 
 # ── Layer 1c: Shell 工具（独立，不需要 Rust）──
 [shell-tools]
@@ -114,4 +118,4 @@ rathole = "内网穿透 / 隧道反向代理"
 
 # ── 全量安装 ──
 [dev]
-depends = ["system-packages", "fonts", "build-base", "cargo-binstall", "cargo-tools", "user-tools", "shell-tools", "editors", "lsp-servers", "ai-clis", "languages", "extras", "zola"]
+depends = ["system-packages", "fonts", "build-base", "cargo-binstall", "cargo-tools", "user-tools", "shell-tools", "editors", "lsp-servers", "ai-clis", "languages", "extras", "zola", "typst"]

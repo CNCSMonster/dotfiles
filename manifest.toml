@@ -936,6 +936,45 @@ sha256 = "TODO"
 asset = "zola-v0.22.1-aarch64-unknown-linux-gnu.tar.gz"
 sha256 = "8af437ec6352f33ccd24d7a1cfcb54a3db95d3ce376dc69525b4ef3fb6b8c1d1"
 
+# Typst 排版编译器（简历工作流：.typ → PDF 热更新渲染）
+# 上游 Linux 只出 musl 静态构建，且资产名不含版本号，故 asset/bin 均不用 {version}。
+[typst]
+[typst.linux]
+manager = "github-release"
+repo = "typst/typst"
+asset = "typst-x86_64-unknown-linux-musl.tar.xz"
+bin = "typst-x86_64-unknown-linux-musl/typst"
+install_name = "typst"
+[typst.linux.version_probe]
+command = ["{bin}", "--version"]
+regex = "^typst (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[typst.linux.x86_64]
+sha256 = "a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c"
+
+[typst.linux.aarch64]
+asset = "typst-aarch64-unknown-linux-musl.tar.xz"
+bin = "typst-aarch64-unknown-linux-musl/typst"
+sha256 = "5aa8d74a3d906e60ea12a66ac2f37f8eef1b14cbad7182a745e393a10c23dcee"
+
+[typst.macos]
+manager = "github-release"
+repo = "typst/typst"
+asset = "typst-aarch64-apple-darwin.tar.xz"
+bin = "typst-aarch64-apple-darwin/typst"
+install_name = "typst"
+[typst.macos.version_probe]
+command = ["{bin}", "--version"]
+regex = "^typst (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+
+[typst.macos.aarch64]
+sha256 = "48f62ed034aa3a7978309579ac6ca00045e2ef0da73114e8af27cfd8e74dc05a"
+
+[typst.macos.x86_64]
+asset = "typst-x86_64-apple-darwin.tar.xz"
+bin = "typst-x86_64-apple-darwin/typst"
+sha256 = "7f9fdd9584866245de9a79e0add8f9236fae6f40a8a45e2c4771ccc14db4e0fa"
+
 # ============================================================
 # Languages & Runtimes (via mise)
 # ============================================================

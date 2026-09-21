@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Font installation script for tool-installer (script manager)
-# Installs system fonts + FiraCode Nerd Font
+# Installs system fonts + IBM Plex + FiraCode Nerd Font
+# IBM Plex Serif/Mono 是简历工作流（Typst 模板）的正文字体，缺失会导致西文回退到
+# Noto Sans CJK，排版走样。
 # Always exits 0; prints warnings on failure instead of failing.
 set -uo pipefail
 
@@ -14,6 +16,8 @@ if [[ "$OS" == "Darwin" ]]; then
             font-jetbrains-mono \
             font-fira-code \
             font-fira-code-nerd-font \
+            font-ibm-plex-serif \
+            font-ibm-plex-mono \
             font-noto-sans-cjk \
             font-noto-color-emoji \
             2>/dev/null || echo "⚠️  部分字体可能已安装，继续..."
@@ -58,6 +62,7 @@ install_system_fonts() {
             fonts-noto-cjk \
             fonts-noto-color-emoji \
             fonts-jetbrains-mono \
+            fonts-ibm-plex \
             fonts-dejavu-core || echo "⚠️  系统字体包安装失败"
     elif is_interactive_tty; then
         echo "🔐 安装系统字体包需要 sudo 权限..."
@@ -66,6 +71,7 @@ install_system_fonts() {
             fonts-noto-cjk \
             fonts-noto-color-emoji \
             fonts-jetbrains-mono \
+            fonts-ibm-plex \
             fonts-dejavu-core || echo "⚠️  系统字体包安装失败"
     else
         echo "⚠️  非交互环境，跳过系统字体包安装（避免 sudo 密码输入挂起）"

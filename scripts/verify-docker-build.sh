@@ -211,6 +211,8 @@ echo "=== 9. 额外工具验证 ==="
 check_cmd cargo-fuzz "cargo-fuzz"
 check_cmd uv "uv"
 check_cmd hx "Helix"
+# typst 是 musl 静态构建，--version 冒烟即可确认下载与 PATH 都正常
+check_runs typst "Typst (简历排版编译器)"
 # 运行时冒烟检查：二进制存在但启动即崩（缺 ICU/libclang 等）也算失败
 check_runs marksman "marksman (Markdown LSP, .NET/ICU)"
 check_runs tree-sitter "tree-sitter-cli (libclang)"

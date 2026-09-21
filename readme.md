@@ -32,6 +32,7 @@ tool-installer install network-tools   # 目前是 rathole（NAT 穿透 / 隧道
 | **语言** | Rust + Go + Node.js + Zig，[mise](https://mise.jdx.dev/) 统一版本管理 |
 | **终端** | WezTerm + Zellij + Yazi + macchina + navi + Nerd Fonts |
 | **Rust 生态** | 20+ 工具：sccache, cargo-binstall, gitui, tokei, uv, nu 等 |
+| **文档排版** | Typst（简历 / PDF 渲染）+ IBM Plex、Noto CJK 字体 |
 
 ## Termux（Android）最小远程开发环境
 
