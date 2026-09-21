@@ -116,6 +116,11 @@ depends = ["languages"]
 [network-tools]
 rathole = "内网穿透 / 隧道反向代理"
 
+# 用法：tool-installer install devbox-tools
+# rootless-docker 仅 Linux 有意义（macOS 上脚本自行跳过），且不写任何 shell 配置
+[devbox-tools]
+"rootless-docker@1" = "免 sudo 的 rootless Docker 守护进程"
+
 # ── 全量安装 ──
 [dev]
 depends = ["system-packages", "fonts", "build-base", "cargo-binstall", "cargo-tools", "user-tools", "shell-tools", "editors", "lsp-servers", "ai-clis", "languages", "extras", "zola", "typst"]
