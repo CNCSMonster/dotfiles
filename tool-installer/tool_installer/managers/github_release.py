@@ -24,6 +24,13 @@ from ..models import GithubReleaseConfig, PlanItem
 from .base import CheckResult, Manager
 
 
+def _first_line(text: str, limit: int = 120) -> str:
+    """Collapse probe output to one quotable line for warning messages."""
+    line = (text or "").strip().splitlines()
+    joined = line[0] if line else "<无输出>"
+    return joined if len(joined) <= limit else joined[:limit] + "…"
+
+
 def _is_relative_to(path: Path, base: Path) -> bool:
     """Python 3.8-compatible Path.is_relative_to()."""
     try:
@@ -38,6 +45,11 @@ class GithubReleaseManager:
 
     Check-capable only when version_probe is defined in the strategy.
     Without version_probe, always returns NOT_SATISFIED (non-check-capable).
+
+    A probe that cannot confirm the expected tool (foreign binary, bad exit code,
+    unparseable output) yields NOT_SATISFIED plus a warning, so the plan overwrites
+    it instead of aborting. Only genuine environment errors — no HOME, an invalid
+    regex, an unresolvable "latest" tag — stay CHECK_ERROR.
 
     Supports mirror fallback and retry/timeout via GithubReleaseConfig.
     """
@@ -93,11 +105,17 @@ class GithubReleaseManager:
                 text=True,
                 timeout=30,
             )
-        except (subprocess.TimeoutExpired, OSError):
-            return CheckResult.CHECK_ERROR
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            return self._probe_inconclusive(
+                bin_path,
+                f"探测命令未正常结束（{type(exc).__name__}: {_first_line(str(exc))}）",
+            )
 
         if result.returncode != 0:
-            return CheckResult.CHECK_ERROR
+            return self._probe_inconclusive(
+                bin_path,
+                f"退出码 {result.returncode}：{_first_line(result.stderr or result.stdout)}",
+            )
 
         regex_str = probe["regex"]
         try:
@@ -107,11 +125,15 @@ class GithubReleaseManager:
 
         match = pattern.search(result.stdout)
         if not match:
-            return CheckResult.CHECK_ERROR
+            return self._probe_inconclusive(
+                bin_path,
+                "输出未匹配版本正则，可能是同名异构工具："
+                f"{_first_line(result.stdout or result.stderr)}",
+            )
 
         captured_version = match.group("version")
         if not captured_version:
-            return CheckResult.CHECK_ERROR
+            return self._probe_inconclusive(bin_path, "匹配到的版本号为空")
 
         # Compare using v1 version equality
         requested = item.tool.reference.version
@@ -125,6 +147,17 @@ class GithubReleaseManager:
                 return CheckResult.CHECK_ERROR
         else:
             return self._compare_versions(captured_version, requested)
+
+    @staticmethod
+    def _probe_inconclusive(bin_path: Path, reason: str) -> CheckResult:
+        """Treat an unusable version probe as "not installed".
+
+        ~/.local/bin/<name> may hold a foreign binary (e.g. the Python `yq` wrapper
+        installed by uv). Reporting that as CHECK_ERROR would abort the whole plan;
+        the useful outcome is "overwrite it", so return NOT_SATISFIED with a warning.
+        """
+        print(f"⚠️  {bin_path}: 版本探测无法确认（{reason}），按未安装处理并覆盖安装")
+        return CheckResult.NOT_SATISFIED
 
     @staticmethod
     def _compare_versions(installed: str, requested: str) -> CheckResult:

@@ -45,6 +45,19 @@ jobs:
           done
           echo "覆盖 ${#modules[@]} 个模块：${modules[*]}"
 
+  # ── 单元测试（源码级，无网络；vendor 一致性由 vendor-sync 单独守卫）──
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run tool-installer test suite
+        run: python3 -m unittest discover -s tool-installer/tests -t tool-installer -v
+
   # ── vendor zipapp 与源码同步守卫（改源码忘重建 vendor 会让 CI 装旧二进制）──
   vendor-sync:
     name: Vendor zipapp in sync
