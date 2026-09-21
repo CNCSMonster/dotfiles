@@ -20,10 +20,16 @@ env:
 
 jobs:
   # ── Dry-run（快速，无网络）──
+  # 双 OS：full-install/re-install 只在 macOS 上跑默认安装链（dev），opt-in 模块的
+  # .macos 条目否则永远不会被任何作业解析过。
   dry-run:
-    name: Dry-run (all modules)
-    runs-on: ubuntu-latest
+    name: "Dry-run (all modules) — ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
@@ -32,18 +38,22 @@ jobs:
       # 模块名单从 tools.toml 枚举，不在此处维护第二份列表（否则新增 opt-in
       # 组会静默不被校验）。排除的 [tool-installer] 是配置表而非模块；
       # [dev] 是 depends 聚合组，随之覆盖全部默认安装链。
+      # 用 while-read 而不是 mapfile：macOS 跑器的 /bin/bash 是 3.2，没有 mapfile。
       - name: Dry-run each module
+        shell: bash
         run: |
-          mapfile -t modules < <(python3 -c "
+          python3 -c "
           import tomllib
           with open('tools.toml', 'rb') as f:
               tables = tomllib.load(f)
-          print('\n'.join(name for name in tables if name != 'tool-installer'))")
-          for module in "${modules[@]}"; do
+          print('\n'.join(name for name in tables if name != 'tool-installer'))" > /tmp/modules.txt
+          count=0
+          while IFS= read -r module; do
             echo "--- $module ---"
             python3 vendor/tool-installer install "$module" --dry-run
-          done
-          echo "覆盖 ${#modules[@]} 个模块：${modules[*]}"
+            count=$((count + 1))
+          done < /tmp/modules.txt
+          echo "覆盖 $count 个模块：$(tr '\n' ' ' < /tmp/modules.txt)"
 
   # ── 单元测试（源码级，无网络；vendor 一致性由 vendor-sync 单独守卫）──
   unit-tests:
