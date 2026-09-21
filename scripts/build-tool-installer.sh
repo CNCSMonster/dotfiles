@@ -11,7 +11,14 @@ OUT="${1:-$ROOT/vendor/tool-installer}"
 
 cd "$ROOT"
 find tool-installer -name __pycache__ -type d -prune -exec rm -rf {} +
-python3 -m zipapp tool-installer \
+
+# zipapp 只装运行时。tests/ 是开发期产物，整目录打包会让每次改测试都触发
+# vendor 重建、并让 vendor-sync 守卫在"源码没动"的情况下报差异。
+stage="$(mktemp -d)"
+trap 'rm -rf "$stage"' EXIT
+cp -R tool-installer/tool_installer "$stage/tool_installer"
+cp tool-installer/__main__.py "$stage/__main__.py"
+python3 -m zipapp "$stage" \
     --compress \
     --python "/usr/bin/env python3" \
     --output "$OUT"

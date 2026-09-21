@@ -22,6 +22,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+# 目录名 tool-installer 带连字符、不能作包路径，故显式补一层（unittest 的
+# `-t tool-installer` 之外，直接 python3 -m unittest tests.test_x 也要能跑）。
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tool_installer import environment as env_module  # noqa: E402
@@ -32,6 +34,7 @@ from tool_installer.managers import github_release as gr  # noqa: E402
 from tool_installer.managers.base import CheckResult  # noqa: E402
 from tool_installer.models import (  # noqa: E402
     Environment,
+    InstallPlan,
     MergedStrategy,
     PlanItem,
     ToolReference,
@@ -262,6 +265,37 @@ class ExecutorHandlesProbeResults(unittest.TestCase):
         rp.assert_called_once_with()
         self.assertEqual(manager.check.call_count, 2)
         manager.install.assert_called_once_with(item)
+
+
+class ExecutePlanPublicApi(unittest.TestCase):
+    """走公开入口 execute_plan，不依赖 _execute_item 这个私有名字。
+
+    只锁本次关心的两条契约：NOT_SATISFIED 触发覆盖安装、持续 CHECK_ERROR 仍然抛。
+    """
+
+    def setUp(self) -> None:
+        patcher = mock.patch("sys.stdout", new_callable=_Capture)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.refresh = mock.Mock(return_value=False)
+        patcher2 = mock.patch.object(env_module, "refresh_path", self.refresh)
+        patcher2.start()
+        self.addCleanup(patcher2.stop)
+
+    def execute(self, check_result):
+        item = make_item()
+        manager = github_manager_mock()
+        manager.check.return_value = check_result
+        executor.execute_plan(InstallPlan(items=[item]), {"github-release": manager})
+        return item, manager
+
+    def test_probe_inconclusive_overwrites_via_public_api(self):
+        item, manager = self.execute(CheckResult.NOT_SATISFIED)
+        manager.install.assert_called_once_with(item)
+
+    def test_persistent_check_error_still_raises_via_public_api(self):
+        with self.assertRaises(InstallationError):
+            self.execute(CheckResult.CHECK_ERROR)
 
 
 class RealProbe(unittest.TestCase):
