@@ -21,7 +21,7 @@ git clone https://github.com/cncsmonster/dotfiles.git && cd dotfiles && ./setup.
 
 ```bash
 tool-installer install network-tools   # 目前是 rathole（NAT 穿透 / 隧道反向代理）
-tool-installer install devbox-tools    # 目前是 rootless docker（免 sudo；仅 Linux）
+tool-installer install devbox-tools    # 目前是 rootless docker（免 sudo；macOS 只给 colima 指引）
 ```
 
 ## 包含什么

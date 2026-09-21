@@ -1184,7 +1184,8 @@ rev = "a292f7ed5402f840415fc6a53827da2f34337856"
 locked = true
 
 # rootless-docker: 免 sudo 用裸 docker / docker compose（见 scripts/ 内注释）。
-# 两个 OS 都指向同一脚本——macOS 分支由脚本自己 uname 守卫后跳过，因为缺少
+# 两个 OS 都指向同一脚本——macOS 上 Linux 专属步骤会致命失败，脚本自己 uname 守卫、
+# 打完 colima 手动指引后 exit 0（CI 跑器无硬件虚拟化，不代跑）；缺少
 # os 条目会让 resolver 直接抛 StrategyError（tool-installer strategy.py:66）。
 [rootless-docker]
 [rootless-docker.linux]

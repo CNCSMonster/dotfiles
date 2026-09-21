@@ -15,7 +15,27 @@
 set -euo pipefail
 
 if [[ "$(uname -s)" != "Linux" ]]; then
-    echo "非 Linux：跳过 rootless docker（macOS 用 Docker Desktop / colima）"
+    cat <<'MACOS'
+非 Linux：本模块不适用，跳过（不做任何安装）。
+
+rootless Docker 依赖 Linux 的 user namespace + systemd --user，macOS 上没有对应
+物；等价的「容器里的 root 不是宿主 root」靠一台你自己持有的用户级 VM 达成，
+推荐 colima（不是 Docker Desktop——它会在宿主装 privileged helper 与 root 组
+socket，正是本模块想避开的那条提权通道）：
+
+    brew install colima docker docker-compose   # colima 会带上依赖 lima
+    colima start                                # 需要硬件虚拟化 (kern.hv_support=1)
+    docker version                              # 应能看到 Server 版本
+
+colima 启动时默认 --activate，会自动注册并切到 "colima" docker context，所以
+不要往 shell 配置里 export DOCKER_HOST：它优先级高于 context，反而会屏蔽后续
+切换，且 ~/.zshrc 是指向本仓库的符号链接，追加即污染仓库。
+
+想换 VM 规格用 colima start 的 -c/--cpus、-m/--memory、-d/--disk（默认 100GiB，
+稀疏分配）；排查看 ~/.colima/_lima/colima/ha.stderr.log（colima 没有 log 子命令）。
+本仓库不代跑这些命令：CI 的 macOS 跑器拿不到硬件虚拟化（实测 kern.hv_support=0），
+任何"在 CI 里验证 colima"的作业都只能证明它失败，因此这条路径留给真机手动执行。
+MACOS
     exit 0
 fi
 
