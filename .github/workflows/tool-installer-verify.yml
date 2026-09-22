@@ -1,12 +1,21 @@
 name: tool-installer Migration Verify
 
 on:
+  # 纯文档改动不必跑 30 分钟安装链（历史上 `docs: replace the nonexistent
+  # 'xd validate'` 一个提交跑了 14m + 11m 两套完整安装验证）。
+  # 注意：GitHub Actions 的 workflow 解析器不支持 YAML anchor，两处列表必须逐字写。
   push:
     branches:
       - 'main'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
     branches:
       - 'main'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
@@ -39,6 +48,10 @@ jobs:
       # 组会静默不被校验）。排除的 [tool-installer] 是配置表而非模块；
       # [dev] 是 depends 聚合组，随之覆盖全部默认安装链。
       # 用 while-read 而不是 mapfile：macOS 跑器的 /bin/bash 是 3.2，没有 mapfile。
+      #
+      # --skip-errors：dry-run 只做解析，个别条目的策略错误不该让整轮枚举中断，
+      # 否则第 N 个模块写坏了，第 N+1 个之后的模块就再也得不到解析覆盖。
+      # 严格模式由 unit-tests / vendor-sync / 实际 apply-* 安装作业把关。
       - name: Dry-run each module
         shell: bash
         run: |
@@ -50,7 +63,8 @@ jobs:
           count=0
           while IFS= read -r module; do
             echo "--- $module ---"
-            python3 vendor/tool-installer install "$module" --dry-run
+            python3 vendor/tool-installer install "$module" --dry-run --skip-errors \
+              || echo "⚠️  $module 解析失败（继续枚举后续模块）"
             count=$((count + 1))
           done < /tmp/modules.txt
           echo "覆盖 $count 个模块：$(tr '\n' ' ' < /tmp/modules.txt)"
@@ -93,9 +107,11 @@ jobs:
       - name: Run Layer 0 (tool-installer binary only)
         run: bash setup.sh --bootstrap
       - name: Verify
-        run: |
-          ~/.local/bin/tool-installer --help
-          ~/.local/bin/tool-installer install dev --dry-run
+        uses: ./.github/actions/verify-binaries
+        with:
+          commands: |
+            ~/.local/bin/tool-installer --help
+            ~/.local/bin/tool-installer install dev --dry-run
 
   # ── build-base: Rust 工具链 ──
   apply-build-base:
@@ -113,11 +129,13 @@ jobs:
       - name: Install build-base
         run: python3 vendor/tool-installer install build-base
       - name: Verify
-        run: |
-          rustc --version
-          cargo --version
-          rustfmt --version
-          clippy-driver --version
+        uses: ./.github/actions/verify-binaries
+        with:
+          commands: |
+            rustc --version
+            cargo --version
+            rustfmt --version
+            clippy-driver --version
 
   # ── cargo-binstall: 预编译安装器 ──
   apply-cargo-binstall:
@@ -134,9 +152,9 @@ jobs:
       - name: Install cargo-binstall
         run: python3 vendor/tool-installer install cargo-binstall
       - name: Verify
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          cargo-binstall -V
+        uses: ./.github/actions/verify-binaries
+        with:
+          commands: cargo-binstall -V
 
   # ── cargo-tools: 28 个 Rust 工具 ──
   apply-cargo-tools:
@@ -160,25 +178,42 @@ jobs:
           python3 vendor/tool-installer install cargo-binstall
           python3 vendor/tool-installer install build-base
           python3 vendor/tool-installer install cargo-tools
+      # 硬断言 = tools.toml 里非 allow_fail 的工具；optional = allow_fail 的工具。
+      # optional 仍会报告缺失（::warning），但不再像 `|| true` 那样把结果吞掉。
       - name: Verify key tools
-        run: |
-          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-          bat --version
-          eza --version
-          fd --version || fdfind --version
-          tokei --version
-          zoxide --version
-          mdbook --version
-          mise --version
-          uv --version
-          navi --version || true
-          gitui --version || true
-          kondo --help >/dev/null
-          jaq --version
-          nu --version
-          cargo-audit --version
-          macchina --version || true
-          tree-sitter --version
+        uses: ./.github/actions/verify-binaries
+        with:
+          commands: |
+            mise --version
+            uv --version
+            cargo-audit --version
+            bat --version
+            eza --version
+            fd --version
+            zoxide --version
+            tokei --version
+            navi --version
+            kondo --help
+            jaq --version
+            mdbook --version
+            mdbook-mermaid --version
+            gms --version
+            conceal --version
+            rust-script --version
+            pdu --version
+            nu --version
+            macchina --version
+          optional: |
+            cargo-binstall -V
+            sccache --version
+            wild --version
+            gitui --version
+            tree-sitter --version
+            tree-sitter-grep --version
+            tree-sitter-show-ast --version
+            cargo-fuzz --version
+            grcov --version
+            cargo-tarpaulin --version
 
   # ── languages: go, node, pnpm, zig, yazi, gopls ──
   apply-languages:
@@ -192,23 +227,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install mise
-        run: |
-          curl https://mise.run | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install prerequisites
+        uses: ./.github/actions/install-prereqs
       - name: Install and verify languages
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           # Trust and install
           mise trust
           python3 vendor/tool-installer install languages
-          # Add mise shims to PATH and verify
-          export PATH="$(mise where)/shims:$HOME/.local/share/mise/shims:$PATH"
-          mise list
-          go version || true
-          node --version || true
-          pnpm --version || true
-          zig version || true
+      - name: Verify
+        uses: ./.github/actions/verify-binaries
+        with:
+          path: '$HOME/.local/share/mise/shims:$HOME/.local/bin'
+          commands: |
+            mise list
+            go version
+            node --version
+            pnpm --version
+            zig version
 
   # ── shell-tools: starship ──
   apply-shell-tools:
@@ -228,9 +264,9 @@ jobs:
           mkdir -p ~/.local/bin
           python3 vendor/tool-installer install shell-tools
       - name: Verify
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          starship -V
+        uses: ./.github/actions/verify-binaries
+        with:
+          commands: starship -V
 
   # ── editors: neovim, helix, zellij, yq ──
   # 全部是 github-release，不需要额外 manager
@@ -251,16 +287,18 @@ jobs:
           mkdir -p ~/.local/bin
           python3 vendor/tool-installer install editors
       - name: Verify
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          nvim --version | head -1
-          hx --version
-          zellij --version
-          yq --version
+        uses: ./.github/actions/verify-binaries
+        with:
+          commands: |
+            nvim --version
+            hx --version
+            zellij --version
+            yq --version
 
   # ── lsp-servers: npm/uv/github-release LSP ──
-  # 依赖 node（来自 languages），需要等 languages 完成
-  # CI 中单独安装 node 作为前置
+  # depends = languages → cargo-tools，所以这一步实际会解析全部 28 个 crate。
+  # 没有 rust-cache 时其中 3 个走源码编译（实测 3m17s + 3m20s + 1m09s = 关键路径
+  # 476s），和 apply-cargo-tools 跑同一批 crate 却只花 1m24s 的差别就在这里。
   apply-lsp-servers:
     name: "Apply: lsp-servers"
     runs-on: ubuntu-latest
@@ -269,32 +307,29 @@ jobs:
       - uses: actions/checkout@v6
       - name: Disable mirrors for CI
         run: ./scripts/ci-disable-mirrors.sh
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install uv (for pyright)
-        run: pip install uv
-      - name: Install npm LSP servers directly
-        run: |
-          npm install -g typescript-language-server typescript yaml-language-server bash-language-server
-      - name: Install remaining LSP servers via tool-installer
+      - name: Install prerequisites
+        uses: ./.github/actions/install-prereqs
+      - name: Install LSP servers via tool-installer
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           mkdir -p ~/.local/bin
           python3 vendor/tool-installer install lsp-servers
       - name: Verify
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          typescript-language-server --version
-          pyright --version || true
-          yaml-language-server --version || true
-          bash-language-server --version
-          marksman --version || true
-          zls --version || true
-          lua-language-server --version || true
+        uses: ./.github/actions/verify-binaries
+        with:
+          commands: |
+            typescript-language-server --version
+            bash-language-server --version
+            marksman --version
+            zls --version
+          optional: |
+            pyright --version
+            yaml-language-server --version
+            lua-language-server --version
 
   # ── extras: xdotter ──
   apply-extras:
@@ -314,13 +349,17 @@ jobs:
           mkdir -p ~/.local/bin
           python3 vendor/tool-installer install extras
       - name: Verify
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          xd --version || true
+        uses: ./.github/actions/verify-binaries
+        with:
+          commands: xd --version
+          optional: wezterm --version
 
-  # ── 全量安装验证（等所有模块通过后）──
+  # ── 全量安装 + 幂等复装（等所有模块通过后）──
+  # 幂等验证必须和首次安装同在一个作业里：先前它单列成 re-install 作业，跑在
+  # 全新 runner 的空 $HOME 上，等于又装了第二遍——35 个工具重跑，只有 rust-cache
+  # 恢复出来的 24 个 cargo crate 命中 skip，名叫 idempotency 却什么都没验证。
   full-install:
-    name: "Apply: dev (full) — ${{ matrix.os }}"
+    name: "Apply: dev (full + idempotency) — ${{ matrix.os }}"
     needs: [dry-run, bootstrap, apply-cargo-binstall, apply-build-base, apply-cargo-tools, apply-shell-tools, apply-editors, apply-languages, apply-lsp-servers, apply-extras]
     strategy:
       fail-fast: false
@@ -338,79 +377,83 @@ jobs:
           python-version: '3.12'
       - name: Clean stale cargo install metadata
         run: rm -f ~/.cargo/.crates.toml ~/.cargo/.crates2.json
-      - name: Install mise (prerequisite)
-        run: |
-          curl https://mise.run | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install uv
-        run: pip install uv
-      - name: Pre-install npm LSP servers
-        run: npm install -g typescript-language-server typescript yaml-language-server bash-language-server
+      - name: Install prerequisites
+        uses: ./.github/actions/install-prereqs
       - name: Full install
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          # 无 check 能力的 script 工具按设计每次重跑，先记下名单供幂等步骤豁免。
+          # || true：一个都没有时（grep 退出 1）不该弄死安装步骤——空名单只会让
+          # 后面的幂等断言更严格。
+          python3 vendor/tool-installer install dev --dry-run | grep 'manager=script' \
+            | sed -n 's/.*tool=\([^ ]*\).*/\1/p' | sort -u > /tmp/script-tools.txt || true
           python3 vendor/tool-installer install dev
       - name: Comprehensive verification
+        uses: ./.github/actions/verify-binaries
+        with:
+          path: '$HOME/.local/share/mise/shims:$HOME/.local/bin:$HOME/.cargo/bin'
+          commands: |
+            rustc --version
+            cargo --version
+            nvim --version
+            hx --version
+            zellij --version
+            yq --version
+            bat --version
+            eza --version
+            fd --version
+            tokei --version
+            zoxide --version
+            nu --version
+            uv --version
+            mise --version
+            starship -V
+            go version
+            node --version
+            typescript-language-server --version
+            bash-language-server --version
+          optional: |
+            gitui --version
+            navi --version
+            macchina --version
+            marksman --version
+            zls --version
+            lua-language-server --version
+            pyright --version
+            wezterm --version
+      # 第二次 install dev：所有带 check 能力的工具都该命中 Skip。
+      # manager=script 的条目没有 check（base.CommandManager.check 恒返回
+      # NOT_SATISFIED），按设计每次重跑，故从违规名单里剔除。
+      - name: Re-install is idempotent
+        shell: bash
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-          echo "=== Rust ==="
-          rustc --version && cargo --version
-          echo "=== Editors ==="
-          nvim --version | head -1
-          hx --version
-          zellij --version
-          yq --version
-          echo "=== Cargo Tools ==="
-          bat --version && eza --version && fd --version
-          tokei --version && zoxide --version
-          nu --version && uv --version && mise --version
-          echo "=== Shell Tools ==="
-          starship -V
-          echo "=== Languages ==="
-          go version 2>/dev/null || echo "go: skipped"
-          node --version 2>/dev/null || echo "node: skipped"
-          echo "=== LSP ==="
-          typescript-language-server --version
-          bash-language-server --version
-          echo "=== All passed ==="
-
-  # ── 重复安装验证：在已安装过的环境中再次执行 install dev ──
-  # 验证 version_probe 等缓存/跳过逻辑的正确性，避免
-  # "首次安装成功但重复安装报错" 的问题（如 zls version_probe regex）
-  re-install:
-    name: "Re-install: dev (idempotency) — ${{ matrix.os }}"
-    needs: [full-install]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-      - name: Disable mirrors for CI
-        run: ./scripts/ci-disable-mirrors.sh
-      - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Clean stale cargo install metadata
-        run: rm -f ~/.cargo/.crates.toml ~/.cargo/.crates2.json
-      - name: Install mise (prerequisite)
-        run: |
-          curl https://mise.run | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install uv
-        run: pip install uv
-      - name: Pre-install npm LSP servers
-        run: npm install -g typescript-language-server typescript yaml-language-server bash-language-server
-      - name: Second install (should skip all satisfied tools)
-        run: |
-          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-          python3 vendor/tool-installer install dev
+          # comm 要求两个文件按同一 collation 排好序；macOS 的 BSD sort/comm 在
+          # en_US 下与 sort -u 的结果不一致，会直接报 "not in sorted order"。
+          export LC_ALL=C
+          set +e
+          python3 vendor/tool-installer install dev >/tmp/reinstall.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/reinstall.log
+          if [ $status -ne 0 ]; then
+            echo "::error::第二次 install dev 退出码 $status"
+            exit 1
+          fi
+          sed -n 's/^📦 Installing //p' /tmp/reinstall.log | sort -u > /tmp/seen.txt
+          sed -n 's/^✅ Skip //p'        /tmp/reinstall.log | sort -u > /tmp/skipped.txt
+          comm -23 /tmp/seen.txt /tmp/skipped.txt > /tmp/reinstalled.txt
+          comm -23 /tmp/reinstalled.txt /tmp/script-tools.txt > /tmp/offenders.txt
+          echo "重跑工具 $(wc -l < /tmp/reinstalled.txt) 个，其中无 check 的 script 工具已豁免"
+          if [ -s /tmp/offenders.txt ]; then
+            echo "::error::check 未识别出以下已安装工具（会被无谓重装）：$(tr '\n' ' ' < /tmp/offenders.txt)"
+            exit 1
+          fi
+          # cargo 侧的“已存在”冲突意味着二进制在盘上却 check 说没装——
+          # tree-sitter-grep / tree-sitter-show-ast 漏声明 bin 名时的症状。
+          if grep -q 'already exists in destination' /tmp/reinstall.log; then
+            echo "::error::检测到 cargo \"already exists in destination\"，check 漏认已装二进制"
+            grep 'already exists in destination' /tmp/reinstall.log
+            exit 1
+          fi
+          echo "✅ 幂等：除 $(wc -l < /tmp/reinstalled.txt) 个 script 工具外全部 Skip"

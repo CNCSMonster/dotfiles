@@ -1,0 +1,56 @@
+name: verify-binaries
+description: >-
+  逐条执行版本探测命令，汇总报告缺失项后一次性失败退出。
+  替代 `cmd --version || true` 这种把验证吞掉的写法——装了没装上，CI 必须知道。
+
+inputs:
+  commands:
+    description: '换行分隔的探测命令；任一失败即判定缺失并计入失败'
+    required: true
+  optional:
+    description: '换行分隔的探测命令；失败只警告，用于 allow_fail 工具'
+    required: false
+    default: ''
+  path:
+    description: '追加到 PATH 前面的目录（冒号分隔）'
+    required: false
+    default: '$HOME/.local/bin:$HOME/.cargo/bin'
+
+runs:
+  using: composite
+  steps:
+    - name: Verify installed binaries
+      shell: bash
+      run: |
+        export PATH="$(eval echo "${{ inputs.path }}"):$PATH"
+        missing=()
+        soft=()
+        ok=0
+        while IFS= read -r cmd; do
+          [ -z "$cmd" ] && continue
+          if eval "$cmd" >/dev/null 2>&1; then
+            ok=$((ok + 1))
+            echo "✅ $cmd"
+          else
+            missing+=("$cmd")
+            echo "❌ $cmd"
+          fi
+        done <<< "${{ inputs.commands }}"
+        while IFS= read -r cmd; do
+          [ -z "$cmd" ] && continue
+          if eval "$cmd" >/dev/null 2>&1; then
+            ok=$((ok + 1))
+            echo "✅ $cmd (optional)"
+          else
+            soft+=("$cmd")
+            echo "⚠️  $cmd (optional, allow_fail)"
+          fi
+        done <<< "${{ inputs.optional }}"
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "::error::${#missing[@]} 个工具未通过验证：${missing[*]}"
+          exit 1
+        fi
+        if [ ${#soft[@]} -gt 0 ]; then
+          echo "::warning::${#soft[@]} 个 allow_fail 工具缺失：${soft[*]}"
+        fi
+        echo "验证通过 $ok 项，缺失 ${#missing[@]} 项，可选项缺失 ${#soft[@]} 项"

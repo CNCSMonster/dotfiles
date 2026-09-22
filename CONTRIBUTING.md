@@ -52,7 +52,7 @@ Docker 镜像用于验证 `setup.sh` 在干净 Ubuntu 环境中可正常执行�
 
 GitHub Actions 有两类验证：
 
-1. **自动验证**：每次 push / PR 触发 `E2E Full Install`，在最小镜像容器 `ubuntu:24.04` / `ubuntu:26.04`（GitHub runner 裸机跑 macOS）内直接运行 `./setup.sh`，再执行验证脚本检查工具 + 配置 + 功能。使用最小容器是为了真实暴露 setup.sh 对环境的隐含依赖（runner 镜像预装 clang/libicu/unzip 会掩盖这类问题）。
+1. **自动验证**：每次 push / PR 触发 `E2E Full Install`，在最小镜像容器 `ubuntu:24.04` / `ubuntu:26.04`（GitHub runner 裸机跑 macOS）内直接运行 `./setup.sh`，再执行验证脚本检查工具 + 配置 + 功能。使用最小容器是为了真实暴露 setup.sh 对环境的隐含依赖（runner 镜像预装 clang/libicu/unzip 会掩盖这类问题）。纯文档改动（`**.md` / `docs/**`）不触发两条安装链。
 2. **完整 Docker 验证**：`Dockerfile Build Check` 通过 GitHub Actions 页面手动触发，矩阵构建 `ubuntu:24.04` / `ubuntu:26.04` 基镜像并在镜像内运行验证脚本。
 
 验证脚本输出 `通过：XX  失败：0` 即通过。

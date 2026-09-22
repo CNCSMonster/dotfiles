@@ -1,0 +1,32 @@
+name: install-prereqs
+description: >-
+  tool-installer 的公共前置：mise、node、uv、以及 npm 版 LSP server。
+  这些步骤原先在 apply-languages / full-install / re-install 三处逐字重复。
+
+inputs:
+  node-version:
+    description: 'actions/setup-node 的 node 版本'
+    required: false
+    default: '20'
+
+runs:
+  using: composite
+  steps:
+    - name: Install mise
+      shell: bash
+      run: |
+        curl https://mise.run | sh
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '${{ inputs.node-version }}'
+
+    - name: Install uv
+      shell: bash
+      # pyright 走 uv 解析 python；setup-python 自带解释器，故无 PEP 668 限制。
+      run: pip install uv
+
+    - name: Pre-install npm LSP servers
+      shell: bash
+      run: npm install -g typescript-language-server typescript yaml-language-server bash-language-server

@@ -15,7 +15,7 @@
 | **根因** | `zls --version` 输出是 `0.15.1`（纯版本号），但 manifest 正则是 `zls (?P<version>...)`，期望带 `zls ` 前缀，永远匹配不上 |
 | **为什么 CI 没发现** | CI runner 是全新环境，`~/.local/bin/zls` 不存在 → version_probe 不被调用 → 直接安装，跳过检查 |
 | **修复** | `aca1be9` → manifest 中 `[zls.*.version_probe].regex` 改为 `(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)` |
-| **防护措施** | CI 新增 `re-install` job（`aca1be9`），在已安装环境中第二次执行 `install dev`，强制触发所有 version_probe |
+| **防护措施** | `full-install` job 的 "Re-install is idempotent" 步骤：在同一 runner 上第二次执行 `install dev`，强制触发所有 version_probe / check，并断言除 `manager=script` 的工具外全部 Skip。曾长期独立成 `re-install` job，但独立 job 跑在全新 runner 的空 `$HOME` 上、等于又装了一遍，验证不到幂等，故合并 |
 
 ---
 
@@ -80,6 +80,20 @@
 | **根因** | `setup.sh` 的 `do_install()` 临时禁用 sccache/wild linker，但某些情况下未恢复 |
 | **影响** | git 工作树出现意外修改，需手动 `git checkout` 恢复 |
 | **状态** | 已观察，未修复（当前恢复逻辑看起来正确，需进一步确认） |
+
+---
+
+## 7. cargo-install 的 check 认不出连字符命名的二进制
+
+| 项目 | 内容 |
+|------|------|
+| **发现时间** | 2026-09-23 |
+| **发现场景** | 分析 `tool-installer Migration Verify` 耗时：`Apply: dev (idempotency)` 这一"应该全部 Skip"的作业耗时 237s，**超过**首次真实安装的 200s |
+| **错误信息** | `error: binary \`tree-sitter-grep\` already exists in destination` → `cargo install ... errored with exit status: 101` |
+| **根因** | `CargoInstallManager.check()` 用 `pkg.replace("-", "_")` 猜二进制名，而 `tree-sitter-grep` / `tree-sitter-show-ast` 的 `[[bin]]` 就是带连字符的 crate 名。manifest 未声明 `bin` → check 永远找不到 → 判 `NOT_SATISFIED` → 每次 install 都源码重编译（CI 日志实测 3m17s / 3m20s） |
+| **影响** | 两个 `allow_fail` 工具每次重装；`TOOL_INSTALLER_STRICT=1` 也拦不住，因为重装最终"成功"了，成本被静默吸收 |
+| **修复** | `check()` 改为按 `[bin]` → `[pkg 下划线, pkg 原名]` 的顺序探测候选名，两类命名约定都能命中；回归测试见 `tool-installer/tests/test_cargo_install_check.py` |
+| **防护措施** | 幂等步骤对 "already exists in destination" 直接判失败——该字符串是"二进制在盘上但 check 说没装"的确定信号，无需按工具逐个维护白名单 |
 
 ---
 

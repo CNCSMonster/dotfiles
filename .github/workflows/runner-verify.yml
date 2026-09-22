@@ -12,10 +12,19 @@ name: E2E Full Install
 # macOS 仍跑在 runner 裸机（macOS 容器不可行）。
 
 on:
+  # 纯文档改动不触发三个端到端安装作业（两条 ubuntu 容器 + 一台 macOS）。
+  # 保留 branches: '**'：最小容器暴露环境假设的能力对所有分支都该生效。
+  # 注意：GitHub Actions 的 workflow 解析器不支持 YAML anchor，两处列表必须逐字写。
   push:
     branches:
       - '**'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:

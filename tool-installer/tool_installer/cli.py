@@ -24,6 +24,11 @@ def build_parser() -> argparse.ArgumentParser:
     install = subparsers.add_parser("install", help="install a module from ./tools.toml")
     install.add_argument("module", help="module name to install")
     install.add_argument("--dry-run", action="store_true", help="print the installation plan without executing it")
+    install.add_argument(
+        "--skip-errors",
+        action="store_true",
+        help="tolerate an unresolvable tool entry instead of aborting the module",
+    )
 
     return parser
 
@@ -34,21 +39,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "install":
-            return _run_install(args.module, args.dry_run)
+            return _run_install(args.module, args.dry_run, args.skip_errors)
     except ToolInstallerError as exc:
         print(f"❌ Error: {exc}", file=sys.stderr)
         return 1
     return 0
 
 
-def _run_install(module: str, dry_run: bool) -> int:
+def _run_install(module: str, dry_run: bool, skip_errors: bool = False) -> int:
     tools_path = Path.cwd() / "tools.toml"
     config = parse_tools_file(tools_path, module)
     manifest, gh_config = parse_manifest_file(config.manifest_path)
     modules = resolve_modules(config, module)
     ordered_tools = collect_ordered_tools(modules)
     environment = detect_environment()
-    plan = build_install_plan(ordered_tools, manifest, environment, config.manifest_path.parent)
+    plan = build_install_plan(
+        ordered_tools, manifest, environment, config.manifest_path.parent, skip_errors=skip_errors
+    )
     if dry_run:
         print_dry_run(plan)
     else:

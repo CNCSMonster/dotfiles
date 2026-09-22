@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Tuple
 
@@ -40,11 +41,28 @@ def build_install_plan(
     manifest: Mapping[str, Mapping[str, Any]],
     environment: Environment,
     manifest_dir: Path,
+    *,
+    skip_errors: bool = False,
 ) -> InstallPlan:
+    """Build the plan for ``ordered_tools``.
+
+    ``skip_errors`` tolerates a single unresolvable tool instead of aborting the
+    whole module: CI enumerates every module in ``tools.toml`` in one pass, and
+    one bad entry would otherwise stop enumeration and silently leave every later
+    module (and every later tool in this one) unchecked. Cross-tool invariants
+    such as the single-rustup-default rule are still raised — they are not
+    per-tool problems.
+    """
     items: List[PlanItem] = []
     rustup_defaults = 0
     for module_name, tool in ordered_tools:
-        strategy = resolve_tool_strategy(tool, manifest, environment, manifest_dir)
+        try:
+            strategy = resolve_tool_strategy(tool, manifest, environment, manifest_dir)
+        except (StrategyError, ManifestError) as exc:
+            if not skip_errors:
+                raise
+            print(f"⚠️  Skipping {tool.reference.name}: {exc}", file=sys.stderr)
+            continue
         if strategy.manager == "rustup" and strategy.fields.get("set_default") is True:
             rustup_defaults += 1
         items.append(PlanItem(module_name=module_name, tool=tool, strategy=strategy, environment=environment))

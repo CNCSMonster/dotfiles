@@ -283,21 +283,25 @@ class CargoInstallManager(CommandManager):
 
         Binary name resolution follows a deterministic rule:
         - If ``bin`` field is declared in manifest → use it
-        - Otherwise → ``pkg.replace("-", "_")`` (Rust default convention)
+        - Otherwise → both ``pkg.replace("-", "_")`` (Rust default convention)
+          and ``pkg`` verbatim, since crates may ship a hyphenated bin target
         """
         fields = item.strategy.fields
         pkg = fields["pkg"]
         requested = _selector(item)
 
-        # Resolve binary name: manifest `bin` field → fallback to Rust convention
-        binary_name = fields.get("bin", pkg.replace("-", "_"))
+        # Resolve binary name: manifest `bin` field → underscore/hyphen probes
+        binary_names = self._cargo_binary_names(pkg, fields)
 
         # Check if binary exists in cargo bin directories
         bin_path = None
-        for bin_dir in self._cargo_bin_dirs():
-            candidate = bin_dir / binary_name
-            if candidate.is_file():
-                bin_path = candidate
+        for binary_name in binary_names:
+            for bin_dir in self._cargo_bin_dirs():
+                candidate = bin_dir / binary_name
+                if candidate.is_file():
+                    bin_path = candidate
+                    break
+            if bin_path is not None:
                 break
 
         if bin_path is None:
@@ -501,6 +505,22 @@ class CargoInstallManager(CommandManager):
             f"Install failed for {item.tool.reference.name} with manager {item.strategy.manager} "
             f"after {1 + max_retries} attempts"
         )
+
+    @staticmethod
+    def _cargo_binary_names(pkg: str, fields: dict) -> List[str]:
+        """Candidate executable names for a cargo-installed package.
+
+        A crate's bin target defaults to the crate name verbatim, so
+        ``tree-sitter-grep`` installs a hyphenated ``tree-sitter-grep``;
+        renaming to the underscore form is a separate common convention.
+        Probing both keeps a hyphenated bin target from reading as "not
+        installed" and recompiling from source on every run.
+        """
+        declared = fields.get("bin")
+        if declared:
+            return [declared]
+        names = [pkg.replace("-", "_"), pkg]
+        return list(dict.fromkeys(names))
 
     def _cargo_bin_dirs(self) -> List[Path]:
         """Return common cargo binary directories."""
