@@ -10,6 +10,8 @@ tree-sitter-show-ast 各耗 40s+，且先撞上 cargo 的
     以及未声明时连字符/下划线两种候选的次序。
   - CheckAgainstFilesystem：临时 bin 目录 + 真二进制，锁住「连字符命名也能
     命中 SATISFIED」和「版本不符仍 NOT_SATISFIED」。
+  - PrereleaseVersionTolerance：`_cargo_v1_eq` 只赦免同一发行号的 `-pre` /
+    `+build` 后缀（gitui 的 binstall 产物自称 0.28.1-nightly）。
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tool_installer.managers.base import CheckResult  # noqa: E402
-from tool_installer.managers.commands import CargoInstallManager  # noqa: E402
+from tool_installer.managers.commands import CargoInstallManager, _cargo_v1_eq  # noqa: E402
 from tool_installer.models import (  # noqa: E402
     Environment,
     MergedStrategy,
@@ -107,6 +109,40 @@ class CheckAgainstFilesystem(unittest.TestCase):
     def test_absent_binary_is_not_satisfied(self):
         outcome = self.manager.check(make_item("tree-sitter-grep", "0.1.0"))
         self.assertIs(outcome, CheckResult.NOT_SATISFIED)
+
+    def test_nightly_banner_satisfies_the_release_pin(self):
+        # gitui 的真实情形：binstall 产物自称 nightly，manifest 钉正式版。
+        self.write_binary("gitui", "gitui 0.28.1-nightly 2026-03-25 ()")
+        outcome = self.manager.check(make_item("gitui", "0.28.1"))
+        self.assertIs(outcome, CheckResult.SATISFIED)
+
+
+class PrereleaseVersionTolerance(unittest.TestCase):
+    """binstall 的 GitHub release 二进制会自称 nightly，manifest 钉的是 crates.io 正式版。
+
+    gitui 就是这个组合：`gitui --version` 输出 `0.28.1-nightly 2026-03-25`，
+    tools.toml 钉 `gitui@0.28.1`。严格字符串相等永远不成立，于是 CI 每次 install
+    都重装 gitui（见 docs/ci-issue-tracker.md #8）。
+    """
+
+    def test_gitui_nightly_banner_satisfies_the_release_pin(self):
+        self.assertTrue(_cargo_v1_eq("0.28.1-nightly", "0.28.1"))
+
+    def test_build_metadata_is_forgiven_too(self):
+        self.assertTrue(_cargo_v1_eq("1.4.2+2026-03-25", "1.4.2"))
+
+    def test_exact_match_still_works(self):
+        self.assertTrue(_cargo_v1_eq("0.28.1", "0.28.1"))
+        self.assertTrue(_cargo_v1_eq("v0.28.1", "0.28.1"))
+
+    def test_prerelease_of_another_line_does_not_match(self):
+        # 只赦免同一发行号的预发布后缀，跨版本仍要重装。
+        self.assertFalse(_cargo_v1_eq("0.29.0-nightly", "0.28.1"))
+        self.assertFalse(_cargo_v1_eq("0.28.1", "0.29.0"))
+
+    def test_requested_prerelease_is_not_downgraded(self):
+        # 钉 0.28.1-nightly 时，装上正式版 0.28.1 不算满足。
+        self.assertFalse(_cargo_v1_eq("0.28.1", "0.28.1-nightly"))
 
 
 if __name__ == "__main__":

@@ -421,9 +421,9 @@ jobs:
             lua-language-server --version
             pyright --version
             wezterm --version
-      # 第二次 install dev：所有带 check 能力的工具都该命中 Skip。
-      # manager=script 的条目没有 check（base.CommandManager.check 恒返回
-      # NOT_SATISFIED），按设计每次重跑，故从违规名单里剔除。
+      # 第二次 install dev：带 check 能力的工具都该命中 Skip。
+      # 两类豁免：manager=script 的条目没有 check（base.CommandManager.check 恒返回
+      # NOT_SATISFIED），按设计每次重跑；以及 rust 这条 moving channel（见下）。
       - name: Re-install is idempotent
         shell: bash
         run: |
@@ -431,6 +431,11 @@ jobs:
           # comm 要求两个文件按同一 collation 排好序；macOS 的 BSD sort/comm 在
           # en_US 下与 sort -u 的结果不一致，会直接报 "not in sorted order"。
           export LC_ALL=C
+          # rust 按设计每次重跑：RustupManager.check 对 stable/nightly 这类 moving
+          # channel 额外要求 `rustup check` 报 up to date，runner 镜像里的 stable
+          # 落后一天就会重装一次 toolchain——那是更新，不是"漏认已装"。
+          # 名单只放行 rust，任何新出现的重跑仍会硬失败。
+          printf 'rust\n' > /tmp/moving-channel.txt
           set +e
           python3 vendor/tool-installer install dev >/tmp/reinstall.log 2>&1
           status=$?
@@ -443,17 +448,18 @@ jobs:
           sed -n 's/^📦 Installing //p' /tmp/reinstall.log | sort -u > /tmp/seen.txt
           sed -n 's/^✅ Skip //p'        /tmp/reinstall.log | sort -u > /tmp/skipped.txt
           comm -23 /tmp/seen.txt /tmp/skipped.txt > /tmp/reinstalled.txt
-          comm -23 /tmp/reinstalled.txt /tmp/script-tools.txt > /tmp/offenders.txt
-          echo "重跑工具 $(wc -l < /tmp/reinstalled.txt) 个，其中无 check 的 script 工具已豁免"
+          comm -23 /tmp/reinstalled.txt /tmp/script-tools.txt \
+            | comm -23 - /tmp/moving-channel.txt > /tmp/offenders.txt
+          echo "重跑工具 $(wc -l < /tmp/reinstalled.txt) 个（无 check 的 script 工具与 moving channel 的 rust 已豁免）"
           if [ -s /tmp/offenders.txt ]; then
             echo "::error::check 未识别出以下已安装工具（会被无谓重装）：$(tr '\n' ' ' < /tmp/offenders.txt)"
             exit 1
           fi
           # cargo 侧的“已存在”冲突意味着二进制在盘上却 check 说没装——
-          # tree-sitter-grep / tree-sitter-show-ast 漏声明 bin 名时的症状。
+          # 连字符 bin 名（#7）与预发布版本号（#8）都会以这个信号暴露。
           if grep -q 'already exists in destination' /tmp/reinstall.log; then
             echo "::error::检测到 cargo \"already exists in destination\"，check 漏认已装二进制"
             grep 'already exists in destination' /tmp/reinstall.log
             exit 1
           fi
-          echo "✅ 幂等：除 $(wc -l < /tmp/reinstalled.txt) 个 script 工具外全部 Skip"
+          echo "✅ 幂等：除 $(wc -l < /tmp/reinstalled.txt) 个按设计重跑的工具外全部 Skip"

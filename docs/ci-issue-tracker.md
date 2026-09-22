@@ -97,6 +97,34 @@
 
 ---
 
+## 8. 幂等断言挖出的两类重跑：gitui 预发布版本号 与 rust moving channel
+
+| 项目 | 内容 |
+|------|------|
+| **发现时间** | 2026-09-23 |
+| **发现场景** | `84b9b31` 把独立的 idempotency job 合进 `Apply: dev (full + idempotency)`（同一 job 装完立刻第二次 `install dev`，见 #7 防护措施）后，第一次真跑就红：ubuntu-latest 与 macos-latest 同时报 `check 未识别出以下已安装工具（会被无谓重装）：gitui rust` |
+| **性质** | 断言没有误报，是这条断言此前从未在"已装环境"里跑过。两个工具的成因不同，一个要修、一个要放行 |
+| **其余工具** | 同一次运行里，其余带 check 的工具全部命中 `✅ Skip`（违规名单只有这两个名字），且 `already exists in destination` 未再出现——#7 的连字符修复由此得到 CI 验证 |
+
+### 8a. gitui：binstall 产物自称 nightly，manifest 钉的是 crates.io 正式版
+
+| 项目 | 内容 |
+|------|------|
+| **根因** | `gitui --version` 输出 `gitui 0.28.1-nightly 2026-03-25 ()`，`_parse_binary_version()` 取到 `0.28.1-nightly`；tools.toml 钉 `gitui@0.28.1`，而 `_v1_eq()` 是严格字符串比较 → 永远 `NOT_SATISFIED`。gitui 开了 `binstall_first`，装的是 GitHub release 产物，其版本串自带 nightly 后缀，与 crates.io 版本号天然对不上 |
+| **为什么以前没发现** | gitui 是 `allow_fail`，重装走 binstall 预编译包（不源码编译、输出近乎为零），成本被静默吸收；`TOOL_INSTALLER_STRICT=1` 只汇总退出码，装"成功"就不报 |
+| **修复** | 新增 `_cargo_v1_eq(installed, requested)`：先严格相等，失败后若 installed 带 `-pre` / `+build` 后缀，再用去掉后缀的 core 比一次。只赦免**同一发行号**的预发布（`0.28.1-nightly` 满足 `0.28.1`）；跨版本（`0.29.0-nightly` vs `0.28.1`）仍 `NOT_SATISFIED`，反向（钉 nightly 却装了正式版）也不赦免。作用域只限 `CargoInstallManager` 的 `--version` 路径，apt / brew / github-release / mise 继续走严格 `_v1_eq` |
+| **验证** | 本机真实 `~/.cargo/bin/gitui` 的 check 由 `NOT_SATISFIED` → `SATISFIED`（bat / eza / tree-sitter-grep 保持 SATISFIED 未退化）；回归测试 `tool-installer/tests/test_cargo_install_check.py::PrereleaseVersionTolerance` 与 `::CheckAgainstFilesystem::test_nightly_banner_satisfies_the_release_pin` |
+
+### 8b. rust：moving channel 每次重跑是设计意图，不是漏判
+
+| 项目 | 内容 |
+|------|------|
+| **根因** | `RustupManager.check()` 在确认 toolchain 存在、component 齐备之后，对 `stable` / `nightly` 这类 moving channel 还额外要求 `rustup check` 报 "up to date"（`_moving_channel_current()`）。runner 镜像预装的 stable 落后上游一天，check 就判 `NOT_SATISFIED`，于是重跑一次 `rustup toolchain install stable` |
+| **判断** | 这是"stable 该保持新鲜"的正确语义，不是"认不出已装"。把它列进违规名单等于要求安装器永远不更新工具链，方向错；所以放行而不是改 check |
+| **防护措施** | 幂等步骤维护 `/tmp/moving-channel.txt`（当前只有 `rust`）作为豁免名单，且只放行名单内的名字——任何**新出现**的重跑仍会硬失败。`manager=script` 的条目由 dry-run 输出动态推导成 `/tmp/script-tools.txt`，无需手工维护 |
+
+---
+
 ## 所有 SHA256 校验状态（2026-06-10 验证）
 
 | 工具 | 版本 | SHA256 状态 |

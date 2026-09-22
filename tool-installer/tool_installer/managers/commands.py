@@ -35,6 +35,23 @@ def _v1_eq(a: str, b: str) -> bool:
     return norm(a) == norm(b)
 
 
+def _cargo_v1_eq(installed: str, requested: str) -> bool:
+    """Cargo version equality that forgives a pre-release tag on the installed side.
+
+    cargo-binstall hands out GitHub release artifacts whose banner reads
+    ``0.28.1-nightly 2026-03-25`` while the manifest pins the crates.io release
+    as ``gitui@0.28.1``.  Exact equality then reads as "not installed" and the
+    crate recompiles from source on every run, so a pre-release of version X
+    satisfies a plain-X request.
+    """
+    if _v1_eq(installed, requested):
+        return True
+    core = installed.split("+", 1)[0].split("-", 1)[0]
+    if core == installed:
+        return False
+    return _v1_eq(core, requested)
+
+
 class AptManager(CommandManager):
     """APT package manager.
 
@@ -254,7 +271,9 @@ class CargoBinstallManager(CommandManager):
 class CargoInstallManager(CommandManager):
     """Cargo install manager.
 
-    Check: uses cargo install --list for tracked packages.
+    Check: verifies the installed binary exists in a cargo bin dir and its
+    ``--version`` banner matches the pinned version, falling back to
+    ``cargo install --list`` when the banner cannot be parsed.
 
     When the opt-in ``binstall_first`` strategy field is true for a
     registry install, installation first tries cargo-binstall without its
@@ -332,18 +351,18 @@ class CargoInstallManager(CommandManager):
         if fields.get("git"):
             tag = fields.get("tag")
             if tag is not None:
-                return CheckResult.SATISFIED if _v1_eq(installed_version, tag) else CheckResult.NOT_SATISFIED
+                return CheckResult.SATISFIED if _cargo_v1_eq(installed_version, tag) else CheckResult.NOT_SATISFIED
             if requested == "latest":
                 return CheckResult.SATISFIED
-            return CheckResult.SATISFIED if _v1_eq(installed_version, requested) else CheckResult.NOT_SATISFIED
+            return CheckResult.SATISFIED if _cargo_v1_eq(installed_version, requested) else CheckResult.NOT_SATISFIED
 
         if requested == "latest":
             latest_version = self._latest_registry_version(pkg)
             if latest_version is None:
                 return CheckResult.CHECK_ERROR
-            return CheckResult.SATISFIED if _v1_eq(installed_version, latest_version) else CheckResult.NOT_SATISFIED
+            return CheckResult.SATISFIED if _cargo_v1_eq(installed_version, latest_version) else CheckResult.NOT_SATISFIED
 
-        return CheckResult.SATISFIED if _v1_eq(installed_version, requested) else CheckResult.NOT_SATISFIED
+        return CheckResult.SATISFIED if _cargo_v1_eq(installed_version, requested) else CheckResult.NOT_SATISFIED
 
     def _fallback_check_via_cargo_list(self, item: PlanItem, pkg: str, requested: str, fields: dict) -> CheckResult:
         """Fallback: use cargo install --list when binary --version is unavailable."""
