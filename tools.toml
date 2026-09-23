@@ -24,7 +24,9 @@ rustup-install = "安装 rustup（vendor 脚本）"
 # ── Layer 1c: Cargo 工具（依赖 Rust + cargo-binstall）──
 [cargo-tools]
 depends = ["build-base", "cargo-binstall"]
-"sccache@0.15.0" = { desc = "编译缓存", allow_fail = true }
+# sccache 被已部署的 ~/.cargo/config.toml 以 rustc-wrapper 引用，装不上会让全机每次
+# cargo 调用失败，所以它不能 allow_fail——那条错误在构建时才出现，离原因太远。
+"sccache@0.15.0" = "编译缓存"
 "wild-linker@0.9.0" = { desc = "快速链接器", allow_fail = true }
 "mise@2026.4.5" = "版本管理器"
 "uv@0.11.18" = "Python 包管理器"
