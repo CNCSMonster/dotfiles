@@ -3,13 +3,17 @@ name: Docker Image Release
 # 触发条件：
 # 1. 发布新版本时自动触发
 # 2. 手动触发（GitHub Actions 页面点击 "Run workflow"）
+#
+# 矩阵构建两个基镜像（与 docker-build.yml 的验证矩阵一致）：
+#   - ubuntu:24.04 → 标签保持既有语义：latest / <version>
+#   - ubuntu:26.04 → 所有标签加 -26.04 后缀：latest-26.04 / <version>-26.04
 on:
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: '镜像标签 (留空则使用 latest)'
+        description: '镜像标签 (留空则使用 latest；26.04 镜像自动加 -26.04 后缀)'
         required: false
         default: 'latest'
 
@@ -23,12 +27,24 @@ env:
 
 jobs:
   build-and-push:
-    name: Build & Push to ghcr.io
+    name: Build & Push (${{ matrix.base_image }})
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
       contents: read
       packages: write  # 推送到 ghcr.io 需要
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 24.04 是默认镜像：flavor 留空，标签与历史行为完全一致
+          - base_image: ubuntu:24.04
+            flavor: ''
+          # 26.04 变体：suffix 给每个生成的标签加 -26.04；onlatest=true 让
+          # latest 也带后缀（默认 suffix 不作用于 latest，两路矩阵会抢写同一个 latest）
+          - base_image: ubuntu:26.04
+            flavor: |
+              suffix=-26.04,onlatest=true
 
     steps:
       - name: Checkout
@@ -49,6 +65,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: ${{ matrix.flavor }}
           tags: |
             # 发布版本时：使用 release tag + latest
             type=semver,pattern={{version}}
@@ -66,21 +83,23 @@ jobs:
           load: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.base_image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.base_image }}
+          # 注意：发布镜像面向国内用户，构建仍走镜像站、不禁用（与 docker-build 测试构建不同）
+          # 注释必须放在 build-args 块外：块内每行都会被当作 --build-arg 参数传入
           build-args: |
-            # 注意：发布镜像面向国内用户，构建仍走镜像站、不禁用（与 docker-build 测试构建不同）
+            BASE_IMAGE=${{ matrix.base_image }}
             TOOL_INSTALLER_STRICT=1
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify image
         run: |
-          echo "✅ 镜像已推送到: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "✅ 镜像已推送到: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} (${{ matrix.base_image }})"
           echo ""
           echo "镜像标签:"
           echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | sed 's/^/  /'
           echo ""
           echo "使用方式:"
-          echo "  docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          echo "  docker run -it ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest /usr/bin/zsh"
+          echo "  docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.base_image == 'ubuntu:26.04' && 'latest-26.04' || 'latest' }}"
+          echo "  docker run -it ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.base_image == 'ubuntu:26.04' && 'latest-26.04' || 'latest' }} /usr/bin/zsh"
