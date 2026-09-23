@@ -58,9 +58,10 @@ index = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
 [net]
 git-fetch-with-cli = true
 
-[target.x86_64-unknown-linux-gnu]
-linker = "clang"
-rustflags = ["-C", "link-arg=--ld-path=wild"]
+# 这里不设链接器覆盖。rustc 1.98 起对本 triple 已默认用内嵌 LLD，而且这个默认落在 cargo
+# 配置分层之外：项目没配就用它，项目配了就完整让路。用户级 rustflags 做不到后者——
+# cargo 跨层只追加不做减法，任何用户级强制都会污染项目选择（历史上 --ld-path=wild
+# 就是这样把 linker = "gcc" 的项目编挂的）。链接确实是瓶颈的项目，在自己仓库里点名。
 
 # ========== 编译加速 ==========
 
