@@ -833,6 +833,19 @@ pkg = "cargo-audit"
 locked = true
 binstall_first = true
 
+[cargo-nextest]
+[cargo-nextest.linux]
+manager = "cargo-install"
+pkg = "cargo-nextest"
+locked = true
+binstall_first = true
+
+[cargo-nextest.macos]
+manager = "cargo-install"
+pkg = "cargo-nextest"
+locked = true
+binstall_first = true
+
 [cargo-fuzz]
 [cargo-fuzz.linux]
 manager = "cargo-install"

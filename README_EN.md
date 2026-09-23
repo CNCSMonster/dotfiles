@@ -31,7 +31,7 @@ Rust (stable) + Go + Node.js + Zig — managed by [mise](https://mise.jdx.dev/)
 WezTerm config + Nerd Fonts + Zellij terminal multiplexer + Yazi file manager + macchina system info + navi cheatsheets
 
 **Rust Tooling** (20+)
-sccache, cargo-binstall, cargo-fuzz, starship, gitui, tokei, mdbook, uv, nu, and more
+sccache, cargo-binstall, cargo-nextest, cargo-fuzz, starship, gitui, tokei, mdbook, uv, nu, and more
 
 ---
 

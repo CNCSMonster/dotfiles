@@ -31,6 +31,7 @@ depends = ["build-base", "cargo-binstall"]
 "mise@2026.4.5" = "版本管理器"
 "uv@0.11.18" = "Python 包管理器"
 "cargo-audit@0.22.1" = "依赖审计"
+"cargo-nextest@0.9.146" = "并行测试运行器"
 "bat@0.26.1" = "Cat 替代品"
 "eza@0.23.4" = "ls 替代品"
 "fd-find@10.4.2" = "find 替代品"

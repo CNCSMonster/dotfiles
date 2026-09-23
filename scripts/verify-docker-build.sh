@@ -209,6 +209,7 @@ echo
 echo "=== 9. 额外工具验证 ==="
 # setup.sh 安装但之前未检查的工具
 check_cmd cargo-fuzz "cargo-fuzz"
+check_cmd cargo-nextest "cargo-nextest"
 check_cmd uv "uv"
 check_cmd hx "Helix"
 # typst 是 musl 静态构建，--version 冒烟即可确认下载与 PATH 都正常

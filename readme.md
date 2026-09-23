@@ -32,7 +32,7 @@ tool-installer install devbox-tools    # 目前是 rootless docker（免 sudo；
 | **编辑器** | Neovim (nightly) + Helix，9 种语言 LSP |
 | **语言** | Rust + Go + Node.js + Zig，[mise](https://mise.jdx.dev/) 统一版本管理 |
 | **终端** | WezTerm + Zellij + Yazi + macchina + navi + Nerd Fonts |
-| **Rust 生态** | 20+ 工具：sccache, cargo-binstall, gitui, tokei, uv, nu 等 |
+| **Rust 生态** | 20+ 工具：sccache, cargo-binstall, cargo-nextest, gitui, tokei, uv, nu 等 |
 | **文档排版** | Typst（简历 / PDF 渲染）+ IBM Plex、Noto CJK 字体 |
 
 ## Termux（Android）最小远程开发环境

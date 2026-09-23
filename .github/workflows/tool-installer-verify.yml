@@ -156,9 +156,9 @@ jobs:
         with:
           commands: cargo-binstall -V
 
-  # ── cargo-tools: 28 个 Rust 工具 ──
+  # ── cargo-tools: 29 个 Rust 工具 ──
   apply-cargo-tools:
-    name: "Apply: cargo-tools (28 crates)"
+    name: "Apply: cargo-tools (29 crates)"
     needs: [apply-cargo-binstall, apply-build-base]
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -187,6 +187,7 @@ jobs:
             mise --version
             uv --version
             cargo-audit --version
+            cargo nextest --version
             bat --version
             eza --version
             fd --version
@@ -296,7 +297,7 @@ jobs:
             yq --version
 
   # ── lsp-servers: npm/uv/github-release LSP ──
-  # depends = languages → cargo-tools，所以这一步实际会解析全部 28 个 crate。
+  # depends = languages → cargo-tools，所以这一步实际会解析全部 29 个 crate。
   # 没有 rust-cache 时其中 3 个走源码编译（实测 3m17s + 3m20s + 1m09s = 关键路径
   # 476s），和 apply-cargo-tools 跑同一批 crate 却只花 1m24s 的差别就在这里。
   apply-lsp-servers:
