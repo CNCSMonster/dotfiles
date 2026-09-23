@@ -293,16 +293,15 @@ do_install() {
         exit 1
     fi
 
-    # 如果 xdotter 已在 deploy 阶段部署了 ~/.cargo/config.toml，
-    # 其中的 sccache wrapper / wild linker / clang linker wrapper 此时尚未安装，
-    # 会阻断 cargo 编译（clang 要到 Layer 2 的 llvmup 才有；--ld-path 是 clang 专属参数，
-    # gcc 驱动不认识，必须整行禁用让 rustc 用默认 cc）。
-    # 临时禁用这些配置，等 sccache/wild/LLVM 安装完成后自动恢复。
+    # xdotter 在 deploy 阶段就把 ~/.cargo/config.toml 建好了软链，但其中的
+    # sccache wrapper 要到 Layer 1 才装上；在此之前任何 cargo 调用都会因为找不到
+    # sccache 而失败，所以整行禁用让 rustc 用默认 wrapper，装完后自动恢复。
+    # 链接器不在这里处理：用户级配置不设 linker/rustflags 强制（见 config.toml 注释）。
     local cargo_config="$HOME/.cargo/config.toml"
     local patched=false
     local cargo_config_link_target=""
-    if [ -f "$cargo_config" ] && grep -qE 'rustc-wrapper|ld-path=|^linker = "clang"' "$cargo_config" 2>/dev/null; then
-        echo "🔧 临时禁用 sccache wrapper / 自定义 linker（工具尚未安装）..."
+    if [ -f "$cargo_config" ] && grep -q '^rustc-wrapper = "sccache"' "$cargo_config" 2>/dev/null; then
+        echo "🔧 临时禁用 sccache wrapper（工具尚未安装）..."
         cp "$cargo_config" "$cargo_config.bak"
         # ~/.cargo/config.toml 是 xdotter 部署的 symlink；直接写会污染 dotfiles 源文件。
         # 替换为真实文件再写入，安装结束后恢复 symlink。
@@ -311,8 +310,6 @@ do_install() {
             rm "$cargo_config"
         fi
         sed -e 's/^rustc-wrapper = "sccache"/#rustc-wrapper = "sccache"  # temporarily disabled during install/' \
-            -e 's/^linker = "clang"/#linker = "clang"  # temporarily disabled during install/' \
-            -e 's/^rustflags = .*\-\-ld-path.*$/#rustflags disabled during install (clang-only --ld-path)/' \
             "$cargo_config.bak" > "$cargo_config"
         patched=true
     fi
