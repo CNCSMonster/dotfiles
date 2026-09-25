@@ -189,7 +189,10 @@ sha256 = "b6acf83a7739cf5f0f4e9bd47709642d4d98acbbf8c34d4a12c6e706f531da61"
 
 [zellij.macos.x86_64]
 asset = "zellij-x86_64-apple-darwin.tar.gz"
-sha256 = "TODO"
+# 注意：zellij 官方 .sha256sum 给的是**解包后内部二进制**的哈希，与本文件其余条目
+# （校验下载到的归档本身）约定不同。此值是 tarball 的 sha256，已用"内部二进制哈希
+# == 官方值"反证过 tarball 真实性。
+sha256 = "59f803faa32cd4e5f316f0dc2d3b7a5530a72553e38ad939286471848a418eeb"
 
 [zellij.linux.aarch64]
 sha256 = "6f028bb569d29be968c961249c5f80d5336ad4ad4b3cd79af8e32afab57b0948"
@@ -222,14 +225,17 @@ regex = "gh version (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 sha256 = "a58b8fd77b417a38f47a0b54d1370c59b0fcdb324ccc9ca002b0998f7c4c999e"
 
 [gh.macos.x86_64]
-asset = "gh_{version}_macOS_amd64.zip"
-bin = "gh_{version}_macOS_amd64/bin/gh"
-sha256 = "TODO"
+# asset/bin 不用 {version}：gh 的 tag 是 v2.97.0，而 asset 名是 gh_2.97.0_…（无 v），
+# {version} 会渲染成 gh_v2.97.0_… 这个不存在的名字。与上面 [gh.macos] / [gh.linux]
+# 的写法保持一致（同样硬编码版本）。
+asset = "gh_2.97.0_macOS_amd64.zip"
+bin = "gh_2.97.0_macOS_amd64/bin/gh"
+sha256 = "63298c998cc2a924c9e254c6af6a1caad6ece281122687a91f079bc0a462700e"
 
 [gh.linux.aarch64]
-asset = "gh_{version}_linux_arm64.tar.gz"
-bin = "gh_{version}_linux_arm64/bin/gh"
-sha256 = "TODO"
+asset = "gh_2.97.0_linux_arm64.tar.gz"
+bin = "gh_2.97.0_linux_arm64/bin/gh"
+sha256 = "73ea440ecad9c9e284429997ee6f93577bc6f7bc6fba357ef62c53ad8fb641a5"
 
 [ripgrep]
 [ripgrep.linux]
@@ -321,7 +327,7 @@ sha256 = "877de31753a4dd2401aa048937aa9a7fc4d5f6ce858cf31508c5802954297213"
 [yq.macos.x86_64]
 asset = "yq_darwin_amd64"
 bin = "yq_darwin_amd64"
-sha256 = "TODO"
+sha256 = "b4ba1ecce3c47f00803f4f964de38394326c7a32eb6540616e04fb2935a0f08d"
 
 [yq.linux.aarch64]
 asset = "yq_linux_arm64.tar.gz"
@@ -437,12 +443,13 @@ sha256 = "1c767f90daf5a78f0788a45724aa2a006db0b1e002937108f8d1be12688c64df"
 
 [xdotter.macos.x86_64]
 asset = "xd-x86_64-apple-darwin"
-sha256 = "TODO"
+sha256 = "caf938e391e9d0263a0e0775caa6e72f94faf14ba38940f9460ce3cffba89eab"
 
 [xdotter.linux.aarch64]
 asset = "xd-aarch64-unknown-linux-gnu"
 bin = "xd-aarch64-unknown-linux-gnu"
-sha256 = "1c549083a47f02a1e7f6a89dc9189f77440d801448e78f6b98d4e080f63f3d1c"
+# 此前这里误用了 x86_64 的 sha256（同一串），在任何 aarch64 机器上校验必然失败。
+sha256 = "3c83d328e8599dad1e0e1d33d07f7fc9b448ce318ebb791dfa095f9ba7290a9e"
 
 [cargo-binstall]
 [cargo-binstall.linux]
@@ -474,7 +481,7 @@ sha256 = "bf9da6a27e432784f361cfbc70a6d04e548abc548470ae9a7587c3cffb8fb0a7"
 
 [cargo-binstall.macos.x86_64]
 asset = "cargo-binstall-x86_64-apple-darwin.zip"
-sha256 = "TODO"
+sha256 = "39257851fe4fd8cc9dd81fb318f15d589b7178b74165879eddeda8062bd9fcf2"
 
 [cargo-binstall.linux.aarch64]
 asset = "cargo-binstall-aarch64-unknown-linux-musl.tgz"
@@ -553,7 +560,7 @@ sha256 = "1062a2363489b9335529b83204472f02633c08fc3609f1b325be5eba36feb631"
 
 [starship.macos.x86_64]
 asset = "starship-x86_64-apple-darwin.tar.gz"
-sha256 = "TODO"
+sha256 = "f86fbe7a3b9f262bcf34ca61e9e996243da511c5500dcd81a1e4daa542869276"
 
 [starship.linux.aarch64]
 asset = "starship-aarch64-unknown-linux-musl.tar.gz"
@@ -943,7 +950,7 @@ sha256 = "46ac45a9e7628dba8593b124ee8794f4f9aa1c6b569918ecd4bbc5d0be190515"
 
 [zola.macos.x86_64]
 asset = "zola-{version}-x86_64-apple-darwin.tar.gz"
-sha256 = "TODO"
+sha256 = "3898709e154ae0593933264a540c869348bdb10d7f1b03a42dfb78d63703b3b5"
 
 [zola.linux.aarch64]
 asset = "zola-v0.22.1-aarch64-unknown-linux-gnu.tar.gz"

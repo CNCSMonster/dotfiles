@@ -27,6 +27,19 @@ All notable changes to this project will be documented in this file.
   路径全部失败、什么都没复制时仍无条件打印 ✅。现在每步返回明确状态，`main` 汇总失败项，
   有失败则脚本返回非零，`setup.sh` 不再在结尾宣称"全部安装完成"
   - `chsh` 失败等"需用户手动收尾"的情况仍为非致命（打印 ⚠️ 而非 ✅）
+- **补齐 manifest 的 8 处 `sha256 = "TODO"`，并修掉途中发现的两个连带缺陷**：
+  `TODO` 不只是"缺校验"——`strategy.py::_validate_github_release` 会拒绝非 64 位十六进制摘要，
+  而 `build_install_plan` 在非 `--skip-errors` 时会中止**整个模块**。后果是
+  `linux/aarch64` 在 `gh` 上、`macos/x86_64` 在 `cargo-binstall` 上规划期直接失败，
+  **Intel Mac 完全装不上**（CI 只跑 `macos-latest` = arm64，所以从未暴露）
+  - 8 个摘要均从钉版 release 下载后本地计算，并在上游提供校验文件时做了交叉验证
+    （gh `checksums.txt`、xdotter `SHA256SUMS`、starship `.sha256`、yq `checksums`）
+  - `gh` 的两条 arch 条目把 `asset`/`bin` 写成 `gh_{version}_…`，而 pin 带 `v`、asset 名不带，
+    渲染出上游不存在的 `gh_v2.97.0_…`；改为与同级条目一致的硬编码写法
+  - `xdotter.linux.aarch64` 复用了 x86_64 的摘要，在 aarch64 上校验永远不可能通过
+  - `zellij` 官方 `.sha256sum` 给的是**解包后二进制**的哈希，与本项目"校验归档本身"的约定
+    不同；此处填的是归档摘要，并用"内部二进制哈希 == 官方值"反证其真实性
+  - 现在四个平台（linux/macos × x86_64/aarch64）的安装计划都能正常生成
 
 ### Vendor 政策执行
 - **移除 `vendor/xdotter`，并让 vendor 政策成为可执行规则**：该二进制不满足准入条件——
