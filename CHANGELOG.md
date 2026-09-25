@@ -2,7 +2,57 @@
 
 All notable changes to this project will be documented in this file.
 
+> **历史说明：** 早于 tool-installer 迁移的条目会提到
+> `shells/common/install-functions.sh`、`install-common-tools`、`download_xdotter`、
+> `ensure_python3`、`.github/workflows/macos-setup.yml` 等**已不存在**的文件或函数。
+> 这些是当时的事实记录，不再逐一改写（迁移后 install-functions.sh 被删除，
+> macos-setup.yml 的职责由 `runner-verify.yml` 的 macOS 矩阵承担）。
+> 当前架构见 `docs/tool-installer-migration-plan.md`；确认某个文件是否存在请用
+> `git ls-files`，不要依据本文件的历史条目。
+
 ## [Unreleased]
+
+### Fixed
+- **github-release 镜像回退以 SHA256 为准**：`_verify_checksum` 原先在下载循环之外执行，
+  镜像返回 HTTP 200 但内容不符时第一个响应的源即被选中、随后校验失败直接抛错，
+  官方直连永不被尝试。现在校验参与**源选择**：候选源必须同时传输成功且校验通过，
+  校验失败会打印告警并继续下一个源
+  - 传输层重试预算（每源 `retry + 1` 次）与未声明 `sha256` 条目的行为保持不变
+  - 回归测试：`tool-installer/tests/test_github_release_download.py`
+- **allow_fail 失败在非严格模式也可见**：`execute_plan` 原先只在
+  `TOOL_INSTALLER_STRICT=1` 时汇总，而 `setup.sh`（真实用户入口）从不设置该变量，
+  于是被容忍的失败完全静默。现在两种模式都打印失败清单，仅退出码不同
+  - 回归测试：`tool-installer/tests/test_executor_tolerated_failures.py`
+- **Layer 2 不再输出假成功**：`scripts/layer2-post.sh` 的 Helix runtime 步骤在三个下载
+  路径全部失败、什么都没复制时仍无条件打印 ✅。现在每步返回明确状态，`main` 汇总失败项，
+  有失败则脚本返回非零，`setup.sh` 不再在结尾宣称"全部安装完成"
+  - `chsh` 失败等"需用户手动收尾"的情况仍为非致命（打印 ⚠️ 而非 ✅）
+
+### Vendor 政策执行
+- **移除 `vendor/xdotter`，并让 vendor 政策成为可执行规则**：该二进制不满足准入条件——
+  §3.1 的"自举依赖"要求"**无法**通过上层工具自身获取"，而 tool-installer 能装 xdotter；
+  其真实的入库理由是"慢网络兜底"，正是 §3.2 明令禁止的 vendor 绕过
+  - 删除 `vendor/xdotter`（744KB）及 `setup.sh::ensure_xdotter()` 的第三级回退；
+    Linux x86_64 仍保留"tool-installer → 直连下载"两级，且 github-release 回退已改为以 SHA256 为准
+  - `docs/tool-installer-migration-plan.md` §3 成为 vendor 政策与清单的**唯一来源**；
+    `scripts/vendor/README.md` 降级为 `rustup-init.sh` 的更新 SOP（它此前把 xdotter
+    写进"已移除"表，而文件当时仍在库并被 `setup.sh` 使用）
+  - 清单补齐**三个** vendor 域，含此前两份文档都未登记的
+    `tool-installer/tool_installer/vendor/tomli/`；新增四态状态语义
+    （保留 / 已移除 / 待处置 / 例外）
+  - 删除孤儿脚本 `scripts/vendor/cargo-binstall-install.sh`：其唯一调用方
+    `shells/common/install-functions.sh` 已在迁移中删除（`ff54dd5`），此后全仓库零引用
+
+### Docs
+- **修正文档与实现的偏离**（`AGENTS.md` 第一优先级：文档与实现一致）：
+  - `docs/multi-env-design.md`：`origin/macos` 实测落后 main 177 个提交、领先 2 个，
+    且缺少 tool-installer 迁移，并非文档所称"main + 一个 workflow"；补充实测对照表，
+    并记录 `.github/workflows/macos-setup.yml` 已不存在（职责由 `runner-verify.yml` 承担）
+  - `docs/tool-installer-migration-plan.md`：Layer 2 职责按 `scripts/layer2-post.sh`
+    实际内容重写（原文误把字体安装、LSP 服务器列为 Layer 2，二者实为 Layer 1 模块）；
+    vendor 清单中 `vendor/rustup-init.sh` 更正为实际路径 `scripts/vendor/rustup-init.sh`
+  - `docs/config-consistency-check-sop.md`：标注 `scripts/check-completions.sh`
+    为尚未实现的建议形态，避免读者按图索骥找不到该文件
 
 ### Added
 - **macOS Support**: Add cross-platform installation support

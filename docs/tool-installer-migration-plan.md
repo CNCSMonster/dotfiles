@@ -75,34 +75,61 @@
 
 ### 2.3 Layer 2: 后置配置
 
-**职责：** 依赖 Layer 1 已安装工具的后续配置
+**职责：** 依赖 Layer 1 已安装工具的后续配置（`scripts/layer2-post.sh`）
 
 **包含：**
-- LSP 服务器配置
-- 字体安装
-- 其他需要工具已存在才能执行的配置
+- Helix runtime（themes / queries / tutor，需 helix 已安装）
+- Yazi 插件（`ya pkg install`）
+- LLVM / clangd（`scripts/llvmup`，仅 Linux）
+- 字体缓存刷新（`fc-cache`）
+- git 全局配置 include 优先级修复（`~/.gitconfig` → XDG 配置）
+- 默认 shell 设为 zsh（`chsh`）
+
+> **不包含**：字体安装与 LSP 服务器安装——二者分别是 Layer 1 的 `fonts` 与
+> `lsp-servers` 模块，由 `tools.toml`/`manifest.toml` 声明式管理。本节的早期版本
+> 把两者误列为 Layer 2 的职责，与实现不符。
+>
+> **返回码契约**：每个步骤 `0` = 成功或不适用（打印 ⚠️ 说明），`1` = 应当完成但没完成
+> （打印 ❌）。`main` 汇总失败项；有失败则整个脚本返回 `1`，让 `setup.sh` 不再打印
+> "全部安装完成"。历史上这些步骤用 `|| true` 吞掉错误后仍无条件打印 ✅，是"假成功"的来源。
 
 ---
 
 ## 3. Vendor 策略
 
+> **本节是 vendor 政策与清单的唯一来源。**
+> `scripts/vendor/README.md` 只保留 `rustup-init.sh` 的更新 SOP，不再重复准入条件与清单。
+> 历史上两份文档各写一份清单，已经漂移：那份 README 曾把 `vendor/xdotter` 写进"已移除"
+> 表，而文件当时仍在库、且被 `setup.sh` 使用。
+
 ### 3.1 准入条件
 
-Vendor 目录只存放满足以下条件之一的资源：
+Vendor 目录只存放满足以下条件**之一**的资源；三条之外一律不入库：
 
 | 条件 | 说明 | 示例 |
 |------|------|------|
 | **自定义工具** | 无标准分发渠道，必须自行构建/打包 | `tool-installer`（Python zipapp）|
 | **供应链安全关键脚本** | 需要人工审查，避免 `curl \| sh` | `rustup-init.sh` |
-| **自举依赖** | 上层工具依赖它才能工作，且无法通过上层工具自身获取 | `tool-installer` 本身 |
+| **自举依赖** | 上层工具依赖它才能工作，**且无法通过上层工具自身获取** | `tool-installer` 本身、`tomli` |
+
+**判定只看一个问句：「tool-installer 能不能自己把它装出来？」**
+能 → 必须交给 manager；不能 → 才可入库。**与它在流程里多早被用到无关。**
+
+> **反例（务必记住）**：`xdotter` 曾以"部署阶段就需要它 + 慢网络"为由入库，但两条都不构成
+> 准入理由——① `manifest.toml` 里有它的 `github-release` 配置，tool-installer 可以自己装；
+> ② "网络不可靠"属于 §4 的范围，§3.2 明确要求**在工具内部解决**（timeout / retry / 镜像
+> fallback），而不是 vendor 绕过。该二进制由提交 `60ddef7` 引入，2026-09-25 已按政策移除。
 
 > **维护方式：** tool-installer 源码在本仓库 `tool-installer/` 目录内维护（事实 fork，无上游同步义务）。
 > 修改源码后必须运行 `./scripts/build-tool-installer.sh` 重建 `vendor/tool-installer` 并一并提交——
 > setup.sh 按字节比较判断是否更新已安装副本，漏跑脚本会导致改动不生效。
 > 提交前后可用 `./scripts/check-tool-installer-sync.sh` 守卫一致性（CI 的
 > "Vendor zipapp in sync" job 每次都会跑，zip 时间戳不参与比较）。
-> 严格模式：`TOOL_INSTALLER_STRICT=1` 时 allow_fail 工具不再静默放过，安装结束时
-> 汇总失败清单并以非零退出；CI 三条工作流与 Dockerfile 默认开启。
+> 严格模式：`TOOL_INSTALLER_STRICT=1` 时 allow_fail 工具在安装结束时汇总失败清单并以
+> 非零退出；CI 三条工作流与 Dockerfile 默认开启。
+> **非严格模式（`setup.sh` 默认，从不设置该变量）同样会汇总失败清单**，只是仍以 0 退出——
+> 静默容忍是 `ci-issue-tracker.md` #7/#8 两个工具被无谓重装数月的直接原因，因此"可见性"
+> 与"是否中断"被拆成两个独立开关。
 
 ### 3.2 明确不 Vendor 的内容
 
@@ -114,7 +141,9 @@ Vendor 目录只存放满足以下条件之一的资源：
   - Vendor 二进制增加维护负担（跨平台、版本更新、架构兼容）
 
 - ❌ **可由 tool-installer 自行下载的工具**
-  - tool-installer 的 `github-release` manager 已支持镜像回退
+  - tool-installer 的 `github-release` manager 已支持镜像回退，且回退**以 SHA256
+    校验为准**：候选源必须同时"传得下来"和"校验通过"才算成功，镜像返回错误内容
+    会继续尝试下一个源（官方直连在候选列表末位）
   - `_download_binstall` 已实现 cargo-binstall 的自举下载
   - 预装这些工具会掩盖 tool-installer 自身路径的 bug
 
@@ -122,14 +151,40 @@ Vendor 目录只存放满足以下条件之一的资源：
   - 网络问题的修复应在工具内部解决（timeout、retry、镜像 fallback）
   - 不应通过 vendor 二进制绕过
 
-### 3.3 当前 Vendor 清单
+### 3.3 Vendor 清单
 
-| 文件 | 类型 | 准入理由 | 状态 |
+项目有**三个** vendor 域，本节全部登记；路径必须写全——历史上正是"`vendor/` 与
+`scripts/vendor/` 混为一谈"造成了两份清单不一致。
+
+| 路径 | 类型 | 准入条件 | 状态 |
 |------|------|----------|------|
-| `vendor/tool-installer` | 自定义 zipapp | 无标准分发渠道，Layer 0 必须预装 | ✅ 保留 |
-| `vendor/rustup-init.sh` | 审查脚本 | 供应链安全，避免 `curl \| sh` | ✅ 保留 |
-| `vendor/cargo-binstall` | 主流二进制 | **违反策略**，应由 tool-installer 自行获取 | ❌ 移除 |
-| `vendor/xdotter` | 主流二进制 | **违反策略**，应由 github-release manager 获取 | ❌ 移除 |
+| `vendor/tool-installer` | 自定义 zipapp | 自举依赖 | ✅ 保留 |
+| `scripts/vendor/rustup-init.sh` | 审查脚本 | 供应链安全关键脚本 | ✅ 保留 |
+| `tool-installer/tool_installer/vendor/tomli/` | Python 库 | 自举依赖（Python < 3.11 无 `tomllib`，而解析 TOML 是 tool-installer 工作的前提） | ✅ 保留 |
+| `scripts/vendor/cargo-binstall-install.sh` | 脚本 | 不满足任何准入条件 | ✅ **已移除**（2026-09-25）：唯一调用方 `shells/common/install-functions.sh` 已在迁移中删除（`ff54dd5`），此后零引用，属孤儿文件 |
+| `vendor/xdotter` | 主流二进制 | 不满足任何准入条件（见 §3.2） | ✅ **已移除**（2026-09-25） |
+
+### 3.4 状态语义与守卫
+
+状态列只允许四种取值，避免"决定"与"事实"再次混淆：
+
+| 状态 | 含义 |
+|------|------|
+| ✅ 保留 | 在库，且满足 §3.1 某一条 |
+| ✅ 已移除 | 已不在库（须注明日期） |
+| ⚠️ 待处置 | 在库但无准入理由，或疑似死文件（须注明待决问题） |
+| 🚫 例外 | 在库但**不**满足 §3.1 —— 必须附批准记录与复审条件，不得静默存在 |
+
+**守卫规则**：若某个 vendor 二进制是 `manifest.toml` 里某个**受管工具**的副本（即 tool-installer
+本可自行获取的东西），则必须有 CI 断言它与该工具的 `sha256`（`tools.toml` 钉版的产物）一致；
+否则视为准入未完成。
+
+`vendor/tool-installer` 不适用该规则——它没有上游分发包，靠
+`scripts/check-tool-installer-sync.sh` 保证"源码 ⇄ 产物"一致，这是另一个维度的一致性。
+
+现状缺口（已知）：除 `vendor/tool-installer` 外，清单里没有任何条目有 CI 断言。
+`vendor/xdotter` 当年与 `tools.toml` 钉版、`manifest.toml` sha256 三者恰好一致，
+但**没有任何机制保证它们继续一致**，这正是它必须移除、而不是"保留并祈祷"的原因之一。
 
 ---
 
@@ -159,7 +214,10 @@ tool-installer 的 `cargo-install` manager 已实现 `_ensure_binstall`：
 
 ---
 
-## 5. 实施步骤
+## 5. 实施步骤（迁移期记录）
+
+> §5–§7 是迁移当时的实施记录与复盘，其中提到的 `layer0-bootstrap.sh` 等文件已不存在。
+> **当前 vendor 政策与清单以 §3 为准**，本节及之后不作为规范。
 
 ### Phase 1: 修复当前分支的阻塞问题
 
@@ -176,16 +234,16 @@ tool-installer 的 `cargo-install` manager 已实现 `_ensure_binstall`：
    - 确保 `binstall_first = true` 生效
    - cargo 工具从预编译二进制安装，不再源码编译
 
-### Phase 2: 清理违规 vendor
+### Phase 2: 清理违规 vendor（已完成）
 
-1. **评估 vendor/xdotter**
-   - xdotter 已有 GitHub release manager 配置
-   - 检查 Docker build 是否仍需要 vendor fallback
-   - 如不需要，移除
+1. **移除 `vendor/xdotter`** ✅ 2026-09-25
+   - 结论：执行 §3.2，不开例外。该二进制的唯一价值是"慢网络下的兜底"，而 §4 要求这类
+     问题在工具内部解决；`github-release` 的回退已改为**以 SHA256 校验为准**并有回归测试
+   - 已删除 `vendor/xdotter`，并移除 `setup.sh::ensure_xdotter()` 的第三级回退
 
-2. **更新 vendor/README.md**
-   - 明确准入条件和禁止清单
-   - 更新当前 vendor 清单
+2. **修正 vendor 文档** ✅ 2026-09-25
+   - `scripts/vendor/README.md` 降级为 `rustup-init.sh` 的更新 SOP，不再重复政策与清单
+   - 政策与清单统一到本文档 §3
 
 ### Phase 3: 文档补全
 
@@ -200,7 +258,7 @@ tool-installer 的 `cargo-install` manager 已实现 `_ensure_binstall`：
 | 验证项 | 命令/方法 |
 |--------|-----------|
 | 工作树无未提交更改 | `git status` |
-| 无违规 vendor 二进制 | `ls vendor/` 只有 `tool-installer` + `rustup-init.sh` |
+| 无违规 vendor 二进制 | `ls vendor/` 只有 `tool-installer`（权威清单见 §3.3） |
 | CI 通过（ubuntu + macos）| `gh run list --branch feat/tool-installer-migration` |
 | cargo 工具使用预编译 | 日志中无大量 `Compiling` 输出，安装时间 < 5 分钟 |
 | binstall_first 生效 | 日志中出现 `cargo-binstall` 下载/安装输出 |

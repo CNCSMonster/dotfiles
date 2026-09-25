@@ -194,7 +194,7 @@ compaudit  # 应提示 "There are insecure directories" 或 "no problems found"
 
 ## 自动化脚本建议
 
-可将上述流程整合为一个检查脚本 `scripts/check-completions.sh`，一键运行输出报告：
+可将上述流程整合为一个检查脚本（**尚未实现**，下面的代码块是期望形态，仓库中并没有 `scripts/check-completions.sh`），一键运行输出报告：
 
 ```bash
 #!/usr/bin/env bash
