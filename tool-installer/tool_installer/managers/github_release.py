@@ -9,6 +9,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
@@ -31,6 +32,18 @@ def _first_line(text: str, limit: int = 120) -> str:
     return joined if len(joined) <= limit else joined[:limit] + "…"
 
 
+def _source_label(url: str) -> str:
+    """Short, quotable name for one download candidate.
+
+    Mirror URLs embed the real GitHub URL (``https://mirror/<github-url>``), so a
+    substring test on "github.com" would misreport every mirror as direct.
+    """
+    if url.startswith("https://github.com/"):
+        return "direct GitHub"
+    match = re.match(r"https?://([^/]+)/", url)
+    return match.group(1) if match else url
+
+
 def _is_relative_to(path: Path, base: Path) -> bool:
     """Python 3.8-compatible Path.is_relative_to()."""
     try:
@@ -51,7 +64,9 @@ class GithubReleaseManager:
     it instead of aborting. Only genuine environment errors — no HOME, an invalid
     regex, an unresolvable "latest" tag — stay CHECK_ERROR.
 
-    Supports mirror fallback and retry/timeout via GithubReleaseConfig.
+    Supports mirror fallback and retry/timeout via GithubReleaseConfig. A fallback
+    candidate must pass the strategy's ``sha256`` as well as transfer, so mirrors
+    and direct GitHub are interchangeable from an integrity standpoint.
     """
 
     def __init__(self, gh_config: Optional[GithubReleaseConfig] = None) -> None:
@@ -196,8 +211,7 @@ class GithubReleaseManager:
         with tempfile.TemporaryDirectory() as temp:
             temp_dir = Path(temp)
             downloaded = temp_dir / asset_name
-            self._download_asset(repo, download_path, downloaded)
-            self._verify_checksum(item, downloaded)
+            self._download_asset(item, repo, download_path, downloaded)
             executable = self._locate_executable(item, downloaded, temp_dir, version)
 
             install_dir = Path(home) / ".local" / "bin"
@@ -239,37 +253,69 @@ class GithubReleaseManager:
             if self._token:
                 req.add_header("Authorization", f"token {self._token}")
 
-    def _download_asset(self, repo: str, path: str, dest: Path) -> None:
-        """Download a GitHub release asset with mirror fallback and retry."""
+    def _download_asset(self, item: PlanItem, repo: str, path: str, dest: Path) -> None:
+        """Download a release asset, accepting only a source that passes SHA256.
+
+        Candidates are tried mirrors-first with direct GitHub last. A candidate
+        wins only when it both transfers *and* satisfies the strategy's ``sha256``:
+        a mirror that returns HTTP 200 with the wrong bytes is a failed *source*,
+        not a failed install, so the remaining candidates still get their turn.
+
+        Verifying per candidate (rather than once after the loop) is what makes a
+        mirror list safe to enable — otherwise the first mirror that answers
+        anything wins, and a checksum mismatch aborts without ever trying direct
+        GitHub.
+        """
         urls = self._build_download_urls(repo, path)
-        last_error: Optional[Exception] = None
+        failures: List[str] = []
         for url in urls:
-            for attempt in range(self._cfg.retry + 1):
-                try:
-                    req = urllib.request.Request(url)
-                    self._apply_auth(req, url)
-                    with urllib.request.urlopen(req, timeout=self._cfg.timeout) as response:
-                        # Read in chunks with total timeout to avoid hanging on slow transfers
-                        deadline = time.monotonic() + self._cfg.timeout * 3
-                        chunks: List[bytes] = []
-                        while True:
-                            remaining = deadline - time.monotonic()
-                            if remaining <= 0:
-                                raise TimeoutError("Download total timeout exceeded")
-                            chunk = response.read(65536)
-                            if not chunk:
-                                break
-                            chunks.append(chunk)
-                        dest.write_bytes(b"".join(chunks))
-                    return
-                except (urllib.error.URLError, OSError, TimeoutError) as exc:
-                    last_error = exc
-                    if attempt < self._cfg.retry:
-                        time.sleep(min(2 ** attempt, 8))
-            # This URL failed all retries; try next mirror
+            label = _source_label(url)
+            try:
+                self._fetch_into(url, dest)
+            except (urllib.error.URLError, OSError, TimeoutError) as exc:
+                failures.append(f"{label}: {exc}")
+                continue
+            try:
+                self._verify_checksum(item, dest)
+            except InstallationError as exc:
+                failures.append(f"{label}: {exc}")
+                print(
+                    f"⚠️  {item.tool.reference.name}: {label} 校验失败，回退下一个源",
+                    file=sys.stderr,
+                )
+                continue
+            return
         raise InstallationError(
-            f"Failed to download {repo}/{path} after trying all mirrors and direct: {last_error}"
+            f"Failed to download {repo}/{path} from any of {len(urls)} source(s): "
+            + "; ".join(failures)
         )
+
+    def _fetch_into(self, url: str, dest: Path) -> None:
+        """Fetch one URL (with retry/timeout) and write its body to ``dest``."""
+        for attempt in range(self._cfg.retry + 1):
+            try:
+                req = urllib.request.Request(url)
+                self._apply_auth(req, url)
+                with urllib.request.urlopen(req, timeout=self._cfg.timeout) as response:
+                    # Read in chunks with total timeout to avoid hanging on slow transfers
+                    deadline = time.monotonic() + self._cfg.timeout * 3
+                    chunks: List[bytes] = []
+                    while True:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise TimeoutError("Download total timeout exceeded")
+                        chunk = response.read(65536)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                    dest.write_bytes(b"".join(chunks))
+                return
+            except (urllib.error.URLError, OSError, TimeoutError):
+                # Retry budget is per source; the last failure propagates to the
+                # caller, which records it and moves on to the next candidate.
+                if attempt >= self._cfg.retry:
+                    raise
+                time.sleep(min(2 ** attempt, 8))
 
     def _fetch_url(self, url: str, is_api: bool = False) -> object:
         """Fetch a URL with retry and timeout. No mirror fallback for API calls."""
@@ -301,7 +347,10 @@ class GithubReleaseManager:
             return
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         if digest.lower() != expected.lower():
-            raise InstallationError(f"Checksum mismatch for {item.tool.reference.name}")
+            raise InstallationError(
+                f"Checksum mismatch for {item.tool.reference.name}: "
+                f"expected {expected.lower()[:12]}…, got {digest.lower()[:12]}…"
+            )
 
     def _locate_executable(self, item: PlanItem, asset: Path, temp_dir: Path, version: str = "") -> Path:
         bin_template = item.strategy.fields["bin"]
