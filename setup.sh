@@ -207,7 +207,9 @@ do_bootstrap() {
 }
 
 # 确保 xdotter 已安装（bootstrap 后 tool-installer 可用，用其安装 extras 组）
-# 多重回退策略：tool-installer → 直接下载 → vendor
+# 回退策略：tool-installer → 直接下载（仅 Linux x86_64）
+# 故意不 vendor 二进制：xdotter 有标准分发渠道，可由 tool-installer 自行获取。
+# 政策与清单的唯一来源见 docs/tool-installer-migration-plan.md §3。
 ensure_xdotter() {
     if command -v xd &>/dev/null; then
         return 0
@@ -233,16 +235,11 @@ ensure_xdotter() {
         fi
     fi
 
-    # 方案 3: vendor 目录（仅 Linux x86_64）
-    if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" && -f "${SCRIPT_DIR}/vendor/xdotter" ]]; then
-        install -m 755 "${SCRIPT_DIR}/vendor/xdotter" ~/.local/bin/xd
-        echo "✅ xdotter 已从 vendor 目录安装"
-        return 0
-    fi
-
-    # macOS 无回退，跳过 xdotter（deploy 会检查 xd 是否存在）
+    # 不设 vendor 兜底：vendored 二进制的版本会与 tools.toml 的钉版静默漂移，
+    # 且会掩盖 github-release manager 自身下载路径的 bug（见 migration-plan §3.2）。
+    # macOS 没有直连兜底，按非致命处理，交给 do_deploy 决定是否跳过部署。
     if [[ "$(uname -s)" == "Darwin" ]]; then
-        echo "⚠️  macOS 上 xdotter 安装失败（无 vendor 兜底），将跳过 xd deploy"
+        echo "⚠️  macOS 上 xdotter 安装失败，将跳过 xd deploy"
         return 0
     fi
 
