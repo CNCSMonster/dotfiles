@@ -74,7 +74,14 @@ install_helix_runtime() {
     cp -r "${tmp_dir}/runtime/tutor" "${hx_runtime_dir}/" 2>/dev/null || true
     rm -rf "${tmp_dir}"
 
-    echo "✅ Helix runtime 安装完成"
+    # 成败只能由落盘结果判定：上面每条下载/复制路径都吞掉了自己的错误，
+    # 曾经这里无条件打印 ✅，于是"三个源全挂、什么都没复制"也报安装完成。
+    if [ -n "$(ls -A "${hx_runtime_dir}/queries" 2>/dev/null)" ]; then
+        echo "✅ Helix runtime 安装完成"
+        return 0
+    fi
+    echo "❌ Helix runtime 未安装（themes/queries/tutor 均未落盘，检查网络或镜像）"
+    return 1
 }
 
 # ── 2b: Yazi 插件 ──
@@ -128,9 +135,10 @@ install_yazi_plugins() {
 
     if [ "$installed" = true ]; then
         echo "✅ Yazi 插件安装成功"
-    else
-        echo "⚠️  Yazi 插件安装失败（已重试 ${max_attempts} 次），跳过"
+        return 0
     fi
+    echo "❌ Yazi 插件安装失败（已重试 ${max_attempts} 次）"
+    return 1
 }
 
 # ── 2c: LLVM / clangd ──
@@ -146,8 +154,8 @@ install_llvm() {
 
     local llvmup="${SCRIPT_DIR}/llvmup"
     if [ ! -f "$llvmup" ]; then
-        echo "⚠️  llvmup 脚本不存在，跳过 LLVM 安装"
-        return 0
+        echo "❌ llvmup 脚本不存在（仓库缺失 ${llvmup}）"
+        return 1
     fi
 
     # Wait for dpkg lock (unattended-upgrade may be running)
@@ -156,8 +164,8 @@ install_llvm() {
     local waited=0
     while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
         if [ $waited -ge $max_wait ]; then
-            echo "⚠️  dpkg 锁等待超时（${max_wait}s），跳过 LLVM 安装"
-            return 0
+            echo "❌ dpkg 锁等待超时（${max_wait}s），clangd 未安装"
+            return 1
         fi
         sleep 5
         waited=$((waited + 5))
@@ -166,10 +174,10 @@ install_llvm() {
     chmod +x "$llvmup"
     if "$llvmup" default 22; then
         echo "✅ LLVM 22 / clangd 安装完成"
-    else
-        echo "⚠️  LLVM 22 安装失败，跳过"
         return 0
     fi
+    echo "❌ LLVM 22 安装失败"
+    return 1
 }
 
 # ── 2d: 字体缓存刷新 ──
@@ -179,11 +187,15 @@ refresh_fonts() {
     echo "=========================================="
 
     if command -v fc-cache &>/dev/null; then
-        fc-cache -f
-        echo "✅ 字体缓存已刷新"
-    else
-        echo "⚠️  fc-cache 不存在，跳过"
+        if fc-cache -f; then
+            echo "✅ 字体缓存已刷新"
+            return 0
+        fi
+        echo "❌ fc-cache 执行失败"
+        return 1
     fi
+    echo "⚠️  fc-cache 不存在，跳过"
+    return 0
 }
 
 # ── 2e: git 全局配置优先级修复 ──
@@ -208,13 +220,17 @@ ensure_git_config_include() {
         return 0
     fi
 
-    git config --global include.path "${xdg_cfg}"
+    if ! git config --global include.path "${xdg_cfg}"; then
+        echo "❌ 写入 ~/.gitconfig include.path 失败"
+        return 1
+    fi
     echo "✅ 已在 ~/.gitconfig 中添加 include.path -> ${xdg_cfg}"
     local name
     name=$(git config --global user.name 2>/dev/null) || true
     if [ -z "${name}" ]; then
         echo "⚠️  include 后仍未读到 user.name，请检查 ${xdg_cfg}"
     fi
+    return 0
 }
 
 # ── 2f: 设置默认 shell 为 zsh ──
@@ -250,21 +266,49 @@ set_default_shell_zsh() {
 
     if chsh -s "$zsh_path"; then
         echo "✅ 默认 shell 已设置为 zsh（重新登录生效）"
-    else
-        echo "⚠️  chsh 失败，可手动执行: chsh -s $zsh_path"
+        return 0
     fi
+    # chsh 失败不影响本次安装的正确性，且必须由用户手动收尾（如系统未把 zsh 列入
+    # /etc/shells），因此按契约返回 0 —— 这里打印 ⚠️ 而不是 ✅，本来就没有假成功。
+    echo "⚠️  chsh 失败，可手动执行: chsh -s $zsh_path"
+    return 0
 }
 
 # ── 入口 ──
+# 返回码契约（本文件统一遵守）：
+#   0 = 成功，或本步骤对当前环境不适用 / 需用户手动收尾（打印 ⚠️ 说明）
+#   1 = 本步骤在该环境应当完成、但确实没完成（打印 ❌）
+# 之所以要区分：Layer 2 的每一步都在下载或读取外部资源，历史上失败被 `|| true`
+# 吞掉后仍无条件打印 ✅，导致 setup.sh 最后报"全部安装完成"而配置并未生效。
+_record() {
+    local label="$1"
+    shift
+    if "$@"; then
+        return 0
+    fi
+    LAYER2_FAILURES+=("$label")
+    return 0
+}
+
 main() {
-    install_helix_runtime
-    install_yazi_plugins
-    install_llvm
-    refresh_fonts
-    ensure_git_config_include
-    set_default_shell_zsh
+    LAYER2_FAILURES=()
+
+    _record "Helix runtime" install_helix_runtime
+    _record "Yazi 插件" install_yazi_plugins
+    _record "LLVM / clangd" install_llvm
+    _record "字体缓存" refresh_fonts
+    _record "git 全局配置 include" ensure_git_config_include
+    _record "默认 shell (zsh)" set_default_shell_zsh
+
     echo ""
-    echo "✅ Layer 2 (后置脚本) 完成"
+    if [ ${#LAYER2_FAILURES[@]} -eq 0 ]; then
+        echo "✅ Layer 2 (后置脚本) 完成"
+        return 0
+    fi
+    echo "⚠️  Layer 2 (后置脚本) 有 ${#LAYER2_FAILURES[@]} 项未完成：${LAYER2_FAILURES[*]}"
+    echo "   工具安装本身未受影响，但这些配置尚未生效。"
+    echo "   修复后重跑: ./setup.sh --post"
+    return 1
 }
 
 main "$@"
