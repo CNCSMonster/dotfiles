@@ -79,6 +79,7 @@ GitHub Actions 有两类验证：
 |-----------|--------|-----------|
 | 构建 Docker 镜像 | `scripts/docker-build-test.sh` | `docker build ...` |
 | 验证镜像内容 | `scripts/verify-docker-build.sh` | `docker run ...` |
+| 改 `manifest.toml`/`tools.toml` 后校验平台覆盖 | `scripts/check-manifest-platforms.sh` | 手工逐平台 dry-run |
 
 脚本会自动处理：网络重试、GitHub API 限额（token 注入）、内存/CPU 限制、镜像源切换。
 CI 用的就是同一套脚本，本地 = CI 行为。

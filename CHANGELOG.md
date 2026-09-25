@@ -40,6 +40,20 @@ All notable changes to this project will be documented in this file.
   - `zellij` 官方 `.sha256sum` 给的是**解包后二进制**的哈希，与本项目"校验归档本身"的约定
     不同；此处填的是归档摘要，并用"内部二进制哈希 == 官方值"反证其真实性
   - 现在四个平台（linux/macos × x86_64/aarch64）的安装计划都能正常生成
+- **再修 5 处平台覆盖缺陷，并加上能持续拦住它们的守卫**：为验证上一条而写的四平台
+  离线扫描又找出同类问题（都已修复并逐项核对上游产物）：
+  - `ripgrep`：**整个缺失** `[ripgrep.linux.aarch64]` 与 `[ripgrep.macos.x86_64]` 段落，
+    于是在 aarch64 上会下载 x86_64 二进制、在 Intel Mac 上会下载 arm64 二进制，
+    且因没有 sha256 而静默跳过校验（已补齐 asset/bin/sha256，官方 `.sha256` 交叉验证通过）
+  - `helix.macos.x86_64`：asset 正确但缺 sha256，校验被静默跳过（已补）
+  - `zls.macos.x86_64`：asset 被误写成 aarch64 的包名，sha256 也对不上当前钉版的任何产物
+    （既非归档哈希、也非解包后二进制哈希，是残留值）
+  - `xdotter.macos.x86_64`：`bin` 继承成 aarch64 的名字，与单文件 asset 不匹配，
+    会被 `_locate_executable` 判为 "single-file asset mismatch"
+  - 新增 `scripts/check-manifest-platforms.sh`：离线秒级，断言四平台计划可生成、
+    github-release 条目必带 64 位 sha256、asset/bin 可渲染且与目标架构一致；
+    接入 `.github/workflows/tool-installer-verify.yml` 的 `Manifest platform matrix` 作业，
+    并写入 `AGENTS.md` / `CONTRIBUTING.md` 的验证指引
 
 ### Vendor 政策执行
 - **移除 `vendor/xdotter`，并让 vendor 政策成为可执行规则**：该二进制不满足准入条件——

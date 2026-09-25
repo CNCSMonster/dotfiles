@@ -95,6 +95,22 @@ jobs:
       - name: Check vendor/tool-installer matches source
         run: ./scripts/check-tool-installer-sync.sh
 
+  # ── manifest 平台矩阵守卫（离线，秒级）──
+  # 本作业存在的理由：其余作业只在**当前 runner 的**平台上跑（ubuntu + macos-latest
+  # =arm64），所以 linux/aarch64 与 macos/x86_64 长期带着"规划期直接中止"和"下载成
+  # 另一个架构的二进制"的缺陷却始终绿着。见 scripts/check-manifest-platforms.sh。
+  manifest-matrix:
+    name: Manifest platform matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check every platform resolves with pinned digests
+        run: ./scripts/check-manifest-platforms.sh
+
   # ── Bootstrap ──
   bootstrap:
     name: Bootstrap

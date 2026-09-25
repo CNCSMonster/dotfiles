@@ -46,6 +46,7 @@ Use the lightest verification that proves the change:
 
 - Documentation-only changes: run `git diff --check` and inspect the diff.
 - Shell changes: run `bash -n` on changed shell files where applicable.
+- `manifest.toml` / `tools.toml` changes: run `./scripts/check-manifest-platforms.sh` (offline; resolves the plan for linux/macos × x86_64/aarch64, and asserts pinned digests plus arch-consistent asset/bin).
 - xdotter changes: run `xd status` (deploy drift) and `xd deploy --dry-run` when available.
 - Full local Docker verification: `./scripts/docker-build-test.sh`, then run the verification command printed by the script.
 - CI E2E runs `./setup.sh` inside minimal `ubuntu:24.04` / `ubuntu:26.04` containers (plus macOS on the runner); minimal containers intentionally expose environment assumptions the fat runner image hides.
