@@ -27,6 +27,8 @@ All notable changes to this project will be documented in this file.
   路径全部失败、什么都没复制时仍无条件打印 ✅。现在每步返回明确状态，`main` 汇总失败项，
   有失败则脚本返回非零，`setup.sh` 不再在结尾宣称"全部安装完成"
   - `chsh` 失败等"需用户手动收尾"的情况仍为非致命（打印 ⚠️ 而非 ✅）
+  - **决策：Layer 2 的真实失败保持致命**，不因"属于网络型可选产物"降级为警告。
+    要 CI 变绿就修因，不要静音；`AGENTS.md` 的 Do-not 已固化这条
 - **补齐 manifest 的 8 处 `sha256 = "TODO"`，并修掉途中发现的两个连带缺陷**：
   `TODO` 不只是"缺校验"——`strategy.py::_validate_github_release` 会拒绝非 64 位十六进制摘要，
   而 `build_install_plan` 在非 `--skip-errors` 时会中止**整个模块**。后果是
@@ -54,6 +56,13 @@ All notable changes to this project will be documented in this file.
     github-release 条目必带 64 位 sha256、asset/bin 可渲染且与目标架构一致；
     接入 `.github/workflows/tool-installer-verify.yml` 的 `Manifest platform matrix` 作业，
     并写入 `AGENTS.md` / `CONTRIBUTING.md` 的验证指引
+- **修复 yazi 插件在镜像列表为空时从未被安装**：`install_yazi_plugins` 把
+  `ya pkg install` 只写在镜像 `for` 循环里，而 CI 的 `ci-disable-mirrors.sh` 会清空镜像
+  列表，于是循环体一次都不执行——命令从未被调用，重试 3 次后必然失败；任何未配置镜像的
+  用户同样受影响。现在镜像之后必经直连兜底（桩测试：镜像为空时旧代码调用 `ya` **0 次**，
+  新代码 1 次且成功）
+  - 该 bug 长期潜伏，正是因为 Layer 2 旧代码无条件打印 ✅；暴露它的那次改动让 CI 三个平台
+    同时变红，才被发现
 
 ### Vendor 政策执行
 - **移除 `vendor/xdotter`，并让 vendor 政策成为可执行规则**：该二进制不满足准入条件——

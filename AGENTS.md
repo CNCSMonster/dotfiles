@@ -39,6 +39,7 @@ Before changing files, read the relevant current docs:
 - Do not bypass project scripts with ad-hoc commands when a script already exists.
 - Do not create platform-specific config branches for normal Linux/macOS differences.
 - Do not delete or overwrite user config without explicit confirmation.
+- Do not hide failures to make CI green. Layer 2 steps exit non-zero on a real failure, `allow_fail` failures are reported in every mode (only the exit code differs), and CI runs with `TOOL_INSTALLER_STRICT=1`. Fix the cause instead of downgrading the signal.
 
 ## Verification
 
