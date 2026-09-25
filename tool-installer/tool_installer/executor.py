@@ -41,9 +41,21 @@ def execute_plan(plan: InstallPlan, managers: Mapping[str, Manager]) -> None:
             raise
     # Fail at the end rather than immediately: later tools are independent,
     # and CI gets the complete failure list in one run.
-    if tolerated and os.environ.get("TOOL_INSTALLER_STRICT") == "1":
-        raise InstallationError(
-            f"strict mode: allow_fail tool(s) failed: {', '.join(tolerated)}"
+    #
+    # Tolerated failures are reported in BOTH modes. In non-strict mode the exit
+    # code stays 0 (the project's stated goal is not to abort an install over a
+    # predictable failure), but staying silent is what let two allow_fail tools
+    # reinstall on every run for months — the cost was absorbed with no signal.
+    # setup.sh, the real user entry point, never sets TOOL_INSTALLER_STRICT, so
+    # this summary is the only place a manual install learns about them.
+    if tolerated:
+        summary = f"{len(tolerated)} allow_fail tool(s) failed: {', '.join(tolerated)}"
+        if os.environ.get("TOOL_INSTALLER_STRICT") == "1":
+            raise InstallationError(f"strict mode: {summary}")
+        print(
+            f"⚠️  Tolerated failures (non-strict, install continues): {summary}. "
+            "Set TOOL_INSTALLER_STRICT=1 to fail instead.",
+            file=sys.stderr,
         )
 
 
