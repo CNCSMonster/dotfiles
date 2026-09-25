@@ -106,6 +106,10 @@ install_yazi_plugins() {
         echo "安装 Yazi 插件（第 ${attempts}/${max_attempts} 次尝试）..."
 
         if cd "${HOME}/.config/yazi"; then
+            # 顺序：先逐个镜像，再直连（直连是必经的兜底，不是 else 分支）。
+            # 这里曾经把 `ya pkg install` 只写在镜像 for 循环里，于是当
+            # GITHUB_MIRRORS 为空时——CI 的 ci-disable-mirrors.sh 会清空它，
+            # 用户也可能没配镜像——循环体一次都不执行，等于"什么都没做就判失败"。
             if command -v git &>/dev/null; then
                 for git_mirror in $GITHUB_MIRRORS; do
                     [ -n "$git_mirror" ] || continue
@@ -119,7 +123,14 @@ install_yazi_plugins() {
                     fi
                     echo "  ⚠️  镜像 $git_mirror 失败，尝试下一个..."
                 done
-            else
+            fi
+
+            if [ "$installed" != true ]; then
+                if [ -n "${GITHUB_MIRRORS// /}" ]; then
+                    echo "  镜像均不可用，改用直连..."
+                else
+                    echo "  未配置镜像，直连 GitHub..."
+                fi
                 if ya pkg install; then
                     installed=true
                     break
