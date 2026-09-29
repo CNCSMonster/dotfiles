@@ -16,7 +16,7 @@
 - `mise activate` 动态注册（仅限 mise 管理的工具）
 - `shells/common/inter.sh` 中主动加载的工具自带补全（如 `xd`、`llm-proxy`、`codex`、`opencode`）
 
-很多工具（如 `zola`、`helix`、`jaq`、`nu`、`tree-sitter-grep` 等）可能不在上述来源中，导致按 Tab 时无反应。
+很多工具（如 `zola`、`helix`、`jaq`、`nu`、`tree-sitter-grep`、`tomlq` 等）可能不在上述来源中，导致按 Tab 时无反应。
 
 ## 检查范围
 

@@ -1195,6 +1195,17 @@ manager = "uv-tool"
 pkg = "pyright"
 bin = "pyright"
 
+[tomlq]
+[tomlq.linux]
+manager = "uv-tool"
+pkg = "tomlq"
+bin = "tomlq"
+
+[tomlq.macos]
+manager = "uv-tool"
+pkg = "tomlq"
+bin = "tomlq"
+
 # ============================================================
 # Opt-in tools (不在 [dev] 依赖里，需显式安装)
 # ============================================================

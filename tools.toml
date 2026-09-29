@@ -41,6 +41,7 @@ depends = ["build-base", "cargo-binstall"]
 "gitui@0.28.1" = { desc = "Git TUI", allow_fail = true }
 "kondo@0.9.0" = "项目清理"
 "jaq@3.0.0" = "jq 替代品"
+"tomlq@0.1.0" = "TOML 编辑（CLI 推荐，保留注释）"
 "mdbook@0.5.2" = "文档生成器"
 "mdbook-mermaid@0.17.0" = "mdbook 图表"
 "gen-mdbook-summary@0.0.10" = "mdbook 目录"
