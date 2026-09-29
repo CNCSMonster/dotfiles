@@ -227,7 +227,6 @@ jobs:
             gitui --version
             tree-sitter --version
             tree-sitter-grep --version
-            tree-sitter-show-ast --version
             cargo-fuzz --version
             grcov --version
             cargo-tarpaulin --version

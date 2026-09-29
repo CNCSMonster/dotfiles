@@ -23,7 +23,6 @@ alias rsi='rust-script'
 # 应用别名
 
 alias tsg="tree-sitter-grep"
-alias tssa="tree-sitter-show-ast"
 
 ##################################################
 
