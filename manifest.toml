@@ -741,6 +741,19 @@ binstall_first = true
 binstall_retry = 2
 binstall_fallback_compile = true
 
+[taplo]
+[taplo.linux]
+manager = "cargo-install"
+pkg = "taplo-cli"
+locked = true
+binstall_first = true
+
+[taplo.macos]
+manager = "cargo-install"
+pkg = "taplo-cli"
+locked = true
+binstall_first = true
+
 [macchina]
 [macchina.linux]
 manager = "cargo-install"
