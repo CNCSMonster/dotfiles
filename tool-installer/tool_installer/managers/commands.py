@@ -17,8 +17,9 @@ import urllib.request
 from pathlib import Path
 from typing import List, Optional
 
-from ..errors import InstallationError
+from ..errors import AuthorizationRequired, InstallationError
 from ..github_token import detect_github_token
+from ..interaction import Decision, ask
 from ..models import PlanItem
 from .apt_policy import (
     APT_COMMAND_TIMEOUT,
@@ -28,6 +29,7 @@ from .apt_policy import (
     apt_options,
     failure_message,
     preflight_source_warnings,
+    unexpected_binary_state,
 )
 from .base import CheckResult, CommandManager, CommandRunner, _run_with_sudo
 
@@ -156,16 +158,52 @@ class AptManager(CommandManager):
             pkg = f"{pkg}={_selector(item)}"
         return ["apt-get", "install", "-y", pkg]
 
+    def _dpkg_installed(self, pkg: str) -> bool:
+        """系统视角：dpkg 数据库是否记录了这个包（不比对版本）。
+
+        与 check() 分工：check 要版本值做对齐判定，这里只回答"是不是 apt 装的"，
+        供非预期状态检测用（见 apt_policy.unexpected_binary_state）。
+        """
+        try:
+            result = self.runner.run(
+                ["dpkg-query", "-W", "-f=${Version}", pkg],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except (OSError, InstallationError):
+            # fail-open：这是**探测**不是执行。探测失败（dpkg-query 超时、被杀）
+            # 当成"未装"继续，把真正的决定交给 apt install——它的失败会被归因。
+            # 反之若在这里中断，一个辅助查询就能杀掉整轮安装，且错不在它。
+            return False
+        return result.returncode == 0 and bool(result.stdout.strip())
+
     def install(self, item: PlanItem) -> None:
         """有界、可见、可归因的 apt 安装（覆盖基类的裸执行）。
 
-        与 scripts/lib/apt.sh 的 apt_run 同步骤：源预检（只提示不阻断）→
-        带 apt 命令行超时参数执行 → 输出回显（不用 capture 静默掉进度）→
-        失败时把 apt 输出翻译成可执行的修复动作。
+        与 scripts/lib/apt.sh 的 apt_run 同步骤：**先授权**（非预期状态）→ 源预检（只
+        提示不阻断）→ 带 apt 命令行超时参数执行 → 输出回显（不用 capture 静默掉进度）
+        → 失败时把 apt 输出翻译成可执行的修复动作。
         """
         # 装包名/版本的语义仍只由 install_command 负责，这里不重复计算
         raw_cmd = self.install_command(item)
-        pkg = raw_cmd[-1]
+        pkg_spec = raw_cmd[-1]                 # 可能是 libclang-dev=18.0-59
+        pkg = pkg_spec.split("=", 1)[0]        # 包名（非预期检测不能拿带版本的去 which）
+        binary = item.strategy.fields.get("bin") or pkg
+
+        # ── 授权：命令已存在但非 apt 装的，直接装会静默多出一份实现 ──
+        conflict = unexpected_binary_state(binary, pkg, self._dpkg_installed(pkg))
+        if conflict:
+            decision = ask(f"⚠️  {conflict}。仍要安装 apt 版吗？")
+            if decision is Decision.UNAUTHORIZED:
+                raise AuthorizationRequired(
+                    f"{item.tool.reference.name}: {conflict}"
+                    "（无交互终端且未传 --yes，已跳过）"
+                )
+            if decision is Decision.NO:
+                raise AuthorizationRequired(
+                    f"{item.tool.reference.name}: {conflict}（用户选择跳过）"
+                )
 
         for line in preflight_source_warnings():
             print(line)

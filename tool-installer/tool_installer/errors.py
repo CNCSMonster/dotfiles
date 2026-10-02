@@ -29,3 +29,12 @@ class StrategyError(ToolInstallerError):
 
 class InstallationError(ToolInstallerError):
     """Raised when checking or installing a tool fails."""
+
+
+class AuthorizationRequired(InstallationError):
+    """Raised when an unexpected state needs a decision nobody is there to make.
+
+    与 InstallationError 分开，是因为处理方式不同：普通失败按 allow_fail 决定是否中断，
+    而"缺授权"永远不该中断整轮安装——它只应被跳过并在结束时汇总（见 executor）。
+    仍继承 InstallationError，保证上层任何只 catch 安装错误的地方都不会漏接。
+    """

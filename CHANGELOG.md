@@ -24,6 +24,23 @@ All notable changes to this project will be documented in this file.
     `InstallationError`（裸超时会绕过 executor 的 `allow_fail` 汇总直接 traceback）
   - 回归测试 `tool-installer/tests/test_apt_policy.py`（21 例，离线），已重建 `vendor/tool-installer`
   - Step 2（未做）：系统包迁到声明式 `manager = "apt"`；先裁决 `DEBIAN_FRONTEND` 与清单语义
+- **Step 2 批次 1：非预期问题的授权与三档判定**（用户拍板 2026-10-03：预期不问、非预期要问、
+  `--yes` 全同意、没人可问时既不擅自决定也不中断）
+  - `tool-installer install --yes` → `TOOL_INSTALLER_ASSUME_YES=1`（与 `TOOL_INSTALLER_STRICT`
+    同一传播约定）；新增 `tool_installer/interaction.py` 的 `Decision` 三态，交互默认答案 **N**
+  - `AptManager` 补 `command -v` 视角的检测：命令已存在但 dpkg 没记录时会**静默装出第二份实现**
+    （PATH 上两个 git，用哪个取决于顺序），现在这种状态必须授权；manifest 为 `apt` 新增可选
+    `bin` 字段（包名与命令名不同时声明）
+  - 新增 `AuthorizationRequired` + executor 专门分支：**缺授权只跳过该工具并结束时汇总，
+    绝不中断整轮安装**（与 allow_fail 同哲学，两种模式都打印，仅退出码不同）
+  - 探测 fail-open、执行 fail-closed：`dpkg-query` 探测失败当作"未装"继续，真正的失败交给
+    `apt install` 去归因
+  - 已核实边界（L1 实测 + L2 手册）：`--yes` **不绕过 sudo 认证**——sudo 上游（本机 sudo-rs
+    0.2.13 / 传统 1.9.17p2）不存在"用调用方参数完成授权"的机制；Ubuntu 26.04 的 sudo 已是
+    sudo-rs，凭证缓存默认 15 分钟
+  - 回归测试 `tool-installer/tests/test_authorization.py`（20 例，离线），已重建 `vendor/tool-installer`
+  - 批次 2 待做：shell 侧 `scripts/lib/apt.sh` 同步三档、系统包迁声明式 `manager = "apt"`、
+    `config-consistency-check-sop.md` 的 sed 抓取同步
 
 ### Fixed
 - **apt 安装不再静默挂死，失败可归因**：`setup.sh` 的 Layer 1 运行时依赖预检与 Layer 0 系统包

@@ -15,7 +15,9 @@ _OS_TABLES = {"linux", "macos"}
 _ARCH_TABLES = {"x86_64", "aarch64"}
 _COMMON = {"manager", "force"}
 _SUPPORTED: Dict[str, Dict[str, Any]] = {
-    "apt": {"required": {"pkg"}, "optional": set()},
+    # optional bin：安装/检测用的可执行文件名（包名与命令名不同时声明，
+    # 供"命令已存在但非 apt 安装"的非预期状态检测用，见 managers/apt_policy.py）
+    "apt": {"required": {"pkg"}, "optional": {"bin"}},
     "brew": {"required": {"pkg"}, "optional": set(), "latest_only": True},
     "brew-cask": {"required": {"pkg"}, "optional": set(), "latest_only": True},
     "cargo-binstall": {"required": {"pkg"}, "optional": {"bin"}},

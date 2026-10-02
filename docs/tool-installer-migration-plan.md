@@ -279,10 +279,48 @@ fail-fast，「宁可快速失败也要给出归因」。
   `tool-installer/tests/test_apt_policy.py`（21 例，离线，跑在 CI 的 unittest discover）。
 - **已知不一致（Step 2 裁决）**：`AptManager` 仍不设 `DEBIAN_FRONTEND=noninteractive`，
   shell 侧全线设。在 manifest 真正接线前改它没有收益，只扩大变更面。
-- **Step 2（未做）**：把 `scripts/install-system-packages.sh` 的清单迁到声明式
-  `manager = "apt"`（macOS 走 `manager = "brew"`，`BrewManager` 同样零使用）。前置条件是
-  先裁决两件事：清单语义（脚本用 `command -v` 判命令名，`AptManager.check` 只认 dpkg 包名）、
-  以及 `docs/config-consistency-check-sop.md` 对该脚本 `for pkg in` 的 sed 抓取。
+- **Step 2（分两批）**：批次 1 = 非预期问题的授权与三档判定（已完成，见下）；批次 2 =
+  把 `scripts/install-system-packages.sh` 的清单迁到声明式 `manager = "apt"`（macOS 走
+  `manager = "brew"`，`BrewManager` 同样零使用）。批次 2 的前置条件是先裁决清单语义
+  （脚本用 `command -v` 判命令名，`AptManager.check` 只认 dpkg 包名）与
+  `docs/config-consistency-check-sop.md` 对该脚本 `for pkg in` 的 sed 抓取。
+
+**Step 2 批次 1（2026-10-03 已完成）：非预期问题的授权与三档判定**
+
+拍板的规则（用户决策）：**预期操作不问；非预期状态问；传 `--yes` 则一个都不问；
+没传又没人可问时，不擅自决定、也不中断。**
+
+| 状态 | 性质 | 无 `--yes` 且有 TTY | `--yes` | 无 TTY 且无 `--yes` |
+|---|---|---|---|---|
+| 下载安装、版本对齐 | 预期 | 不问（apt 恒带 `-y`） | 不问 | 不问 |
+| 命令已存在但非 apt 装的 | 非预期 | 问，**默认 N** | 直接过 | 跳过该工具 + 结束汇总 |
+| 配置文件被本地改过 | 非预期 | 问（保留为默认） | **仍保留用户文件**，覆盖需显式 `--force-confnew` | 保留用户文件 |
+| `sudo` 密码 | 认证≠决策 | 问 | **照样问** | 报错不挂起 |
+
+实现：
+
+- `tool_installer/interaction.py`：`Decision` 三态（YES / NO / UNAUTHORIZED），默认答案 **N**。
+  三态不能压成布尔——"拒绝"与"没人能答"是两回事，后者必须交给汇总。
+- `tool-installer install --yes` → `TOOL_INSTALLER_ASSUME_YES=1`（与 `TOOL_INSTALLER_STRICT`
+  同一传播约定：环境变量，manager 在任何深度都能读到，调用方不会忘记层层传参）。
+- `apt_policy.unexpected_binary_state()`：`command -v` 视角 × `dpkg` 视角交叉判定——
+  "命令在、包不在" = 会静默装出第二份实现。manifest 为 `apt` 新增可选 `bin` 字段
+  （包名与命令名不同时声明）。
+- `AuthorizationRequired(InstallationError)` + executor 专门分支：**缺授权永不中断整轮安装**
+  （跳过该工具继续装其余的，两种模式都打印汇总，仅退出码不同）；它必须在
+  `InstallationError` 之前捕获，否则会掉进 `allow_fail` 分支——"没人能授权"与"允许失败"
+  是两件事。
+- 探测 fail-open、执行 fail-closed：`_dpkg_installed()` 的探测失败（超时/被杀）当作"未装"
+  继续，把决定权交给 `apt install`——后者的失败会被归因。辅助查询不该有能力杀掉整轮安装。
+
+**已核实的边界（2026-10-03，L1 实测 + L2 手册）**：`--yes` 管不到 sudo 认证。上游只有
+`-n`（不提示直接失败，实测 `sudo: interactive authentication is required`）、`-A`/`SUDO_ASKPASS`、
+`-S`（都是换方式取密码）与 sudoers 的 `NOPASSWD`（管理员配置，非调用参数），**不存在"用调用方
+参数完成授权"的机制**。另：Ubuntu 26.04 的 `/usr/bin/sudo` 已是 **sudo-rs**（本机 0.2.13，
+上游 0.2.15 @2026-08-31），其凭证缓存默认 **15 分钟**——长构建超过 15 分钟没有 sudo 调用后
+会再要密码，无 TTY 时由 `attribute_failure` 归因提示 `sudo -v && ./setup.sh`。
+
+回归测试：`tool-installer/tests/test_authorization.py`（20 例，离线）。
 
 ---
 

@@ -222,6 +222,13 @@ class AptManagerInstallTest(unittest.TestCase):
         root = mock.patch("tool_installer.managers.base._is_root", return_value=True)
         root.start()
         self.addCleanup(root.stop)
+        # 授权检测依赖宿主 PATH（万一测试机上真有个同名命令就会误触发）。
+        # 本类只关心执行策略，非预期状态判定有专门的 test_authorization.py 覆盖。
+        no_conflict = mock.patch(
+            "tool_installer.managers.apt_policy.shutil.which", return_value=None
+        )
+        no_conflict.start()
+        self.addCleanup(no_conflict.stop)
 
     @staticmethod
     def runner(returncode: int = 0, stdout: str = "", stderr: str = "") -> mock.Mock:

@@ -6,7 +6,7 @@ import os
 import sys
 from typing import List, Mapping
 
-from .errors import InstallationError
+from .errors import AuthorizationRequired, InstallationError
 from .managers.base import CheckResult
 from .models import InstallPlan, PlanItem
 from .managers.base import Manager
@@ -25,12 +25,22 @@ def _format_warning(item: PlanItem, phase: str, reason: str) -> str:
 def execute_plan(plan: InstallPlan, managers: Mapping[str, Manager]) -> None:
     token_reported = False
     tolerated: List[str] = []
+    pending: List[str] = []
     for item in plan.items:
         manager = managers[item.strategy.manager]
         try:
             _execute_item(item, manager, token_reported)
             if item.strategy.manager == "github-release":
                 token_reported = True
+        except AuthorizationRequired as exc:
+            # 缺授权不是失败：跳过这个工具继续装其余的，最后统一汇总。
+            # 放在 InstallationError 之前捕获（它是子类），否则会走 allow_fail 分支——
+            # 而"没人在场能回答"与"允许失败"是两件事，不该混为一谈。
+            print(_format_warning(item, "authorize", str(exc)), file=sys.stderr)
+            pending.append(item.tool.reference.name)
+            if item.strategy.manager == "github-release":
+                token_reported = True
+            continue
         except InstallationError as exc:
             if item.tool.allow_fail:
                 print(_format_warning(item, "install", str(exc)), file=sys.stderr)
@@ -55,6 +65,17 @@ def execute_plan(plan: InstallPlan, managers: Mapping[str, Manager]) -> None:
         print(
             f"⚠️  Tolerated failures (non-strict, install continues): {summary}. "
             "Set TOOL_INSTALLER_STRICT=1 to fail instead.",
+            file=sys.stderr,
+        )
+    # 与 tolerated 同哲学：两种模式都可见，只有退出码不同。区别在于这里的工具
+    # 并没有出错——它只是需要一个没人能给的授权，所以重跑的方式也要说出来。
+    if pending:
+        summary = f"{len(pending)} tool(s) skipped pending authorization: {', '.join(pending)}"
+        if os.environ.get("TOOL_INSTALLER_STRICT") == "1":
+            raise InstallationError(f"strict mode: {summary}")
+        print(
+            f"⚠️  Skipped, authorization required: {summary}. "
+            "Re-run with --yes, or run in an interactive terminal.",
             file=sys.stderr,
         )
 
