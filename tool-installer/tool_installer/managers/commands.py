@@ -127,15 +127,25 @@ class AptManager(CommandManager):
                     capture_output=True,
                     text=True,
                 )
-            except OSError:
-                return CheckResult.CHECK_ERROR
+            except OSError as exc:
+                # 抛带归因而非返回 CHECK_ERROR：后者的错误消息只有
+                # "Check failed for X with manager apt"，CI 日志里查不到现场
+                # （2026-10-03 已发生：只有结论、没有包名/路径/异常）。
+                raise InstallationError(
+                    f"dpkg-query 无法执行，无法检查 {pkg}：{exc!r}。"
+                    "系统缺少 dpkg，或 PATH 异常？"
+                ) from None
             if result.returncode != 0:
                 # 任一包缺失就整组重装（apt 幂等，已装的 no-op，与旧脚本的
                 # missing 批量安装同语义）
                 return CheckResult.NOT_SATISFIED
             installed_version = result.stdout.strip()
             if not installed_version:
-                return CheckResult.CHECK_ERROR
+                raise InstallationError(
+                    f"dpkg-query 对 {pkg} 报告成功但版本输出为空"
+                    f"（rc=0, stdout={result.stdout!r}）——包状态异常，"
+                    f"先跑 dpkg -s {pkg} 看现场"
+                )
             versions.append(installed_version)
 
         requested = _selector(item)

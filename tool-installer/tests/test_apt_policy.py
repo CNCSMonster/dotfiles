@@ -610,6 +610,27 @@ class AptManagerCheckTest(unittest.TestCase):
         result = AptManager(runner=runner).check(self.item("a b c"))
         self.assertIs(result, CheckResult.NOT_SATISFIED)
 
+    def test_dpkg_query_missing_names_the_package_and_the_reason(self) -> None:
+        """CHECK 必须可归因：包名 + 路径 + 现场（此前只有 "Check failed for X"，
+        CI 日志里查不到任何线索）。"""
+        runner = mock.Mock()
+        runner.run.side_effect = FileNotFoundError("dpkg-query: No such file or directory")
+        with self.assertRaises(InstallationError) as ctx:
+            AptManager(runner=runner).check(self.item("libssl-dev unzip"))
+        message = str(ctx.exception)
+        self.assertIn("dpkg-query", message)
+        self.assertIn("libssl-dev", message, "必须点名是哪个包的检查失败")
+        self.assertIn("No such file", message, "必须带上原始异常")
+
+    def test_empty_dpkg_output_names_the_package_and_shows_the_raw_stdout(self) -> None:
+        runner = mock.Mock()
+        runner.run.return_value = subprocess.CompletedProcess([], 0, "", "")
+        with self.assertRaises(InstallationError) as ctx:
+            AptManager(runner=runner).check(self.item("libssl-dev"))
+        message = str(ctx.exception)
+        self.assertIn("libssl-dev", message)
+        self.assertIn("dpkg -s libssl-dev", message, "给出可直接执行的现场命令")
+
 
 class InstallCommandShapeTest(unittest.TestCase):
     """命令形态：多包一次装（与旧脚本批量 `${missing[@]}` 同语义）、pin 限单包。"""
