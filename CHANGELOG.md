@@ -22,6 +22,13 @@ All notable changes to this project will be documented in this file.
   - `./setup.sh --install` 单跑无 sudo 缓存时原先直接判死，现在交互终端现场 `sudo -v` 提升
   - 只诊断不改源：`/etc/apt` 下的用户配置永不被脚本改写
   - 政策与调用点清单见 `docs/tool-installer-migration-plan.md` §4.3
+- **其余 apt 调用点也接入有界/归因策略**：`setup.sh` 的 python3 引导、
+  `scripts/install-wezterm.sh`、`scripts/install-fonts.sh`、`scripts/setup-rootless-docker.sh`、
+  `scripts/llvmup`（含 PATH 上的 `shells/scripts/llvmup` 副本）原先仍是裸 `apt-get`（部分带
+  `-qq` 或 `2>/dev/null`），同样能在坏源上无界挂起。全部改走 `scripts/lib/apt.sh`
+  - `llvmup` 用 `readlink -f` 定位库以兼容两种调用形态，库缺失时显式警告后再降级
+  - 只在会执行 `update` 的路径跑源可达性预检；纯 install 路径靠失败归因
+  - 各脚本原有的失败语义（致命 / 跳过 / 警告）保持不变
 - **github-release 镜像回退以 SHA256 为准**：`_verify_checksum` 原先在下载循环之外执行，
   镜像返回 HTTP 200 但内容不符时第一个响应的源即被选中、随后校验失败直接抛错，
   官方直连永不被尝试。现在校验参与**源选择**：候选源必须同时传输成功且校验通过，

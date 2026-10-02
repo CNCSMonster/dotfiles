@@ -245,9 +245,21 @@ tool-installer 的 `cargo-install` manager 已实现 `_ensure_binstall`：
 （`Retries 5` / `Timeout 300`），面向「CI 偶发网络抖动，宁可久等也要成功」；本机安装走
 fail-fast，「宁可快速失败也要给出归因」。
 
-**尚未接入本库的 apt 调用点（按需单独提交）**：`scripts/install-wezterm.sh`、
-`scripts/install-fonts.sh`、`scripts/llvmup`、`scripts/setup-rootless-docker.sh`。它们各有
-自己的容错（跳过 / 警告），接入是同一套 `source` + `apt_run` 改动。
+**接入范围（2026-09 已完成）**：仓库内所有裸 `apt-get` 调用点都已走本库——
+`setup.sh`（python3 引导 + Layer 1 运行时依赖预检）、`scripts/install-system-packages.sh`、
+`scripts/install-wezterm.sh`、`scripts/install-fonts.sh`、`scripts/setup-rootless-docker.sh`、
+`scripts/llvmup`。两条约定：
+
+- **调用形态**：同目录 `source lib/apt.sh`，再用 `apt_run <sudo 前缀> <apt-get 参数>`；
+  各脚本原有的失败语义（致命 / 跳过 / 警告）不变，apt 只是换成有界且可归因的执行方式。
+- **健康预检时机**：只在会执行 `apt-get update` 的路径上跑 `apt_sources_health_check`
+  （setup.sh、install-system-packages、install-wezterm、setup-rootless-docker）；纯 install
+  的路径（install-fonts）靠失败归因即可，不多花一次探测。
+
+`scripts/llvmup` 有两种形态（Layer 2 入口 `scripts/llvmup`，以及 PATH 上的
+`shells/scripts/llvmup` 副本，后者经 `~/.config/shells/scripts` 符号链接调用），因此它用
+`readlink -f` 解析真实路径后在两个候选位置找库；找不到时**显式**打印警告再退回无界模式，
+不静默降级。
 
 ---
 

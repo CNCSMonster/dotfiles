@@ -3,6 +3,10 @@
 # Handles apt.fury.io source on Linux, brew cask on macOS
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# apt 执行策略（有界超时 / 源预检 / 失败归因）的单一事实来源
+source "${SCRIPT_DIR}/lib/apt.sh"
+
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 
@@ -35,8 +39,10 @@ if [[ "$OS" == "Linux" ]]; then
         exit 0
     }
 
-    sudo apt-get update -qq || true
-    sudo apt-get install -y wezterm 2>/dev/null || echo "⚠️  WezTerm 安装失败，跳过"
+    # WezTerm 源刚写入，先探测各源可达性再更新，避免在坏源上无界重试
+    apt_sources_health_check || true
+    apt_run sudo update || echo "⚠️  apt-get update 未完全成功（原因见上方归因）"
+    apt_run sudo install -y wezterm || echo "⚠️  WezTerm 安装失败，跳过"
     exit 0
 fi
 

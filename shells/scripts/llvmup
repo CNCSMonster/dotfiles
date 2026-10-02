@@ -25,6 +25,23 @@ set -eo pipefail
 
 APP_NAME="llvmup"
 LLVM_SCRIPT="https://apt.llvm.org/llvm.sh"
+
+# 有界 apt（scripts/lib/apt.sh）。llvmup 有两种形态：scripts/llvmup（Layer 2 入口）
+# 与 shells/scripts/llvmup（PATH 上的副本，经 ~/.config/shells/scripts 符号链接调用），
+# 所以先解析真实路径再定位库。
+LLVMUP_SELF="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+LLVMUP_DIR="$(cd "$(dirname "$LLVMUP_SELF")" && pwd)"
+LLVM_APT_LIB=""
+for _cand in "${LLVMUP_DIR}/lib/apt.sh" "${LLVMUP_DIR}/../../scripts/lib/apt.sh"; do
+    [ -f "$_cand" ] || continue
+    if . "$_cand"; then LLVM_APT_LIB="$_cand"; fi
+    break
+done
+unset _cand
+if [ -z "$LLVM_APT_LIB" ]; then
+    echo "⚠️  未找到 scripts/lib/apt.sh，apt 将退回无界超时模式"
+fi
+
 function sudo_run(){
     # 如果当前用户是root用户, 则直接运行命令
     if [ "$EUID" -eq 0 ]; then
@@ -34,11 +51,24 @@ function sudo_run(){
     fi
 }
 
+# 有界且可归因的 apt（库缺失时显式降级，不静默）
+function llvm_apt(){
+    if [ -n "$LLVM_APT_LIB" ]; then
+        if [ "$EUID" -eq 0 ]; then
+            apt_run "" "$@"
+        else
+            apt_run sudo "$@"
+        fi
+    else
+        sudo_run apt-get "$@"
+    fi
+}
+
 function prepare_for_install(){
     # 检查lsb_release命令是否存在
     if ! command -v lsb_release >/dev/null 2>&1; then
-        sudo_run apt-get update
-        sudo_run apt-get install -y lsb-release
+        llvm_apt update
+        llvm_apt install -y lsb-release
     fi
 }
 
@@ -100,8 +130,8 @@ function install-llvm-version() {
     # Ubuntu 24.04 官方源支持 LLVM 14-20
     if apt-cache show llvm-${LLVM_VERSION} 2>/dev/null | grep -q "Package: llvm-${LLVM_VERSION}"; then
         echo "使用 Ubuntu 官方源安装 LLVM ${LLVM_VERSION}..."
-        sudo_run apt-get update
-        sudo_run apt-get install -y \
+        llvm_apt update
+        llvm_apt install -y \
             llvm-${LLVM_VERSION} \
             clang-${LLVM_VERSION} \
             clangd-${LLVM_VERSION} \

@@ -130,11 +130,11 @@ _ensure_tool_installer() {
     if ! command -v python3 &>/dev/null && command -v apt-get &>/dev/null; then
         echo "🐍 缺少 python3（tool-installer 运行所需），通过 apt 预装..."
         if [ "$(id -u)" -eq 0 ]; then
-            DEBIAN_FRONTEND=noninteractive apt-get update -qq && \
-                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3
+            apt_run "" update && apt_run "" install -y --no-install-recommends python3
         elif sudo -n true 2>/dev/null; then
-            DEBIAN_FRONTEND=noninteractive sudo apt-get update -qq && \
-                DEBIAN_FRONTEND=noninteractive sudo apt-get install -y --no-install-recommends python3
+            apt_run sudo update && apt_run sudo install -y --no-install-recommends python3
+        else
+            echo "⚠️  无 root 也无 sudo 缓存，跳过 python3 预装（tool-installer 随后可能无法执行）"
         fi
     fi
 

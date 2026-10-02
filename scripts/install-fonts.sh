@@ -7,6 +7,8 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# apt 执行策略（有界超时 / 源预检 / 失败归因）的单一事实来源
+source "${SCRIPT_DIR}/lib/apt.sh"
 OS="$(uname -s)"
 
 if [[ "$OS" == "Darwin" ]]; then
@@ -57,22 +59,22 @@ install_system_fonts() {
     wait_for_dpkg_lock || return 0
 
     if [ "$EUID" -eq 0 ]; then
-        apt-get install -y --no-install-recommends \
+        apt_run "" install -y --no-install-recommends \
             fontconfig \
             fonts-noto-cjk \
             fonts-noto-color-emoji \
             fonts-jetbrains-mono \
             fonts-ibm-plex \
-            fonts-dejavu-core || echo "⚠️  系统字体包安装失败"
+            fonts-dejavu-core || echo "⚠️  系统字体包安装失败（原因见上方归因）"
     elif is_interactive_tty; then
         echo "🔐 安装系统字体包需要 sudo 权限..."
-        sudo apt-get install -y --no-install-recommends \
+        apt_run sudo install -y --no-install-recommends \
             fontconfig \
             fonts-noto-cjk \
             fonts-noto-color-emoji \
             fonts-jetbrains-mono \
             fonts-ibm-plex \
-            fonts-dejavu-core || echo "⚠️  系统字体包安装失败"
+            fonts-dejavu-core || echo "⚠️  系统字体包安装失败（原因见上方归因）"
     else
         echo "⚠️  非交互环境，跳过系统字体包安装（避免 sudo 密码输入挂起）"
     fi
@@ -117,10 +119,10 @@ install_fira_code() {
         unzip -o "$fira_tmp" -d "$user_font_dir" 2>/dev/null || echo "⚠️  FiraCode 解压失败"
     else
         if [ "$EUID" -eq 0 ]; then
-            apt-get install -y unzip >/dev/null 2>&1 || true
+            apt_run "" install -y unzip || echo "⚠️  安装 unzip 失败，改用 Python 解压"
         elif is_interactive_tty; then
             echo "🔐 安装 unzip 需要 sudo 权限..."
-            sudo apt-get install -y unzip >/dev/null 2>&1 || true
+            apt_run sudo install -y unzip || echo "⚠️  安装 unzip 失败，改用 Python 解压"
         fi
         if command -v unzip &>/dev/null; then
             unzip -o "$fira_tmp" -d "$user_font_dir" 2>/dev/null || echo "⚠️  FiraCode 解压失败"

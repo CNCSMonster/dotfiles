@@ -14,6 +14,10 @@
 # 屏蔽后续 context 切换，且往 ~/.bashrc / ~/.zshrc 追加会写穿符号链接污染仓库。
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# apt 执行策略（有界超时 / 源预检 / 失败归因）的单一事实来源
+source "${SCRIPT_DIR}/lib/apt.sh"
+
 if [[ "$(uname -s)" != "Linux" ]]; then
     cat <<'MACOS'
 非 Linux：本模块不适用，跳过（不做任何安装）。
@@ -69,7 +73,7 @@ install_packages() {
     local id="${ID:-ubuntu}"
 
     echo "==> [1/5] 清理冲突旧包（若存在）"
-    $sudo_cmd apt-get remove -y docker docker-engine containerd runc 2>/dev/null || true
+    apt_run "$sudo_cmd" remove -y docker docker-engine containerd runc || true
 
     echo "==> [2/5] 添加 Docker 官方 apt 源 ($id/$codename, $arch)"
     $sudo_cmd install -m 0755 -d /etc/apt/keyrings
@@ -78,13 +82,15 @@ install_packages() {
     $sudo_cmd chmod a+r /etc/apt/keyrings/docker.asc
     echo "deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${id} ${codename} stable" \
         | $sudo_cmd tee /etc/apt/sources.list.d/docker.list >/dev/null
-    $sudo_cmd apt-get update
+    # 新写的 docker 源也纳入预检，坏源先暴露而不是让 apt 撞超时
+    apt_sources_health_check || true
+    apt_run "$sudo_cmd" update
 
     echo "==> [3/5] 安装引擎 + rootless 依赖"
     # docker-ce-rootless-extras 带入 dockerd-rootless-setuptool.sh 与 slirp4netns
     # uidmap=userns 映射必需; dbus-user-session=systemd --user 会话
     # fuse-overlayfs=native overlay 不可用时的回退（WSL 内核 6.18 通常原生即可）
-    $sudo_cmd apt-get install -y \
+    apt_run "$sudo_cmd" install -y \
         docker-ce docker-ce-cli containerd.io \
         docker-buildx-plugin docker-compose-plugin \
         docker-ce-rootless-extras \
