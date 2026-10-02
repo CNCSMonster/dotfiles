@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # apt 执行策略的单一事实来源（有界超时 / 可见输出 / 失败归因）。
-# 被 setup.sh（Layer 1 运行时依赖预检）与 scripts/install-system-packages.sh（Layer 0）source。
+# 被需要执行 apt 的脚本 source：setup.sh（python3 引导 + Layer 1 运行时依赖预检）、
+# install-wezterm / install-fonts / setup-rootless-docker / llvmup。
+# Layer 0 系统包清单已迁到 manifest.toml（manager = "apt"），那侧的同一套策略实现在
+# tool-installer 的 managers/apt_policy.py；两处数值由
+# tests/test_apt_policy.py::test_bounded_numbers_match_scripts_lib_apt_sh 锁定同步。
 #
 # 背景（2026-09 真实事故）：宿主把 apt 源指向腾讯云内网源 mirrors.tencentyun.com，
 # 该域名解析到链路本地地址 169.254.0.3，在非腾讯云内网环境是 TCP 黑洞。apt 默认超时与

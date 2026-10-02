@@ -90,7 +90,8 @@ RUN . /etc/os-release && \
 # 海外: 走默认源
 # 包含 gcc/build-essential/python3（setup.sh 引导所需的绝对最小集合）
 # 注意：不预装 clang/libicu/unzip——这些正是本镜像要验证的"环境假设"，
-# 必须由 setup.sh Layer 0 (install-system-packages) / Layer 2 (llvmup) 自行装好
+# 必须由 setup.sh Layer 0 (system-packages 模块, manifest manager="apt") /
+# Layer 2 (llvmup) 自行装好
 RUN for i in 1 2 3 4 5; do \
       apt-get update && apt-get install -y --no-install-recommends wget git curl gcc build-essential python3 && break; \
       [ "$i" -eq 5 ] && exit 1; echo "apt 失败，15s 后重试 $i/5"; sleep 15; \

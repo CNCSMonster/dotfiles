@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # System packages installation script for tool-installer (script manager)
 # Always exits 0; prints warnings on failure instead of failing.
+#
+# 本脚本现只剩 macOS 分支（Homebrew 引导 + 基础包）。
+# Linux 清单已迁到 manifest.toml 的声明式 [system-packages.linux]
+# （manager = "apt"），由 tool-installer 的 AptManager 直接安装：
+# 有界超时 / 源预检 / 失败归因 / 非预期状态授权统一走那一侧，
+# 见 docs/tool-installer-migration-plan.md §4.3。
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# apt 执行策略（有界超时 / 源预检 / 失败归因）的单一事实来源，与 setup.sh 共用
-source "${SCRIPT_DIR}/lib/apt.sh"
 
 OS="$(uname -s)"
 
@@ -23,29 +27,5 @@ if [[ "$OS" == "Darwin" ]]; then
     exit 0
 fi
 
-if [[ "$OS" == "Linux" ]]; then
-    echo "检查并安装系统基础包与构建工具链..."
-    missing=()
-    # gh、ripgrep → user-tools 模块 (github-release 精确锁定)
-    # clang: cargo 配置 linker=clang + verify 编译测试；Layer 2 llvmup 需要 sudo 终端，
-    # 非交互环境由这里的 apt clang 兜底（llvmup 成功时装 LLVM 22 覆盖）
-    for pkg in python3 curl wget gnupg software-properties-common build-essential gcc g++ clang cmake ninja-build pkg-config libssl-dev \
-               libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev libclang-dev libicu-dev unzip iproute2 \
-               fzf zsh tree git htop; do
-        command -v "$pkg" &>/dev/null || dpkg -s "$pkg" &>/dev/null || missing+=("$pkg")
-    done
-    if [ ${#missing[@]} -eq 0 ]; then
-        echo "✅ 系统基础包与构建工具链已就绪"
-        exit 0
-    fi
-    export DEBIAN_FRONTEND=noninteractive
-    sudo_cmd="sudo"
-    command -v sudo &>/dev/null || sudo_cmd=""
-    apt_sources_health_check || true
-    apt_run "$sudo_cmd" update || echo "⚠️  apt-get update 失败（原因见上方归因）"
-    apt_run "$sudo_cmd" install -y "${missing[@]}" || echo "⚠️  部分包安装失败（原因见上方归因）"
-    exit 0
-fi
-
-echo "不支持的系统: $OS"
+echo "不支持的系统: $OS（Linux 系统包由 manifest 的 manager = \"apt\" 负责）"
 exit 0

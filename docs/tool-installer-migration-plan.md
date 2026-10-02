@@ -280,10 +280,9 @@ fail-fast，「宁可快速失败也要给出归因」。
 - **已知不一致（Step 2 裁决）**：`AptManager` 仍不设 `DEBIAN_FRONTEND=noninteractive`，
   shell 侧全线设。在 manifest 真正接线前改它没有收益，只扩大变更面。
 - **Step 2（分两批）**：批次 1 = 非预期问题的授权与三档判定（已完成，见下）；批次 2 =
-  把 `scripts/install-system-packages.sh` 的清单迁到声明式 `manager = "apt"`（macOS 走
-  `manager = "brew"`，`BrewManager` 同样零使用）。批次 2 的前置条件是先裁决清单语义
-  （脚本用 `command -v` 判命令名，`AptManager.check` 只认 dpkg 包名）与
-  `docs/config-consistency-check-sop.md` 对该脚本 `for pkg in` 的 sed 抓取。
+  把 `scripts/install-system-packages.sh` 的清单迁到声明式 `manager = "apt"`
+  （已完成，见下）。`BrewManager` 仍零使用——macOS 分支经调研后保留 script，原因是
+  22 个 Linux 专属包在 brew 侧没有对应名，按包拆条目会让 macOS 策略段无从写起。
 
 **Step 2 批次 1（2026-10-03 已完成）：非预期问题的授权与三档判定**
 
@@ -340,6 +339,39 @@ fail-fast，「宁可快速失败也要给出归因」。
 防漂移：`test_bounded_numbers_match_scripts_lib_apt_sh` 直接读 `scripts/lib/apt.sh`
 断言 `Timeout=30 / Retries=1 / Lock=60` 等于 `apt_policy.APT_*`——数值两处各写一遍，
 靠"记得同步"早晚会失守，现在改一侧不改另一侧会点名。
+
+**Step 2 批次 2（2026-10-03 已完成）：系统包清单声明式化**
+
+调研先修正了原计划的两处预设：
+
+1. **shell 侧不需要同步三档**：`apt.sh` 的调用方（setup.sh 依赖预检、wezterm/fonts/
+   rootless-docker/llvmup）全是"装依赖"的预期操作，没有非预期判定；唯一带
+   "已有则跳过"判定的 `install-system-packages.sh` Linux 分支随迁移消失。授权三档是
+   AptManager 的特性——只有 check/install 分离的组件才会遇到 dpkg 与 command 两个
+   视角的差异。
+2. **形态选"多包 pkg 字段"而非每包一条**：manifest 的 tool 必须每个平台都有策略段，
+   而 22 个 Linux 专属包（build-essential、libssl-dev…）在 brew 侧没有对应名，按包拆
+   条目会让 macOS 段无从写起。`pkg` 保持 str（空白分隔的清单），契约不改。
+
+改动：
+
+- `manifest.toml [system-packages.linux]` → `manager = "apt"` + 26 包清单（与迁移前
+  `for pkg in` 原文逐字 diff 核对）；macOS 保留 script（Homebrew 引导 + 4 包，行为不变）。
+- `tools.toml`：`system-packages@1` → `@latest`。`@1` 会被 check 当成 pin 版本与 dpkg
+  版本比对，永远不等 → 每轮判未满足重装。
+- `AptManager`：多包 check（任一缺失即整组重装，与旧 `missing` 批量同语义）；
+  `install_command` 展开多包为一个事务；冲突检测逐包收集、**一次问询**（逐包问会把
+  用户按在终端里答 26 遍）；pin 限单包，多包 + pin 显式报错。
+- **latest 语义裁决**：apt 的 latest = "装了即满足"，不比 apt candidate。否则
+  `./setup.sh` 每轮把基线包升级到 candidate（`apt-get install` 不带 pin 会升级），而旧
+  清单从来只判定存在性。要对齐版本用 `name@版本`（走精确比对），强制重装用
+  `force = true`。`AptManager.check` 此前零测试，迁移前补 9 例锁住该契约。
+- **发现旧 SOP 提取本身是坏的**：`grep -oP '\b[a-z][a-z0-9-]{2,}\b' | grep -vwE 'for|pkg'`
+  漏掉 `g++`（`+` 不在字符类）与 `pkg-config`（被 `-w pkg` 误删）——声明清单与被核查
+  清单本就不同源。改为用 tool-installer 自己的 parser 读 manifest，26 包全量提取。
+
+验证：`check-manifest-platforms.sh` 4/4 平台、121 测试、dry-run 输出
+`version=latest manager=apt`、清单逐字 diff、`bash -n`。
 
 ---
 

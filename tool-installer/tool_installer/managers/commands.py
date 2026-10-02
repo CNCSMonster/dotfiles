@@ -38,6 +38,17 @@ def _selector(item: PlanItem) -> str:
     return item.tool.reference.version
 
 
+def _package_list(item: PlanItem) -> List[str]:
+    """manifest 的 pkg 字段：空格分隔的包清单（单包即一个元素）。
+
+    一个 tool 条目对应一个"包组"（如 system-packages 的 28 个构建依赖），而不是
+    每包一条——这是跨平台约束下的形态选择：manifest 的 tool 必须每个平台都有
+    策略段，而 22 个 Linux 专属包（build-essential、libssl-dev…）在 brew 侧没有
+    对应名，按包拆条目会让 macOS 段无从写起。
+    """
+    return item.strategy.fields["pkg"].split()
+
+
 def _v1_eq(a: str, b: str) -> bool:
     """v1 version equality: strip one leading v/V, then exact match."""
     def norm(v: str) -> str:
@@ -86,77 +97,72 @@ class AptManager(CommandManager):
     needs_privilege = True
 
     def check(self, item: PlanItem) -> CheckResult:
-        pkg = item.strategy.fields["pkg"]
-        try:
-            result = self.runner.run(
-                ["dpkg-query", "-W", "-f=${Version}", pkg],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-        except OSError:
-            return CheckResult.CHECK_ERROR
+        """多包清单：任一包缺失 → NOT_SATISFIED；全部在场才做版本判定。
 
-        if result.returncode != 0:
-            # Package not installed
-            return CheckResult.NOT_SATISFIED
-
-        installed_version = result.stdout.strip()
-        if not installed_version:
-            return CheckResult.CHECK_ERROR
+        **latest 的语义是"装了即满足"，不比 apt candidate**——与迁移前该清单的
+        实现（scripts/install-system-packages.sh 的 Linux 分支：
+        `command -v || dpkg -s || missing`）行为一致。理由：apt 清单装的是系统包，
+        若 check 把落后的版本判为
+        NOT_SATISFIED，后续 `apt-get install`（不带 pin）会把基线包升级到
+        candidate，`./setup.sh` 就变成了"每轮把系统升级一遍"的入口；升级是系统
+        管理决策，应由用户显式 `apt upgrade`。需要钉版本对齐用 `name@版本` 走
+        精确比对分支，强制重装用 `force = true`。
+        """
+        pkgs = _package_list(item)
+        versions: List[str] = []
+        for pkg in pkgs:
+            try:
+                result = self.runner.run(
+                    ["dpkg-query", "-W", "-f=${Version}", pkg],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+            except OSError:
+                return CheckResult.CHECK_ERROR
+            if result.returncode != 0:
+                # 任一包缺失就整组重装（apt 幂等，已装的 no-op，与旧脚本的
+                # missing 批量安装同语义）
+                return CheckResult.NOT_SATISFIED
+            installed_version = result.stdout.strip()
+            if not installed_version:
+                return CheckResult.CHECK_ERROR
+            versions.append(installed_version)
 
         requested = _selector(item)
         if requested == "latest":
-            # Resolve latest candidate from apt-cache
-            try:
-                cand = self._get_apt_candidate(pkg)
-                if cand is None:
-                    return CheckResult.CHECK_ERROR
-                return CheckResult.SATISFIED if _v1_eq(installed_version, cand) else CheckResult.NOT_SATISFIED
-            except OSError:
-                return CheckResult.CHECK_ERROR
-        else:
-            return CheckResult.SATISFIED if _v1_eq(installed_version, requested) else CheckResult.NOT_SATISFIED
-
-    def _get_apt_candidate(self, pkg: str) -> Optional[str]:
-        """Get the candidate version from apt-cache policy."""
-        try:
-            result = self.runner.run(
-                ["apt-cache", "policy", pkg],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-        except OSError:
-            return None
-        if result.returncode != 0:
-            return None
-        # Parse "Candidate: X.Y.Z" line
-        for line in result.stdout.splitlines():
-            stripped = line.strip()
-            if stripped.startswith("Candidate:"):
-                candidate = stripped.split(":", 1)[1].strip()
-                if candidate and candidate != "(none)":
-                    return candidate
-                return None
-        return None
+            return CheckResult.SATISFIED
+        # 精确 pin（pin 本身只允许单包，见 install_command）
+        if all(_v1_eq(installed, requested) for installed in versions):
+            return CheckResult.SATISFIED
+        return CheckResult.NOT_SATISFIED
 
     def check_command(self, item: PlanItem) -> List[str]:
         raise NotImplementedError("Use check() instead")
 
     def install_command(self, item: PlanItem) -> List[str]:
-        """Build apt install command.
+        """Build apt install command: apt-get install -y <pkg...>.
 
         Mirrors setup.sh: sudo_run apt-get install -y <pkg>
         - Uses 'apt-get' (not 'apt') for scripting compatibility
         - Uses '-y' to auto-confirm (since we already prompted for sudo password)
         - Does NOT set DEBIAN_FRONTEND=noninteractive
           (respects user's apt configuration for any remaining interactive prompts)
+        - 多包一次装，与旧脚本的批量 `${missing[@]}` 同语义
+
+        版本 pin 只允许单包："多包对齐到同一个 pin 版本"没有真实场景，宁可显式
+        报错也不静默猜测语义。
         """
-        pkg = item.strategy.fields["pkg"]
-        if _selector(item) != "latest":
-            pkg = f"{pkg}={_selector(item)}"
-        return ["apt-get", "install", "-y", pkg]
+        pkgs = _package_list(item)
+        selector = _selector(item)
+        if selector != "latest":
+            if len(pkgs) != 1:
+                raise InstallationError(
+                    f"版本 pin 不支持多包清单（pkg={item.strategy.fields['pkg']!r}）；"
+                    "请用 @latest，或拆成单包条目分别 pin"
+                )
+            pkgs = [f"{pkgs[0]}={selector}"]
+        return ["apt-get", "install", "-y", *pkgs]
 
     def _dpkg_installed(self, pkg: str) -> bool:
         """系统视角：dpkg 数据库是否记录了这个包（不比对版本）。
@@ -215,24 +221,35 @@ class AptManager(CommandManager):
         提示不阻断）→ 带 apt 命令行超时参数执行 → 输出回显（不用 capture 静默掉进度）
         → 失败时把 apt 输出翻译成可执行的修复动作。
         """
-        # 装包名/版本的语义仍只由 install_command 负责，这里不重复计算
+        # 装包名/版本的语义仍只由 install_command 负责（顺带校验 pin 合法性）
         raw_cmd = self.install_command(item)
-        pkg_spec = raw_cmd[-1]                 # 可能是 libclang-dev=18.0-59
-        pkg = pkg_spec.split("=", 1)[0]        # 包名（非预期检测不能拿带版本的去 which）
-        binary = item.strategy.fields.get("bin") or pkg
+        pkgs = _package_list(item)
+        binary_field = item.strategy.fields.get("bin")
 
         # ── 授权：命令已存在但非 apt 装的，直接装会静默多出一份实现 ──
-        conflict = unexpected_binary_state(binary, pkg, self._dpkg_installed(pkg))
-        if conflict:
-            decision = ask(f"⚠️  {conflict}。仍要安装 apt 版吗？")
+        # 多包清单逐包收集、一次问询（逐包问会把用户按在终端里答 28 遍）
+        conflicts = []
+        for pkg in pkgs:
+            binary = (binary_field or pkg) if len(pkgs) == 1 else pkg
+            state = unexpected_binary_state(binary, pkg, self._dpkg_installed(pkg))
+            if state:
+                conflicts.append(state)
+        if conflicts:
+            detail = "\n".join(f"    - {c}" for c in conflicts)
+            decision = ask(
+                f"⚠️  检测到 {len(conflicts)} 个非预期状态（命令已存在，但对应包非 apt 安装）：\n"
+                f"{detail}\n  仍要安装 apt 版吗？"
+            )
+            summary = f"{len(conflicts)} 个包与已有命令冲突（{conflicts[0]}"
+            summary += " 等）" if len(conflicts) > 1 else "）"
             if decision is Decision.UNAUTHORIZED:
                 raise AuthorizationRequired(
-                    f"{item.tool.reference.name}: {conflict}"
+                    f"{item.tool.reference.name}: {summary}"
                     "（无交互终端且未传 --yes，已跳过）"
                 )
             if decision is Decision.NO:
                 raise AuthorizationRequired(
-                    f"{item.tool.reference.name}: {conflict}（用户选择跳过）"
+                    f"{item.tool.reference.name}: {summary}（用户选择跳过）"
                 )
 
         # 源预检已上移到 preflight（每轮一次）：逐项跑会在慢源上把探测放大成 N 轮

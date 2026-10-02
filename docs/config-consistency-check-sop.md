@@ -43,7 +43,7 @@
 
 #### 1.1 从安装声明提取
 
-以 `tool-installer` 的 dry-run 计划为权威来源（反映 `tools.toml` + `manifest.toml` 的实际解析结果），apt 系统包则来自 `scripts/install-system-packages.sh`：
+以 `tool-installer` 的 dry-run 计划为权威来源（反映 `tools.toml` + `manifest.toml` 的实际解析结果），apt 系统包清单也直接取自 `manifest.toml`（与 dry-run 用同一个 parser 解析，避免 sed 文本技巧随格式漂移；清单已在 2026-10 从 `scripts/install-system-packages.sh` 迁到声明式 `manager = "apt"`）：
 
 ```bash
 # cargo 安装的工具（dry-run 计划里 manager=cargo-install 的行）
@@ -53,9 +53,18 @@ python3 vendor/tool-installer install dev --dry-run \
 # 从 mise/config.toml 提取
 grep -oP '^\w+' mise/config.toml | sort -u > /tmp/installed-mise.txt
 
-# 从系统包脚本提取 apt 包（for pkg in ... 列表，过滤 shell 关键字）
-sed -n '/for pkg in/,/do$/p' scripts/install-system-packages.sh \
-    | grep -oP '\b[a-z][a-z0-9-]{2,}\b' | grep -vwE 'for|pkg' | sort -u > /tmp/installed-apt.txt
+# apt 系统包清单（manifest.toml 的 [system-packages.linux] pkg 字段）
+python3 - <<'PY' > /tmp/installed-apt.txt
+import sys
+from pathlib import Path
+
+sys.path.insert(0, "tool-installer")
+from tool_installer.parser import parse_manifest_file
+
+manifest, _ = parse_manifest_file(Path("manifest.toml"))
+pkg = manifest["system-packages"]["linux"]["pkg"]
+print("\n".join(sorted(set(pkg.split()))))
+PY
 ```
 
 #### 1.2 从运行时环境提取（更准确）

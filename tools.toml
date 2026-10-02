@@ -3,7 +3,9 @@ manifest = "./manifest.toml"
 
 # ── Layer 0: 系统基础包与构建工具链（必须最先安装）──
 [system-packages]
-"system-packages@1" = "系统基础包与构建工具链（apt/brew）"
+# @latest：apt 侧语义是"装了即满足"（不比 candidate、不隐式升级）；
+# 迁移前用 @1 会被 AptManager 当成 pin 版本比对，导致每轮判未满足重装。
+"system-packages@latest" = "系统基础包与构建工具链（apt/brew）"
 
 # ── Layer 0: 字体（体验增强，非必须）──
 [fonts]

@@ -39,8 +39,24 @@ All notable changes to this project will be documented in this file.
     0.2.13 / 传统 1.9.17p2）不存在"用调用方参数完成授权"的机制；Ubuntu 26.04 的 sudo 已是
     sudo-rs，凭证缓存默认 15 分钟
   - 回归测试 `tool-installer/tests/test_authorization.py`（20 例，离线），已重建 `vendor/tool-installer`
-  - 批次 2 待做：shell 侧 `scripts/lib/apt.sh` 同步三档、系统包迁声明式 `manager = "apt"`、
-    `config-consistency-check-sop.md` 的 sed 抓取同步
+- **Step 2 批次 2：系统包清单声明式化**（2026-10-03；调研修正了两处原计划预设）
+  - `manifest.toml [system-packages.linux]` → `manager = "apt"` + 26 包清单（与迁移前
+    `for pkg in` 原文逐字 diff 核对一致）；macOS 保留 script（Homebrew 引导 + 4 包，
+    行为不变；22 个 Linux 专属包在 brew 侧无对应名，按包拆条目会让 macOS 段无从写起）
+  - `tools.toml`：`system-packages@1` → `@latest`（`@1` 会被 check 当成 pin 与 dpkg 版本
+    比对，永远不等 → 每轮判未满足重装）
+  - `AptManager` 多包支持：check 任一缺失即整组重装（与旧 `missing` 批量同语义）、
+    `install_command` 一个事务展开、冲突检测逐包收集一次问询、pin 限单包显式报错
+  - **latest 语义裁决**：apt 的 latest = 装了即满足，**不比 apt candidate**——否则
+    ./setup.sh 每轮把基线包升级到 candidate，而旧清单只判定存在性；对齐版本用
+    `name@版本`，强制重装用 `force = true`。`AptManager.check` 此前零测试，补 9 例锁契约
+  - **shell 侧经调研确认无需三档**：apt.sh 调用方全是预期的依赖安装；唯一带"已有则
+    跳过"判定的 Linux 分支随迁移消失（授权三档是 check/install 分离组件的特性）
+  - **修复旧 SOP 提取缺陷**：`grep '\b[a-z][a-z0-9-]{2,}\b'` 漏 `g++`、`-w pkg` 误删
+    `pkg-config`——声明清单与被核查清单本就不同源；改用 tool-installer 的 parser 读
+    manifest，26 包全量提取（`config-consistency-check-sop.md` 1.1 已同步）
+  - 验证：`check-manifest-platforms.sh` 4/4 平台、121 测试、dry-run
+    `version=latest manager=apt`、清单逐字 diff、`bash -n`、vendor 重建 + 同步守卫
 - **修复：apt 索引刷新与源预检的执行时机（tool-installer）**
   - 新增 `Manager.preflight(items)` 钩子（每轮一次，executor 在逐项执行前按 manager
     分组调用）；`AptManager` 在其中 `apt-get update` **一轮一次**，对齐 shell 侧 apt_run

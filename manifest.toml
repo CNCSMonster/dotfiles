@@ -29,8 +29,17 @@ path = "scripts/install-wezterm.sh"
 
 [system-packages]
 [system-packages.linux]
-manager = "script"
-path = "scripts/install-system-packages.sh"
+manager = "apt"
+# 系统基础包与构建工具链：逐字迁移自 scripts/install-system-packages.sh 的
+# Linux 清单（迁移前是 `command -v || dpkg -s || missing` + 批量 apt install）。
+# 26 个包一个事务装完；@latest 语义 = 装了即满足，不主动升级到 candidate
+# （升级是系统管理决策，由用户显式 apt upgrade；见 AptManager.check docstring）。
+pkg = """
+    python3 curl wget gnupg software-properties-common
+    build-essential gcc g++ clang cmake ninja-build pkg-config
+    libssl-dev libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev
+    libclang-dev libicu-dev unzip iproute2 fzf zsh tree git htop
+    """
 [system-packages.macos]
 manager = "script"
 path = "scripts/install-system-packages.sh"

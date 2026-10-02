@@ -37,6 +37,7 @@ from tool_installer.managers.apt_policy import (  # noqa: E402
 )
 from tool_installer.managers.base import (  # noqa: E402
     DEFAULT_COMMAND_TIMEOUT,
+    CheckResult,
     SubprocessRunner,
 )
 from tool_installer.managers.commands import AptManager  # noqa: E402
@@ -449,6 +450,131 @@ class PreflightTest(unittest.TestCase):
         self.assertEqual(sum(1 for c in commands if "update" in c), 1, "update 应恰好一次")
         self.assertEqual(sum(1 for c in commands if "install" in c), 2, "每包各装一次")
         self.assertIn("update", commands[0], "所有前置必须先于任何 install")
+
+
+class AptManagerCheckTest(unittest.TestCase):
+    """check 的契约：多包任一缺失即重装；latest = 装了即满足，**不比 candidate**。
+
+    后者是刻意的语义裁决（见 check docstring）：系统包清单的旧实现是
+    `command -v || dpkg -s || missing`，从不升级已装的包；若 check 把
+    "版本落后 candidate" 判为未满足，./setup.sh 就会变成每轮升级系统的入口。
+    """
+
+    def setUp(self) -> None:
+        root = mock.patch("tool_installer.managers.base._is_root", return_value=True)
+        root.start()
+        self.addCleanup(root.stop)
+
+    @staticmethod
+    def item(pkgs: str, version: str = "latest") -> PlanItem:
+        return PlanItem(
+            module_name="system-packages",
+            tool=ToolSpec(
+                reference=ToolReference(
+                    raw=f"system-packages@{version}",
+                    name="system-packages",
+                    version=version,
+                ),
+                allow_fail=False,
+            ),
+            strategy=MergedStrategy(
+                tool_name="system-packages", manager="apt", fields={"pkg": pkgs}
+            ),
+            environment=Environment(os="linux", arch="x86_64"),
+        )
+
+    @staticmethod
+    def runner(installed: dict) -> mock.Mock:
+        """installed: pkg -> version；未列出的包视为未装。"""
+        runner = mock.Mock()
+
+        def side_effect(args, **kwargs):  # noqa: ANN001
+            if args[0] == "dpkg-query":
+                pkg = args[-1]
+                if pkg in installed:
+                    return subprocess.CompletedProcess(args, 0, installed[pkg], "")
+                return subprocess.CompletedProcess(args, 1, "", "")
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        runner.run.side_effect = side_effect
+        return runner
+
+    @staticmethod
+    def apt_cache_calls(runner: mock.Mock) -> list:
+        return [
+            c[0][0]
+            for c in runner.run.call_args_list
+            if c[0][0] and c[0][0][0] == "apt-cache"
+        ]
+
+    def test_all_installed_is_satisfied(self) -> None:
+        runner = self.runner({"a": "1.0", "b": "2.0", "c": "3.0"})
+        result = AptManager(runner=runner).check(self.item("a b c"))
+        self.assertIs(result, CheckResult.SATISFIED)
+        self.assertEqual(self.apt_cache_calls(runner), [], "latest 不应查 candidate")
+
+    def test_one_missing_is_not_satisfied(self) -> None:
+        runner = self.runner({"a": "1.0", "b": "2.0"})
+        result = AptManager(runner=runner).check(self.item("a b c"))
+        self.assertIs(result, CheckResult.NOT_SATISFIED)
+
+    def test_stale_installed_version_is_still_satisfied_for_latest(self) -> None:
+        """锁"不升级"：装了但版本旧，latest 仍算满足——这正是迁移前脚本的行为。"""
+        runner = self.runner({"pkg": "0.9.0-1ubuntu1"})
+        result = AptManager(runner=runner).check(self.item("pkg"))
+        self.assertIs(result, CheckResult.SATISFIED)
+        self.assertEqual(self.apt_cache_calls(runner), [])
+
+    def test_pin_mismatch_is_not_satisfied(self) -> None:
+        runner = self.runner({"pkg": "1.3.0"})
+        result = AptManager(runner=runner).check(self.item("pkg", version="1.2.0"))
+        self.assertIs(result, CheckResult.NOT_SATISFIED)
+
+    def test_pin_match_tolerates_leading_v(self) -> None:
+        runner = self.runner({"pkg": "v1.2.0"})
+        result = AptManager(runner=runner).check(self.item("pkg", version="1.2.0"))
+        self.assertIs(result, CheckResult.SATISFIED)
+
+    def test_nothing_installed_is_not_satisfied(self) -> None:
+        runner = self.runner({})
+        result = AptManager(runner=runner).check(self.item("a b c"))
+        self.assertIs(result, CheckResult.NOT_SATISFIED)
+
+
+class InstallCommandShapeTest(unittest.TestCase):
+    """命令形态：多包一次装（与旧脚本批量 `${missing[@]}` 同语义）、pin 限单包。"""
+
+    @staticmethod
+    def item(pkgs: str, version: str = "latest") -> PlanItem:
+        return PlanItem(
+            module_name="system-packages",
+            tool=ToolSpec(
+                reference=ToolReference(
+                    raw=f"system-packages@{version}",
+                    name="system-packages",
+                    version=version,
+                ),
+                allow_fail=False,
+            ),
+            strategy=MergedStrategy(
+                tool_name="system-packages", manager="apt", fields={"pkg": pkgs}
+            ),
+            environment=Environment(os="linux", arch="x86_64"),
+        )
+
+    def test_multi_package_expands_into_one_transaction(self) -> None:
+        cmd = AptManager().install_command(self.item("libssl-dev unzip iproute2"))
+        self.assertEqual(cmd, ["apt-get", "install", "-y", "libssl-dev", "unzip", "iproute2"])
+
+    def test_single_package_shape_is_unchanged(self) -> None:
+        cmd = AptManager().install_command(self.item("libclang-dev"))
+        self.assertEqual(cmd, ["apt-get", "install", "-y", "libclang-dev"])
+
+    def test_pin_on_multi_package_is_rejected_explicitly(self) -> None:
+        """多包 + pin 没有真实语义，宁可报错也不静默猜测。"""
+        with self.assertRaises(InstallationError) as ctx:
+            AptManager().install_command(self.item("a b", version="1.2.0"))
+        self.assertIn("多包", str(ctx.exception))
 
 
 if __name__ == "__main__":
