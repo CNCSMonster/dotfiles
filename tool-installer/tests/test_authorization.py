@@ -66,6 +66,18 @@ class EnvBase(unittest.TestCase):
     def setUp(self) -> None:
         os.environ.pop(ASSUME_YES_ENV, None)
         self.addCleanup(os.environ.pop, ASSUME_YES_ENV, None)
+        # CI 的 job env 设了 TOOL_INSTALLER_STRICT=1，会泄漏进测试进程：
+        # executor 的汇总从"打印"变"抛错"，同一份测试本地绿、CI 红
+        # （已发生：批次 1/1.5 的 Unit tests job errors=2）。
+        # 按既有约定隔离（test_executor_tolerated_failures 同模式）。
+        self._strict = os.environ.pop("TOOL_INSTALLER_STRICT", None)
+        self.addCleanup(self._restore_strict)
+
+    def _restore_strict(self) -> None:
+        if self._strict is None:
+            os.environ.pop("TOOL_INSTALLER_STRICT", None)
+        else:
+            os.environ["TOOL_INSTALLER_STRICT"] = self._strict
 
 
 class AskDecisionTest(EnvBase):

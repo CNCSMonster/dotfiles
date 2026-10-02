@@ -39,6 +39,7 @@ from tool_installer.managers.base import (  # noqa: E402
     DEFAULT_COMMAND_TIMEOUT,
     CheckResult,
     SubprocessRunner,
+    _run_with_sudo,
 )
 from tool_installer.managers.commands import AptManager  # noqa: E402
 from tool_installer.models import (  # noqa: E402
@@ -349,6 +350,72 @@ class RunnerTimeoutTest(unittest.TestCase):
                 f"{key} 两处不一致：shell={match.group(1)}，tool-installer={value}。"
                 "改一处必须同步另一处。",
             )
+
+
+class SudoPrivilegeTest(unittest.TestCase):
+    """提权顺序与 shell 侧 preflight_runtime_deps 一一对应：root → `sudo -n` → TTY → 报错。
+
+    这块原先零覆盖，于是"无 TTY 就判死"的缺陷一路活到 CI：system-packages 迁 apt 后，
+    CI（免密 sudo、无 TTY）的 install languages 经 depends 链拿到 apt 条目，整个 job 挂掉。
+    """
+
+    @staticmethod
+    def runner(passwordless_rc: int = 0) -> mock.Mock:
+        """sudo -n true 返回 passwordless_rc，其余命令成功。"""
+        runner = mock.Mock()
+
+        def side_effect(args, **kwargs):  # noqa: ANN001
+            if list(args[:3]) == ["sudo", "-n", "true"]:
+                return subprocess.CompletedProcess(args, passwordless_rc, "", "")
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        runner.run.side_effect = side_effect
+        return runner
+
+    @staticmethod
+    def commands(runner: mock.Mock) -> list:
+        return [c[0][0] for c in runner.run.call_args_list]
+
+    def test_passwordless_sudo_works_without_tty(self) -> None:
+        """CI/云镜像场景：免密可用、无 TTY —— 修复前这里直接判死。"""
+        runner = self.runner(passwordless_rc=0)
+        with mock.patch("tool_installer.managers.base._is_root", return_value=False), \
+             mock.patch("tool_installer.managers.base._has_tty", return_value=False):
+            _run_with_sudo(["apt-get", "update"], runner=runner)
+        cmds = self.commands(runner)
+        self.assertIn(["sudo", "-n", "true"], cmds, "必须先探测免密")
+        self.assertEqual(cmds[-1], ["sudo", "apt-get", "update"])
+
+    def test_password_required_and_no_tty_fails_with_clear_message(self) -> None:
+        runner = self.runner(passwordless_rc=1)
+        with mock.patch("tool_installer.managers.base._is_root", return_value=False), \
+             mock.patch("tool_installer.managers.base._has_tty", return_value=False):
+            with self.assertRaises(InstallationError) as ctx:
+                _run_with_sudo(["apt-get", "update"], runner=runner)
+        self.assertIn("no TTY", str(ctx.exception))
+
+    def test_password_required_with_tty_runs_sudo(self) -> None:
+        runner = self.runner(passwordless_rc=1)
+        with mock.patch("tool_installer.managers.base._is_root", return_value=False), \
+             mock.patch("tool_installer.managers.base._has_tty", return_value=True):
+            _run_with_sudo(["apt-get", "update"], runner=runner)
+        self.assertEqual(self.commands(runner)[-1], ["sudo", "apt-get", "update"])
+
+    def test_root_neither_probes_nor_wraps(self) -> None:
+        runner = self.runner()
+        with mock.patch("tool_installer.managers.base._is_root", return_value=True):
+            _run_with_sudo(["apt-get", "update"], runner=runner)
+        cmds = self.commands(runner)
+        self.assertEqual(cmds[-1], ["apt-get", "update"], "root 直接执行，不包 sudo")
+        self.assertNotIn(["sudo", "-n", "true"], cmds, "root 不需要探测")
+
+    def test_missing_sudo_binary_falls_through_to_tty_check(self) -> None:
+        runner = mock.Mock()
+        runner.run.side_effect = OSError("sudo not found")
+        with mock.patch("tool_installer.managers.base._is_root", return_value=False), \
+             mock.patch("tool_installer.managers.base._has_tty", return_value=False):
+            with self.assertRaises(InstallationError):
+                _run_with_sudo(["apt-get", "update"], runner=runner)
 
 
 class PreflightTest(unittest.TestCase):

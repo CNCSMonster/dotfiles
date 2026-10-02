@@ -72,6 +72,29 @@ def _has_tty() -> bool:
     return sys.stdin.isatty()
 
 
+def _passwordless_sudo_available(runner: CommandRunner) -> bool:
+    """免密 sudo 探测（`sudo -n true`，有密码则立即 rc≠0，不阻塞）。
+
+    CI runner、云镜像、配了 NOPASSWD 的环境都是这种：能提权，但**没有 TTY**。
+    shell 侧 setup.sh 的 preflight_runtime_deps 顺序就是 `sudo -n true` →
+    交互 `sudo -v`；tool-installer 缺第一步会在无 TTY 时直接判死，即使免密
+    sudo 完全可用（system-packages 迁到 apt 后，CI 的 install languages/
+    lsp-servers 经 depends 链拿到 apt 条目，正是这样整个 job 挂掉的）。
+    """
+    try:
+        result = runner.run(
+            ["sudo", "-n", "true"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, InstallationError, subprocess.SubprocessError):
+        # sudo 不可执行 / 探测超时：当作免密不可用，交给下面的 TTY 分支判定
+        return False
+    return result.returncode == 0
+
+
 def _run_with_sudo(
     args: Sequence[str],
     runner: Optional[CommandRunner] = None,
@@ -80,24 +103,27 @@ def _run_with_sudo(
     """Run a command with sudo if not root, matching dotfiles sudo_run() semantics.
 
     - If already root: execute args directly (no sudo).
-    - If not root: prepend sudo to args.
-      - If no TTY is available and sudo is needed, fail with a clear message.
+    - If passwordless sudo works: prepend sudo (no TTY needed).
+    - Else if a TTY is available: prepend sudo (sudo can prompt).
+    - Else: fail with a clear message.
 
-    This mirrors the dotfiles setup.sh sudo_run() helper:
-        if [ "$EUID" -eq 0 ]; then "$@"; else sudo "$@"; fi
+    与 shell 侧 preflight_runtime_deps 的提权顺序一一对应（root → `sudo -n` →
+    交互 `sudo -v` → 报错给出可复制的修复命令），两侧只能有一个答案。
     """
+    r = runner or SubprocessRunner()
     if _is_root():
         cmd = list(args)
+    elif _passwordless_sudo_available(r):
+        cmd = ["sudo"] + list(args)
+    elif not _has_tty():
+        raise InstallationError(
+            "This command requires elevated privileges but no TTY is available for sudo password input. "
+            "Please run tool-installer in an interactive terminal, "
+            "or run as root (e.g., 'sudo tool-installer install <module>')."
+        )
     else:
-        if not _has_tty():
-            raise InstallationError(
-                "This command requires elevated privileges but no TTY is available for sudo password input. "
-                "Please run tool-installer in an interactive terminal, "
-                "or run as root (e.g., 'sudo tool-installer install <module>')."
-            )
         cmd = ["sudo"] + list(args)
 
-    r = runner or SubprocessRunner()
     return r.run(cmd, **kwargs)
 
 
