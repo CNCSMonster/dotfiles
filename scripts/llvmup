@@ -26,9 +26,10 @@ set -eo pipefail
 APP_NAME="llvmup"
 LLVM_SCRIPT="https://apt.llvm.org/llvm.sh"
 
-# 有界 apt（scripts/lib/apt.sh）。llvmup 有两种形态：scripts/llvmup（Layer 2 入口）
-# 与 shells/scripts/llvmup（PATH 上的副本，经 ~/.config/shells/scripts 符号链接调用），
-# 所以先解析真实路径再定位库。
+# 有界 apt（scripts/lib/apt.sh）。本文件是 llvmup 的唯一真实副本；
+# shells/scripts/llvmup 是指向它的相对符号链接（PATH 入口，部署后经
+# ~/.config/shells/scripts 调用）。调用时 BASH_SOURCE 可能是链接本身，
+# 因此先 readlink -f 再定位库；第二个候选只在脚本被复制出仓库时兑底。
 LLVMUP_SELF="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
 LLVMUP_DIR="$(cd "$(dirname "$LLVMUP_SELF")" && pwd)"
 LLVM_APT_LIB=""

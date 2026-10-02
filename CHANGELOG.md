@@ -29,6 +29,9 @@ All notable changes to this project will be documented in this file.
   - `llvmup` 用 `readlink -f` 定位库以兼容两种调用形态，库缺失时显式警告后再降级
   - 只在会执行 `update` 的路径跑源可达性预检；纯 install 路径靠失败归因
   - 各脚本原有的失败语义（致命 / 跳过 / 警告）保持不变
+- **llvmup 合并为单一文件**：`shells/scripts/llvmup`（PATH 入口）原是 `scripts/llvmup` 的
+  复制件，幂等 skip 修复（`513573d`）只落在后者，两份已漂移。改为指向 `scripts/llvmup` 的
+  相对符号链接，这是仓库里唯一一对同名重复脚本，现在内容只有一份
 - **github-release 镜像回退以 SHA256 为准**：`_verify_checksum` 原先在下载循环之外执行，
   镜像返回 HTTP 200 但内容不符时第一个响应的源即被选中、随后校验失败直接抛错，
   官方直连永不被尝试。现在校验参与**源选择**：候选源必须同时传输成功且校验通过，

@@ -256,10 +256,11 @@ fail-fast，「宁可快速失败也要给出归因」。
   （setup.sh、install-system-packages、install-wezterm、setup-rootless-docker）；纯 install
   的路径（install-fonts）靠失败归因即可，不多花一次探测。
 
-`scripts/llvmup` 有两种形态（Layer 2 入口 `scripts/llvmup`，以及 PATH 上的
-`shells/scripts/llvmup` 副本，后者经 `~/.config/shells/scripts` 符号链接调用），因此它用
-`readlink -f` 解析真实路径后在两个候选位置找库；找不到时**显式**打印警告再退回无界模式，
-不静默降级。
+`llvmup` 只有一份真实文件 `scripts/llvmup`；`shells/scripts/llvmup` 是指向它的相对符号链接
+（PATH 入口，部署后经 `~/.config/shells/scripts` 调用）。历史上后者是**复制件**，幂等 skip
+修复（`513573d`）只落在 `scripts/` 那份，两份已漂移，2026-10-03 合并为链接——这是仓库里
+唯一一对同名重复脚本。调用时 `BASH_SOURCE` 可能是链接本身，因此用 `readlink -f` 解析真实
+路径再定位库；找不到库时**显式**打印警告再退回无界模式，不静默降级。
 
 ---
 
