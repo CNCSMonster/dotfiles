@@ -136,16 +136,15 @@ class AptManager(CommandManager):
                     "系统缺少 dpkg，或 PATH 异常？"
                 ) from None
             if result.returncode != 0:
-                # 任一包缺失就整组重装（apt 幂等，已装的 no-op，与旧脚本的
-                # missing 批量安装同语义）
+                # 包在 dpkg 数据库里完全未知 → 未装
                 return CheckResult.NOT_SATISFIED
             installed_version = result.stdout.strip()
             if not installed_version:
-                raise InstallationError(
-                    f"dpkg-query 对 {pkg} 报告成功但版本输出为空"
-                    f"（rc=0, stdout={result.stdout!r}）——包状态异常，"
-                    f"先跑 dpkg -s {pkg} 看现场"
-                )
+                # rc=0 但版本为空 = 包在数据库里但**未安装**（dpkg-query -W 对
+                # not-installed / config-files 状态的记录也返回 0，只是没有版本可填）
+                # —— 这是"需要装"，不是异常。CI 实测：裸 runner 上的
+                # build-essential 就是这个状态，曾被我误判成 CHECK_ERROR。
+                return CheckResult.NOT_SATISFIED
             versions.append(installed_version)
 
         requested = _selector(item)

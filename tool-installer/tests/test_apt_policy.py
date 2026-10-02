@@ -622,14 +622,33 @@ class AptManagerCheckTest(unittest.TestCase):
         self.assertIn("libssl-dev", message, "必须点名是哪个包的检查失败")
         self.assertIn("No such file", message, "必须带上原始异常")
 
-    def test_empty_dpkg_output_names_the_package_and_shows_the_raw_stdout(self) -> None:
+    def test_empty_dpkg_output_means_not_installed(self) -> None:
+        """rc=0 但版本空 = 包在 dpkg 数据库但未安装（`-W` 对 not-installed 状态也返回 0）。
+
+        曾被误判成 CHECK_ERROR：测试当时按错误语义断言 raise，本地绿、锁住了 bug，
+        CI 的裸 runner 上 build-essential 正是这个状态才暴露。"""
         runner = mock.Mock()
         runner.run.return_value = subprocess.CompletedProcess([], 0, "", "")
-        with self.assertRaises(InstallationError) as ctx:
-            AptManager(runner=runner).check(self.item("libssl-dev"))
-        message = str(ctx.exception)
-        self.assertIn("libssl-dev", message)
-        self.assertIn("dpkg -s libssl-dev", message, "给出可直接执行的现场命令")
+        result = AptManager(runner=runner).check(self.item("libssl-dev"))
+        self.assertIs(result, CheckResult.NOT_SATISFIED)
+
+    def test_mixed_states_install_when_any_package_is_missing(self) -> None:
+        """已装的有版本、未装的空输出 → 整组判未满足（补装缺失部分）。"""
+        runner = mock.Mock()
+
+        def side_effect(args, **kwargs):  # noqa: ANN001
+            pkg = args[-1]
+            if pkg == "installed-pkg":
+                return subprocess.CompletedProcess(args, 0, "1.2.3", "")
+            if pkg == "known-but-missing":
+                return subprocess.CompletedProcess(args, 0, "", "")
+            return subprocess.CompletedProcess(args, 1, "", "")
+
+        runner.run.side_effect = side_effect
+        result = AptManager(runner=runner).check(
+            self.item("installed-pkg known-but-missing never-seen")
+        )
+        self.assertIs(result, CheckResult.NOT_SATISFIED)
 
 
 class InstallCommandShapeTest(unittest.TestCase):
