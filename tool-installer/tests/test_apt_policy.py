@@ -255,7 +255,8 @@ class AptManagerInstallTest(unittest.TestCase):
             AptManager(runner=runner).install(apt_item(version="18.0-59"))
 
         args = runner.run.call_args[0][0]
-        self.assertEqual(args[0], "apt-get")
+        # 与 scripts/lib/apt.sh 同形：env 子命令跟在（可能的）sudo 之后，绕过 env_reset
+        self.assertEqual(args[:3], ["env", "DEBIAN_FRONTEND=noninteractive", "apt-get"])
         self.assertIn("Acquire::http::Timeout=30", args)
         self.assertIn("DPkg::Lock::Timeout=60", args)
         self.assertEqual(args[-1], "libclang-dev=18.0-59")
@@ -266,7 +267,7 @@ class AptManagerInstallTest(unittest.TestCase):
         with redirect_stdout(io.StringIO()) as out:
             AptManager(runner=runner).install(apt_item())
         self.assertIn("Reading package lists... Done", out.getvalue())
-        self.assertIn("⏳ apt-get", out.getvalue())
+        self.assertIn("⏳ env DEBIAN_FRONTEND=noninteractive apt-get", out.getvalue())
 
     def test_failure_carries_attribution(self) -> None:
         runner = self.runner(returncode=100, stdout=TENCENTYUN_LOG)
@@ -299,7 +300,7 @@ class AptManagerInstallTest(unittest.TestCase):
         text = out.getvalue()
         self.assertIn("检测到私网 apt 源", text)
         # 预检必须早于 apt 启动（现在由每轮一次的 preflight 负责）
-        self.assertLess(text.index("检测到私网 apt 源"), text.index("⏳ apt-get"))
+        self.assertLess(text.index("检测到私网 apt 源"), text.index("⏳ env"))
 
 
 class RunnerTimeoutTest(unittest.TestCase):
@@ -449,7 +450,7 @@ class PreflightTest(unittest.TestCase):
         return [
             c[0][0]
             for c in runner.run.call_args_list
-            if c[0][0] and c[0][0][0] == "apt-get"
+            if c[0][0] and "apt-get" in c[0][0]
         ]
 
     @staticmethod
@@ -473,8 +474,10 @@ class PreflightTest(unittest.TestCase):
         AptManager(runner=runner).preflight(self.items("pkg-a", "pkg-b", "pkg-c"))
         updates = [c for c in self.apt_commands(runner) if "update" in c]
         self.assertEqual(len(updates), 1)
-        # 选项在子命令前，与 shell 的 apt-get "${APT_OPTS[@]}" update 同形
-        self.assertEqual(updates[0][1], "-o")
+        # 选项在子命令前，与 shell 的 apt-get "${APT_OPTS[@]}" update 同形；
+        # 外层是 env DEBIAN_FRONTEND=noninteractive（与 shell 同，绕过 sudo env_reset）
+        self.assertEqual(updates[0][:3], ["env", "DEBIAN_FRONTEND=noninteractive", "apt-get"])
+        self.assertEqual(updates[0][3], "-o")
         self.assertEqual(updates[0][-1], "update")
 
     def test_update_failure_warns_but_does_not_raise(self) -> None:

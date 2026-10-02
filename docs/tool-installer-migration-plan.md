@@ -277,8 +277,11 @@ fail-fast，「宁可快速失败也要给出归因」。
   `InstallationError`——裸超时会让 executor 走 traceback，绕过 `allow_fail` 的汇总处理。
 - 两侧数值（30s / 1 次 / 60s）必须一致，改一侧同步另一侧；回归测试
   `tool-installer/tests/test_apt_policy.py`（21 例，离线，跑在 CI 的 unittest discover）。
-- **已知不一致（Step 2 裁决）**：`AptManager` 仍不设 `DEBIAN_FRONTEND=noninteractive`，
-  shell 侧全线设。在 manifest 真正接线前改它没有收益，只扩大变更面。
+- **`DEBIAN_FRONTEND` 已统一（2026-10-03 拍板）**：两侧都设 `noninteractive`——
+  拍板原话是"无人加 yes，那对 dpkg 就使用不问的方式"：无人值守下 dpkg 提问会挂起，
+  而 debconf 的默认值就是预期答案；**dpkg 的提问是机器对机器的配置协商，不归授权
+  三档管**（三档管的是"动用户已有东西"的决策）。变量必须作为 `env` 子命令跟在
+  sudo **之后**——sudo 默认 env_reset 会丢掉普通环境变量（Step 1 时踩过）。
 - **Step 2（分两批）**：批次 1 = 非预期问题的授权与三档判定（已完成，见下）；批次 2 =
   把 `scripts/install-system-packages.sh` 的清单迁到声明式 `manager = "apt"`
   （已完成，见下）。`BrewManager` 仍零使用——macOS 分支经调研后保留 script，原因是

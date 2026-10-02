@@ -16,7 +16,9 @@ tree-sitter-show-ast 各耗 40s+，且先撞上 cargo 的
 
 from __future__ import annotations
 
+import contextlib
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -26,6 +28,7 @@ from unittest import mock
 # 目录名 tool-installer 带连字符、不能作包路径，故显式补一层。
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tool_installer.errors import InstallationError  # noqa: E402
 from tool_installer.managers.base import CheckResult  # noqa: E402
 from tool_installer.managers.commands import CargoInstallManager, _cargo_v1_eq  # noqa: E402
 from tool_installer.models import (  # noqa: E402
@@ -143,6 +146,84 @@ class PrereleaseVersionTolerance(unittest.TestCase):
     def test_requested_prerelease_is_not_downgraded(self):
         # 钉 0.28.1-nightly 时，装上正式版 0.28.1 不算满足。
         self.assertFalse(_cargo_v1_eq("0.28.1", "0.28.1-nightly"))
+
+
+class BinstallFallback(unittest.TestCase):
+    """binstall 阶段的超时/失败都必须静默回退源码编译——这是 binstall_first 的既定语义。
+
+    回归记录（2026-10-03）：SubprocessRunner 在 Step 1 把 TimeoutExpired 包装成
+    InstallationError 后，只 catch 前者的回退接不住，30 秒超时（binstall 没下完
+    就回退的正常节奏）冒泡成整工具失败；CI 里 taplo（quickinstall 资产 404）与
+    tree-sitter-* 直接 fatal，从 Step 1 那次 push 开始红。
+    """
+
+    @staticmethod
+    def item() -> PlanItem:
+        item = make_item("taplo-cli", "0.10.0")
+        item.strategy.fields["binstall_first"] = True
+        return item
+
+    @staticmethod
+    def runner_with(calls: list) -> mock.Mock:
+        """首调（binstall）抛超时形态的 InstallationError，后续 cargo install 成功。"""
+        runner = mock.Mock()
+
+        def side_effect(args, **kwargs):  # noqa: ANN001
+            calls.append(list(args))
+            if len(calls) == 1:
+                raise InstallationError("Command timed out after 30s: cargo")
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        runner.run.side_effect = side_effect
+        return runner
+
+    def test_timeout_wrapped_as_installation_error_still_falls_back(self) -> None:
+        calls: list = []
+        runner = self.runner_with(calls)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch.object(CargoInstallManager, "_ensure_binstall", return_value="/bin/cargo-binstall")
+            )
+            stack.enter_context(
+                mock.patch.object(
+                    CargoInstallManager,
+                    "_binstall_command",
+                    return_value=["cargo", "binstall", "--no-confirm"],
+                )
+            )
+            CargoInstallManager(runner=runner).install(self.item())
+
+        self.assertEqual(len(calls), 2, "binstall 超时后应回退一次源码 cargo install")
+        self.assertIn("binstall", calls[0], "第一次应是 binstall 调用")
+        self.assertIn("install", calls[1], "回退到 cargo install")
+        self.assertIn("taplo-cli", " ".join(calls[1]))
+
+    def test_binstall_nonzero_exit_also_falls_back(self) -> None:
+        """404 时 binstall 以非零退出，回退路径与超时一致。"""
+        calls: list = []
+        runner = mock.Mock()
+
+        def side_effect(args, **kwargs):  # noqa: ANN001
+            calls.append(list(args))
+            if len(calls) == 1:
+                return subprocess.CompletedProcess(args, 1, "", "")
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        runner.run.side_effect = side_effect
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch.object(CargoInstallManager, "_ensure_binstall", return_value="/bin/cargo-binstall")
+            )
+            stack.enter_context(
+                mock.patch.object(
+                    CargoInstallManager,
+                    "_binstall_command",
+                    return_value=["cargo", "binstall", "--no-confirm"],
+                )
+            )
+            CargoInstallManager(runner=runner).install(self.item())
+
+        self.assertEqual(len(calls), 2)
 
 
 if __name__ == "__main__":

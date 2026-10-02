@@ -57,6 +57,26 @@ All notable changes to this project will be documented in this file.
     manifest，26 包全量提取（`config-consistency-check-sop.md` 1.1 已同步）
   - 验证：`check-manifest-platforms.sh` 4/4 平台、121 测试、dry-run
     `version=latest manager=apt`、清单逐字 diff、`bash -n`、vendor 重建 + 同步守卫
+- **修复：CI 四类失败的根因清理**（2026-10-03，含一个 Step 1 自身的回归）
+  - **回退失效（我方回归）**：`SubprocessRunner` 在 Step 1 把 `TimeoutExpired` 包装成
+    `InstallationError` 后，cargo-binstall 的回退 `except subprocess.TimeoutExpired`
+    再也接不住 → 30 秒超时（binstall 没下完就回退的正常节奏）冒泡成整工具失败，
+    Step 1 那次 push 起 CI 全红。改为两者都捕获 + `BinstallFallback` 回归测试 2 例
+  - **"外部失败"查实为我方路径问题**：taplo-cli / tree-sitter-cli / tree-sitter-grep 的
+    quickinstall 资产**全部 404**，binstall 进 compile 策略，而它**不带 --locked**：
+    自由解析出 elm 5.7.0 → tree-sitter 0.20/0.22/0.26 三版本共存 → E0308。crate 发布的
+    Cargo.lock 是好的（单一 0.20.10 + elm 5.6.4），本地实测 `cargo install --locked`
+    25 秒编译通过 → 禁用 `binstall_fallback_compile`（tree-sitter-cli/grep × 两平台），
+    binstall 只负责下载预编译，编译统一回退 --locked 路径
+  - **`DEBIAN_FRONTEND` 两侧统一 `noninteractive`**（拍板：无人加 yes，对 dpkg 就用
+    不问的方式；dpkg 提问是机器对机器的协商，不归授权三档管），以 `env` 子命令形式
+    跟在 sudo 之后绕过 env_reset
+  - **单测隔离 CI 泄漏的 `TOOL_INSTALLER_STRICT=1`**（本地绿 CI 红的根因，`STRICT=1`
+    下 stash 对照复现确认）
+  - **`_run_with_sudo` 补免密 sudo 探测**（`sudo -n true` → 交互 TTY → 归因报错，与
+    shell 侧 preflight_runtime_deps 同序；此前无 TTY 直接判死，即使免密 sudo 可用）+
+    `SudoPrivilegeTest` 5 例（该函数原先零覆盖）
+  - 已推 `1b6bac3`（sudo 探测 + 测试隔离）；本条为后续提交
 - **修复：apt 索引刷新与源预检的执行时机（tool-installer）**
   - 新增 `Manager.preflight(items)` 钩子（每轮一次，executor 在逐项执行前按 manager
     分组调用）；`AptManager` 在其中 `apt-get update` **一轮一次**，对齐 shell 侧 apt_run

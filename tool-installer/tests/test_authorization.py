@@ -169,7 +169,7 @@ class AptManagerAuthorizationTest(EnvBase):
 
     @staticmethod
     def apt_calls(runner: mock.Mock) -> list:
-        return [c[0][0] for c in runner.run.call_args_list if c[0][0] and c[0][0][0] == "apt-get"]
+        return [c[0][0] for c in runner.run.call_args_list if c[0][0] and "apt-get" in c[0][0]]
 
     def test_conflict_without_tty_skips_without_running_apt(self) -> None:
         runner = self.runner()

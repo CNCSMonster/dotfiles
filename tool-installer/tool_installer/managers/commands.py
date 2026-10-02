@@ -34,6 +34,17 @@ from .apt_policy import (
 from .base import CheckResult, CommandManager, CommandRunner, _run_with_sudo
 
 
+def _noninteractive(cmd: List[str]) -> List[str]:
+    """给命令套上 `env DEBIAN_FRONTEND=noninteractive`（与 scripts/lib/apt.sh 同形）。
+
+    变量必须作为 env 子命令的参数、跟在 sudo **之后**：sudo 默认 env_reset 会丢掉
+    普通环境变量（Step 1 时踩过：`DEBIAN_FRONTEND=... sudo apt-get` 被静默清掉，
+    改成 `sudo env DEBIAN_FRONTEND=... apt-get` 才生效）。root 时 env 直接执行，
+    两种路径同一个答案。
+    """
+    return ["env", "DEBIAN_FRONTEND=noninteractive", *cmd]
+
+
 def _selector(item: PlanItem) -> str:
     return item.tool.reference.version
 
@@ -83,15 +94,13 @@ class AptManager(CommandManager):
 
     Mirrors dotfiles setup.sh sudo_run() behavior:
     - Uses sudo when not root (password prompt in interactive terminal)
-    - Runs apt-get install interactively (no DEBIAN_FRONTEND=noninteractive)
+    - Runs apt-get with DEBIAN_FRONTEND=noninteractive (aligned with scripts/lib/apt.sh,
+      decided 2026-10-03: 无人传 --yes 时 dpkg 也走"不问"——无人值守下提问会挂起，
+      而 debconf 的默认值就是预期答案；dpkg 的提问不归授权三档管，它是机器对机器的
+      配置协商，不是给用户的决策)
 
     执行策略与 scripts/lib/apt.sh 同源（见 managers/apt_policy.py）：装包前预检源、
     有界超时/重试/锁等待、失败归因到可复制的修复命令。
-
-    已知不一致（待裁决，见 migration-plan §4.3 Step 2）：shell 侧全线设
-    DEBIAN_FRONTEND=noninteractive 以免无人值守安装被 dpkg 提问挂起，本 manager
-    仍保留"不设"的原语义。两侧只能有一个答案，但在 manifest 条目真正使用
-    manager = "apt" 之前改它没有收益，只扩大变更面。
     """
 
     needs_privilege = True
@@ -146,8 +155,10 @@ class AptManager(CommandManager):
         Mirrors setup.sh: sudo_run apt-get install -y <pkg>
         - Uses 'apt-get' (not 'apt') for scripting compatibility
         - Uses '-y' to auto-confirm (since we already prompted for sudo password)
-        - Does NOT set DEBIAN_FRONTEND=noninteractive
-          (respects user's apt configuration for any remaining interactive prompts)
+        - DEBIAN_FRONTEND=noninteractive is added by install()/preflight() at exec
+          time (not here): `sudo` env_reset would drop a plain env var, so the
+          variable rides in an explicit `env` invocation after sudo — the same
+          shape scripts/lib/apt.sh builds.
         - 多包一次装，与旧脚本的批量 `${missing[@]}` 同语义
 
         版本 pin 只允许单包："多包对齐到同一个 pin 版本"没有真实场景，宁可显式
@@ -199,7 +210,7 @@ class AptManager(CommandManager):
             return
         for line in preflight_source_warnings():
             print(line)
-        cmd = ["apt-get", *apt_options(), "update"]
+        cmd = _noninteractive(["apt-get", *apt_options(), "update"])
         try:
             # 不 capture：update 的输出要实时可见（shell 侧 apt_run 同样 tee 到终端）
             result = _run_with_sudo(cmd, runner=self.runner, check=False)
@@ -254,7 +265,7 @@ class AptManager(CommandManager):
 
         # 源预检已上移到 preflight（每轮一次）：逐项跑会在慢源上把探测放大成 N 轮
         # apt-get [options] install -y <pkg>：选项放子命令前最安全
-        cmd = [raw_cmd[0], *apt_options(), *raw_cmd[1:]]
+        cmd = _noninteractive(["apt-get", *apt_options(), *raw_cmd[1:]])
         print(
             f"⏳ {' '.join(cmd)}"
             f"（有界：连接 {APT_HTTP_TIMEOUT}s / 重试 {APT_RETRIES} 次 / dpkg 锁 {APT_LOCK_TIMEOUT}s）"
@@ -653,7 +664,12 @@ class CargoInstallManager(CommandManager):
                     )
                     if result.returncode == 0:
                         return
-                except subprocess.TimeoutExpired:
+                except (subprocess.TimeoutExpired, InstallationError):
+                    # binstall 阶段的超时/失败都只是"没走捷径"，回退源码编译是本条目
+                    # 的既定路径（binstall_first）。SubprocessRunner 在 Step 1 把
+                    # TimeoutExpired 转成了 InstallationError，只 catch 前者会让超时
+                    # 冒泡成整工具失败——CI 里表现为 taplo/tree-sitter 直接 fatal，
+                    # 而 30 秒本来就是"binstall 没下完就回退"的正常节奏。
                     pass
 
         # Retry cargo install on transient failures (network, registry, etc.)
