@@ -23,6 +23,15 @@ def _format_warning(item: PlanItem, phase: str, reason: str) -> str:
 
 
 def execute_plan(plan: InstallPlan, managers: Mapping[str, Manager]) -> None:
+    # 轮级前置：每种**本轮用到**的 manager 各跑一次 preflight（AptManager 在这里
+    # 刷索引 + 做源预检），对齐 shell 侧"脚本开头 update 一次、多包共用"的语义。
+    # 先做完所有前置再逐项执行；前置自身把失败收敛为警告，不阻断整轮。
+    grouped = {}  # manager name -> items (dict 保插入序，执行顺序不变)
+    for plan_item in plan.items:
+        grouped.setdefault(plan_item.strategy.manager, []).append(plan_item)
+    for manager_name, group in grouped.items():
+        managers[manager_name].preflight(group)
+
     token_reported = False
     tolerated: List[str] = []
     pending: List[str] = []

@@ -17,7 +17,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from ..errors import InstallationError
 from ..github_token import detect_github_token
@@ -74,6 +74,10 @@ class GithubReleaseManager:
         self._token: Optional[str] = None
         self._token_source: Optional[str] = None
         self._token_resolved = False
+
+    def preflight(self, items: Sequence[PlanItem]) -> None:
+        """Downloads are per-item; no once-per-round work."""
+        return None
 
     def ensure_token(self) -> None:
         """Resolve GitHub token once per process. Idempotent."""

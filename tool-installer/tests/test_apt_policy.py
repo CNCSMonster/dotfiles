@@ -13,16 +13,18 @@
 from __future__ import annotations
 
 import io
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tool_installer import executor  # noqa: E402
 from tool_installer.errors import InstallationError  # noqa: E402
 from tool_installer.managers import apt_policy  # noqa: E402
 from tool_installer.managers.apt_policy import (  # noqa: E402
@@ -40,6 +42,7 @@ from tool_installer.managers.base import (  # noqa: E402
 from tool_installer.managers.commands import AptManager  # noqa: E402
 from tool_installer.models import (  # noqa: E402
     Environment,
+    InstallPlan,
     MergedStrategy,
     PlanItem,
     ToolReference,
@@ -288,10 +291,12 @@ class AptManagerInstallTest(unittest.TestCase):
             return_value=["❌ 检测到私网 apt 源"],
         ):
             with redirect_stdout(io.StringIO()) as out:
-                AptManager(runner=runner).install(apt_item())
+                manager = AptManager(runner=runner)
+                manager.preflight([apt_item()])
+                manager.install(apt_item())
         text = out.getvalue()
         self.assertIn("检测到私网 apt 源", text)
-        # 预检必须早于 apt 启动
+        # 预检必须早于 apt 启动（现在由每轮一次的 preflight 负责）
         self.assertLess(text.index("检测到私网 apt 源"), text.index("⏳ apt-get"))
 
 
@@ -317,6 +322,133 @@ class RunnerTimeoutTest(unittest.TestCase):
         with mock.patch("tool_installer.managers.base.subprocess.run", return_value=completed) as run:
             SubprocessRunner().run(["true"], timeout=10)
         self.assertEqual(run.call_args[1]["timeout"], 10)
+
+
+    def test_bounded_numbers_match_scripts_lib_apt_sh(self) -> None:
+        """有界数值在 shell 与 Python 各写一遍，靠"记得同步"会失守——这里锁死。
+
+        这是 2026-09 事故的直接教训：shell 侧先修好，Python 侧晚一个月移植，
+        期间两边数值可能已经漂移。改任一侧的数值，本测试会点名。
+        """
+        apt_sh = Path(__file__).resolve().parents[2] / "scripts" / "lib" / "apt.sh"
+        self.assertTrue(apt_sh.is_file(), f"找不到 {apt_sh}，路径变更需同步本测试")
+        text = apt_sh.read_text(encoding="utf-8")
+        expected = {
+            "Acquire::http::Timeout": apt_policy.APT_HTTP_TIMEOUT,
+            "Acquire::https::Timeout": apt_policy.APT_HTTP_TIMEOUT,
+            "Acquire::Retries": apt_policy.APT_RETRIES,
+            "DPkg::Lock::Timeout": apt_policy.APT_LOCK_TIMEOUT,
+        }
+        for key, value in expected.items():
+            match = re.search(rf'-o "{key}=(\d+)"', text)
+            self.assertIsNotNone(match, f"scripts/lib/apt.sh 缺少 {key}（python 侧 = {value}）")
+            self.assertEqual(
+                int(match.group(1)),
+                value,
+                f"{key} 两处不一致：shell={match.group(1)}，tool-installer={value}。"
+                "改一处必须同步另一处。",
+            )
+
+
+class PreflightTest(unittest.TestCase):
+    """preflight = 每轮一次的索引刷新 + 源预检（对齐 scripts/lib/apt.sh 语义）。"""
+
+    def setUp(self) -> None:
+        root = mock.patch("tool_installer.managers.base._is_root", return_value=True)
+        root.start()
+        self.addCleanup(root.stop)
+        no_conflict = mock.patch(
+            "tool_installer.managers.apt_policy.shutil.which", return_value=None
+        )
+        no_conflict.start()
+        self.addCleanup(no_conflict.stop)
+
+    @staticmethod
+    def runner(rc: int = 0) -> mock.Mock:
+        """rc 作用于 apt-get；dpkg-query 恒报"未装"，让 executor 走到 install。"""
+        runner = mock.Mock()
+
+        def side_effect(args, **kwargs):  # noqa: ANN001
+            if args and args[0] == "dpkg-query":
+                return subprocess.CompletedProcess(args, 1, "", "")
+            return subprocess.CompletedProcess(args, rc, "", "")
+
+        runner.run.side_effect = side_effect
+        return runner
+
+    @staticmethod
+    def apt_commands(runner: mock.Mock) -> list:
+        return [
+            c[0][0]
+            for c in runner.run.call_args_list
+            if c[0][0] and c[0][0][0] == "apt-get"
+        ]
+
+    @staticmethod
+    def items(*names: str) -> list:
+        return [
+            PlanItem(
+                module_name="system-packages",
+                tool=ToolSpec(
+                    reference=ToolReference(raw=f"{n}@latest", name=n, version="latest"),
+                    allow_fail=False,
+                ),
+                strategy=MergedStrategy(tool_name=n, manager="apt", fields={"pkg": n}),
+                environment=Environment(os="linux", arch="x86_64"),
+            )
+            for n in names
+        ]
+
+    def test_update_runs_once_per_round_not_per_package(self) -> None:
+        """shell 是脚本开头一次、多包共用；每包一次会把 19 个包放大成 19 轮往返。"""
+        runner = self.runner()
+        AptManager(runner=runner).preflight(self.items("pkg-a", "pkg-b", "pkg-c"))
+        updates = [c for c in self.apt_commands(runner) if "update" in c]
+        self.assertEqual(len(updates), 1)
+        # 选项在子命令前，与 shell 的 apt-get "${APT_OPTS[@]}" update 同形
+        self.assertEqual(updates[0][1], "-o")
+        self.assertEqual(updates[0][-1], "update")
+
+    def test_update_failure_warns_but_does_not_raise(self) -> None:
+        """索引陈旧不必然装不上（apt 还有缓存索引），预检不该杀掉整轮。"""
+        runner = self.runner(rc=1)
+        with redirect_stderr(io.StringIO()) as err:
+            AptManager(runner=runner).preflight(self.items("pkg-a"))
+        self.assertIn("apt-get update failed", err.getvalue())
+
+    def test_empty_group_is_a_no_op(self) -> None:
+        runner = self.runner()
+        AptManager(runner=runner).preflight([])
+        runner.run.assert_not_called()
+
+    def test_source_check_moved_from_install_to_preflight(self) -> None:
+        """源预检原本逐项跑（每项最多 源数×5 秒），必须只在 preflight 出现一次。"""
+        runner = self.runner()
+        warn = ["⚠️ 假警告"]
+        with mock.patch(
+            "tool_installer.managers.commands.preflight_source_warnings", return_value=warn
+        ):
+            out = io.StringIO()
+            with redirect_stdout(out):
+                AptManager(runner=runner).preflight(self.items("pkg-a"))
+            self.assertIn("假警告", out.getvalue())
+
+            out2 = io.StringIO()
+            with redirect_stdout(out2):
+                AptManager(runner=runner).install(self.items("pkg-a")[0])
+            self.assertNotIn("假警告", out2.getvalue(), "install 不应再逐项做源预检")
+
+    def test_executor_runs_preflight_before_any_install(self) -> None:
+        runner = self.runner()
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            executor.execute_plan(
+                InstallPlan(items=self.items("pkg-a", "pkg-b")),
+                {"apt": AptManager(runner=runner)},
+            )
+        commands = self.apt_commands(runner)
+        self.assertEqual(sum(1 for c in commands if "update" in c), 1, "update 应恰好一次")
+        self.assertEqual(sum(1 for c in commands if "install" in c), 2, "每包各装一次")
+        self.assertIn("update", commands[0], "所有前置必须先于任何 install")
 
 
 if __name__ == "__main__":

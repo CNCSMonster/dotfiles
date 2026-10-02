@@ -15,7 +15,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from ..errors import AuthorizationRequired, InstallationError
 from ..github_token import detect_github_token
@@ -178,6 +178,36 @@ class AptManager(CommandManager):
             return False
         return result.returncode == 0 and bool(result.stdout.strip())
 
+    def preflight(self, items: Sequence[PlanItem]) -> None:
+        """每轮一次：源健康预检 + 刷新包索引（对齐 scripts/lib/apt.sh 的语义）。
+
+        shell 侧 `apt_run update` 是**脚本开头一次、多包共用**；AptManager 原先两者
+        都没有：既不 update（索引陈旧时 apt 报 "Unable to locate package"，而
+        attribute_failure 归因不到这一类），又把源预检放在 install 里**逐项**跑
+        （每项最多 源数×5 秒探测，19 个包就是 19 轮）。两处一并收敛到这里。
+
+        失败只警告不中断：update 失败 ≠ 装不上（apt 仍用已缓存的索引），而 install
+        侧的归因对"缺包/锁/死源"分辨得更细，不该被一个全局预检越俎代庖。
+        """
+        if not items:
+            return
+        for line in preflight_source_warnings():
+            print(line)
+        cmd = ["apt-get", *apt_options(), "update"]
+        try:
+            # 不 capture：update 的输出要实时可见（shell 侧 apt_run 同样 tee 到终端）
+            result = _run_with_sudo(cmd, runner=self.runner, check=False)
+        except OSError:
+            # 连 sudo 都起不来：留给逐项 install 报错，那里有完整归因
+            return
+        if result.returncode != 0:
+            print(
+                f"⚠️  apt-get update failed (exit {result.returncode}); continuing with the "
+                "cached index.\n    If a later install reports a missing package, fix the "
+                "sources per the check above and re-run.",
+                file=sys.stderr,
+            )
+
     def install(self, item: PlanItem) -> None:
         """有界、可见、可归因的 apt 安装（覆盖基类的裸执行）。
 
@@ -205,9 +235,7 @@ class AptManager(CommandManager):
                     f"{item.tool.reference.name}: {conflict}（用户选择跳过）"
                 )
 
-        for line in preflight_source_warnings():
-            print(line)
-
+        # 源预检已上移到 preflight（每轮一次）：逐项跑会在慢源上把探测放大成 N 轮
         # apt-get [options] install -y <pkg>：选项放子命令前最安全
         cmd = [raw_cmd[0], *apt_options(), *raw_cmd[1:]]
         print(

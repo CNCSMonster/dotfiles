@@ -322,6 +322,25 @@ fail-fast，「宁可快速失败也要给出归因」。
 
 回归测试：`tool-installer/tests/test_authorization.py`（20 例，离线）。
 
+**Step 2 批次 1.5（2026-10-03 已完成）：apt 执行时机的两处不一致**
+
+批次 1 复盘时发现 shell 与 Python 侧的执行语义不同步：
+
+| | `scripts/lib/apt.sh`（shell） | `AptManager`（修复前） |
+|---|---|---|
+| 包索引刷新 | 每轮开头 `apt-get update` 一次，多包共用 | **从不 update**（索引陈旧时 `Unable to locate package`，且 `attribute_failure` 归因不到这一类） |
+| 源健康预检 | 每轮一次 | 在 `install` 里**逐项**跑（每项最多 源数×5 秒，19 包 = 19 轮） |
+| 输出 | tee 实时可见 | install 实时（未变），update 新增同样不 capture |
+
+修法：新增 `Manager.preflight(items)` 钩子（每轮一次，executor 在逐项循环**之前**按
+本轮用到的 manager 分组调用；`ScriptManager`/`GithubReleaseManager` 为 no-op），
+`AptManager` 在其中 update + 源预检。update 失败只警告继续——索引陈旧 ≠ 装不上
+（apt 仍用已缓存的索引），真正的失败交给 install 侧归因，不被全局预检越俎代庖。
+
+防漂移：`test_bounded_numbers_match_scripts_lib_apt_sh` 直接读 `scripts/lib/apt.sh`
+断言 `Timeout=30 / Retries=1 / Lock=60` 等于 `apt_policy.APT_*`——数值两处各写一遍，
+靠"记得同步"早晚会失守，现在改一侧不改另一侧会点名。
+
 ---
 
 ## 5. 实施步骤（迁移期记录）

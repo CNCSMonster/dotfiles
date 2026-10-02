@@ -102,6 +102,14 @@ def _run_with_sudo(
 
 
 class Manager(Protocol):
+    def preflight(self, items: Sequence[PlanItem]) -> None:
+        """Optional once-per-round hook, run before any item is installed.
+
+        Manager-specific global work: AptManager refreshes the package index and
+        runs the source health check here — once per plan, never per item.
+        """
+        ...
+
     def check(self, item: PlanItem) -> CheckResult:
         """Return the installed-state check outcome for a plan item."""
         ...
@@ -127,6 +135,10 @@ class CommandManager:
 
     def check_command(self, item: PlanItem) -> List[str]:
         raise NotImplementedError
+
+    def preflight(self, items: Sequence[PlanItem]) -> None:
+        """Once-per-round hook. Default: nothing to do."""
+        return None
 
     def install_command(self, item: PlanItem) -> List[str]:
         raise NotImplementedError

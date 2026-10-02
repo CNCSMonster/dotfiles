@@ -41,6 +41,16 @@ All notable changes to this project will be documented in this file.
   - 回归测试 `tool-installer/tests/test_authorization.py`（20 例，离线），已重建 `vendor/tool-installer`
   - 批次 2 待做：shell 侧 `scripts/lib/apt.sh` 同步三档、系统包迁声明式 `manager = "apt"`、
     `config-consistency-check-sop.md` 的 sed 抓取同步
+- **修复：apt 索引刷新与源预检的执行时机（tool-installer）**
+  - 新增 `Manager.preflight(items)` 钩子（每轮一次，executor 在逐项执行前按 manager
+    分组调用）；`AptManager` 在其中 `apt-get update` **一轮一次**，对齐 shell 侧 apt_run
+    语义——原先从不 update，索引陈旧时 `Unable to locate package` 且归因不到这一类
+  - 源健康预检从 install **逐项**上移到 preflight **一轮一次**（原先每项最多 源数×5 秒
+    探测，19 个包就是 19 轮）；输出不 capture，保持实时可见（与 shell tee 同语义）
+  - update 失败只警告继续：索引陈旧 ≠ 装不上（apt 仍用缓存索引），失败交给 install 归因
+  - 防漂移测试 `test_bounded_numbers_match_scripts_lib_apt_sh`：直接读 `scripts/lib/apt.sh`
+    断言 `Timeout=30 / Retries=1 / Lock=60` 与 `apt_policy.APT_*` 相等，改一侧不改另一侧会点名
+  - 回归测试 112 例全绿，已重建 `vendor/tool-installer`
 
 ### Fixed
 - **apt 安装不再静默挂死，失败可归因**：`setup.sh` 的 Layer 1 运行时依赖预检与 Layer 0 系统包

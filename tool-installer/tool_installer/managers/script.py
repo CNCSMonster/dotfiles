@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
-from typing import Dict
+from typing import Dict, Sequence
 
 from ..errors import InstallationError
 from ..models import PlanItem
@@ -16,6 +16,10 @@ class ScriptManager:
 
     Not check-capable in v1. Always returns NOT_SATISFIED.
     """
+
+    def preflight(self, items: Sequence[PlanItem]) -> None:
+        """Scripts have no once-per-round work."""
+        return None
 
     def check(self, item: PlanItem) -> CheckResult:
         # Script manager does not support installed-state checks in v1
