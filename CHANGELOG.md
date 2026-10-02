@@ -32,7 +32,8 @@ All notable changes to this project will be documented in this file.
     （PATH 上两个 git，用哪个取决于顺序），现在这种状态必须授权；manifest 为 `apt` 新增可选
     `bin` 字段（包名与命令名不同时声明）
   - 新增 `AuthorizationRequired` + executor 专门分支：**缺授权只跳过该工具并结束时汇总，
-    绝不中断整轮安装**（与 allow_fail 同哲学，两种模式都打印，仅退出码不同）
+    绝不中断整轮安装**（汇总两种模式都打印；**退出码任何模式都不受影响**——"没人可问"
+    不是失败，strict 只管真失败；2026-10-03 CI 实测后修正，详见下方 CI 根因清理）
   - 探测 fail-open、执行 fail-closed：`dpkg-query` 探测失败当作"未装"继续，真正的失败交给
     `apt install` 去归因
   - 已核实边界（L1 实测 + L2 手册）：`--yes` **不绕过 sudo 认证**——sudo 上游（本机 sudo-rs

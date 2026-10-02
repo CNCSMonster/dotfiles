@@ -309,8 +309,9 @@ fail-fast，「宁可快速失败也要给出归因」。
   "命令在、包不在" = 会静默装出第二份实现。manifest 为 `apt` 新增可选 `bin` 字段
   （包名与命令名不同时声明）。
 - `AuthorizationRequired(InstallationError)` + executor 专门分支：**缺授权永不中断整轮安装**
-  （跳过该工具继续装其余的，两种模式都打印汇总，仅退出码不同）；它必须在
-  `InstallationError` 之前捕获，否则会掉进 `allow_fail` 分支——"没人能授权"与"允许失败"
+  （跳过该工具继续装其余的，两种模式都打印汇总、**退出码都不受影响**——“没人可问”
+  不是失败，strict 只管真失败）；它必须在
+  `InstallationError` 之前捕获，否则会掉进 `allow_fail` 分支——“没人能授权”与“允许失败”
   是两件事。
 - 探测 fail-open、执行 fail-closed：`_dpkg_installed()` 的探测失败（超时/被杀）当作"未装"
   继续，把决定权交给 `apt install`——后者的失败会被归因。辅助查询不该有能力杀掉整轮安装。

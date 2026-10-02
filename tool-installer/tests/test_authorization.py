@@ -269,15 +269,37 @@ class ExecutorAuthorizationSkipTest(EnvBase):
         self.assertIn("git", text)
         self.assertIn("--yes", text)
 
-    def test_strict_mode_turns_skips_into_failure(self) -> None:
+    def test_strict_mode_does_not_turn_skips_into_failures(self) -> None:
+        """拍板语义：无 TTY 跳过 = "没人能授权"，不是失败 —— strict 管失败（tolerated），
+        不管"没人可问"。否则无人值守 CI 永远红（实测：STRICT=1 下 clang 已存在于
+        /usr/bin、dpkg 无记录，跳过正是不覆盖已有实现的正确选择）。"""
         first = mock.Mock()
         first.check.return_value = CheckResult.NOT_SATISFIED
         first.install.side_effect = AuthorizationRequired("git: 已存在")
         os.environ["TOOL_INSTALLER_STRICT"] = "1"
         self.addCleanup(os.environ.pop, "TOOL_INSTALLER_STRICT", None)
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as err:
+            # 不抛异常 = 核心断言
+            executor.execute_plan(plan_with("git"), {"apt": first})
+        self.assertIn("authorization required", err.getvalue(), "汇总照打")
+
+    def test_strict_mode_still_fails_on_tolerated_failures(self) -> None:
+        """对照：真正的失败（allow_fail 工具装失败）在 strict 下仍然 fatal。"""
+        first = mock.Mock()
+        first.check.return_value = CheckResult.NOT_SATISFIED
+        first.install.side_effect = InstallationError("boom")
+        item = apt_item("git")
+        allow_fail_item = PlanItem(
+            module_name=item.module_name,
+            tool=ToolSpec(reference=item.tool.reference, allow_fail=True),
+            strategy=item.strategy,
+            environment=item.environment,
+        )
+        os.environ["TOOL_INSTALLER_STRICT"] = "1"
+        self.addCleanup(os.environ.pop, "TOOL_INSTALLER_STRICT", None)
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
             with self.assertRaises(InstallationError):
-                executor.execute_plan(plan_with("git"), {"apt": first})
+                executor.execute_plan(InstallPlan(items=[allow_fail_item]), {"apt": first})
 
     def test_ordinary_failure_still_goes_through_allow_fail(self) -> None:
         """AuthorizationRequired 是子类，但不能因此改变 allow_fail 的语义。"""
