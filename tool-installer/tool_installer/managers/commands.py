@@ -116,10 +116,23 @@ class AptManager(CommandManager):
         candidate，`./setup.sh` 就变成了"每轮把系统升级一遍"的入口；升级是系统
         管理决策，应由用户显式 `apt upgrade`。需要钉版本对齐用 `name@版本` 走
         精确比对分支，强制重装用 `force = true`。
-        """
+
+        **能力视角优先**（`command -v` 命中即满足，dpkg 接住无命令的包）——
+        与被替换的清单完全同构。纯 dpkg 视角会把"命令可用但元包无记录"判成未装：
+        CI runner 的 /usr/bin/clang 由 clang-18 提供、元包 clang 无 dpkg 记录，
+        于是每轮重装、每轮撞授权跳过，幂等性检查报 "check 未识别出
+        system-packages"（2026-10-03 实测）。能力视角下冲突检测退为纵深防御
+        （状态竞态时才触发）。"""
         pkgs = _package_list(item)
+        binary_field = item.strategy.fields.get("bin")
+        single = len(pkgs) == 1
         versions: List[str] = []
         for pkg in pkgs:
+            name = (binary_field or pkg) if single else pkg
+            if shutil.which(name):
+                # 命令可用即满足；能力视角不查版本（旧清单也没有版本检查），
+                # 要钉版本对齐就用 dpkg 可查的包条目或 force
+                continue
             try:
                 result = self.runner.run(
                     ["dpkg-query", "-W", "-f=${Version}", pkg],

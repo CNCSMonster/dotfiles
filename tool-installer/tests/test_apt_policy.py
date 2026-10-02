@@ -523,17 +523,30 @@ class PreflightTest(unittest.TestCase):
 
 
 class AptManagerCheckTest(unittest.TestCase):
-    """check 的契约：多包任一缺失即重装；latest = 装了即满足，**不比 candidate**。
+    """check 的契约：能力视角（command -v）优先、dpkg 接住无命令的包；
+    多包任一缺失即重装；latest = 装了即满足，**不比 candidate**。
 
-    后者是刻意的语义裁决（见 check docstring）：系统包清单的旧实现是
-    `command -v || dpkg -s || missing`，从不升级已装的包；若 check 把
-    "版本落后 candidate" 判为未满足，./setup.sh 就会变成每轮升级系统的入口。
-    """
+    能力视角与 latest 裁决都与被替换的 shell 清单
+    （`command -v || dpkg -s || missing`）同构：从不升级已装的包。
+    若 check 把 "版本落后 candidate" 判为未满足，./setup.sh 就会变成每轮升级
+    系统的入口。"""
 
     def setUp(self) -> None:
         root = mock.patch("tool_installer.managers.base._is_root", return_value=True)
         root.start()
         self.addCleanup(root.stop)
+        # which 默认 None：本测试锁 dpkg 视角的判定，能力视角有专门用例，
+        # 否则宿主上巧合存在的同名命令会污染断言
+        which_policy = mock.patch(
+            "tool_installer.managers.apt_policy.shutil.which", return_value=None
+        )
+        which_policy.start()
+        self.addCleanup(which_policy.stop)
+        which_commands = mock.patch(
+            "tool_installer.managers.commands.shutil.which", return_value=None
+        )
+        which_commands.start()
+        self.addCleanup(which_commands.stop)
 
     @staticmethod
     def item(pkgs: str, version: str = "latest") -> PlanItem:
@@ -587,6 +600,36 @@ class AptManagerCheckTest(unittest.TestCase):
         runner = self.runner({"a": "1.0", "b": "2.0"})
         result = AptManager(runner=runner).check(self.item("a b c"))
         self.assertIs(result, CheckResult.NOT_SATISFIED)
+
+    def test_existing_command_satisfies_without_touching_dpkg(self) -> None:
+        """能力视角：命令可用即满足，不再问 dpkg。
+
+        反面教材：CI runner 的 /usr/bin/clang 由 clang-18 提供，元包 clang 无
+        dpkg 记录 → 纯 dpkg 视角永远判未装 → 每轮重装、幂等检查报错。"""
+        runner = self.runner({})  # dpkg 里什么都没有
+        with mock.patch(
+            "tool_installer.managers.commands.shutil.which",
+            return_value="/usr/bin/clang",
+        ):
+            result = AptManager(runner=runner).check(self.item("clang"))
+        self.assertIs(result, CheckResult.SATISFIED)
+        runner.run.assert_not_called(), "能力已满足就不该再碰 dpkg"
+
+    def test_capability_probe_uses_pkg_name_per_package(self) -> None:
+        """多包清单逐包按包名探测；已满足的跳过，未满足的继续查 dpkg。"""
+        runner = self.runner({"missing-pkg": "2.0"})
+        probed: list = []
+
+        def fake_which(name):
+            probed.append(name)
+            return "/usr/bin/anything" if name == "wanted" else None
+
+        with mock.patch(
+            "tool_installer.managers.commands.shutil.which", side_effect=fake_which
+        ):
+            result = AptManager(runner=runner).check(self.item("wanted missing-pkg"))
+        self.assertEqual(probed, ["wanted", "missing-pkg"])
+        self.assertIs(result, CheckResult.SATISFIED, "一个能力满足 + 一个 dpkg 满足")
 
     def test_stale_installed_version_is_still_satisfied_for_latest(self) -> None:
         """锁"不升级"：装了但版本旧，latest 仍算满足——这正是迁移前脚本的行为。"""

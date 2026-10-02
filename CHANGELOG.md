@@ -77,6 +77,18 @@ All notable changes to this project will be documented in this file.
   - **`_run_with_sudo` 补免密 sudo 探测**（`sudo -n true` → 交互 TTY → 归因报错，与
     shell 侧 preflight_runtime_deps 同序；此前无 TTY 直接判死，即使免密 sudo 可用）+
     `SudoPrivilegeTest` 5 例（该函数原先零覆盖）
+  - **check 必须带归因**：`CHECK_ERROR` 两处静默返回点 + executor 的
+    `Check failed for X with manager apt` 都不带包名/路径/异常，CI 只有结论没有现场
+    ——改抛带归因的 `InstallationError`；`dpkg-query` rc=0 但输出空 =
+    **包在数据库但未安装**（`-W` 对 not-installed 状态也返回 0），判 `NOT_SATISFIED`
+    而非异常（我曾把错误语义写进测试，本地绿锁住了 bug）
+  - **幂等检查 `check 未识别出 system-packages` + 授权反复触发**：批次 2 的 check
+    写成了纯 dpkg 视角，比它替换的清单（`command -v || dpkg -s || missing`）严——CI
+    runner 的 `/usr/bin/clang` 由 `clang-18` 提供、元包 `clang` 无 dpkg 记录 → 每轮
+    重装、每轮撞非预期授权（无 TTY 跳过 → 包永远装不上 → 第二次 install 不 Skip →
+    幂等检查报错）。check 补回能力视角（命令可用即满足，dpkg 接住 build-essential
+    这类无命令的包），冲突检测退为纵深防御；**授权跳过不受 strict 影响**（"没人可问"
+    不是失败，tolerated 才是）+ `AptManagerCheckTest` 能力视角用例与 which 隔离
   - 已推 `1b6bac3`（sudo 探测 + 测试隔离）；本条为后续提交
 - **修复：apt 索引刷新与源预检的执行时机（tool-installer）**
   - 新增 `Manager.preflight(items)` 钩子（每轮一次，executor 在逐项执行前按 manager
