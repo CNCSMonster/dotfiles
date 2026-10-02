@@ -12,6 +12,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **apt 策略下沉到 tool-installer（Step 1）**：新增 `tool_installer/managers/apt_policy.py`，
+  与 `scripts/lib/apt.sh` 同一套「有界 / 可见 / 可归因」策略，服务稳定期（自举期必须留 shell：
+  python3 引导与 Layer 1 门禁跑在工具可用之前，无法依赖工具自己）
+  - `AptManager` 覆写 `install()`：装包前源预检 → 带 30s / 1 次 / 60s 有界参数执行 → 回显 apt
+    输出 → 失败归因到可复制的修复命令。该 manager 此前零使用、零测试，`subprocess.run` 无
+    timeout，与 shell 改造前一样能在坏源上挂死
+  - `SubprocessRunner` 为**所有** manager 加 3600s 兜底 timeout，并把 `TimeoutExpired` 转成
+    `InstallationError`（裸超时会绕过 executor 的 `allow_fail` 汇总直接 traceback）
+  - 回归测试 `tool-installer/tests/test_apt_policy.py`（21 例，离线），已重建 `vendor/tool-installer`
+  - Step 2（未做）：系统包迁到声明式 `manager = "apt"`；先裁决 `DEBIAN_FRONTEND` 与清单语义
+
 ### Fixed
 - **apt 安装不再静默挂死，失败可归因**：`setup.sh` 的 Layer 1 运行时依赖预检与 Layer 0 系统包
   安装原先用 `apt-get update -qq` 静默执行且无超时上限；宿主指向腾讯云内网源

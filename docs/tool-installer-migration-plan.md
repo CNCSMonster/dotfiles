@@ -262,6 +262,28 @@ fail-fast，「宁可快速失败也要给出归因」。
 唯一一对同名重复脚本。调用时 `BASH_SOURCE` 可能是链接本身，因此用 `readlink -f` 解析真实
 路径再定位库；找不到库时**显式**打印警告再退回无界模式，不静默降级。
 
+**tool-installer 侧的同一套策略（Step 1，2026-10-03）**：策略有两个实现点，因为它们服务
+不同的启动阶段——**稳定期用 Python，自举期用 shell**：
+
+| | 位置 | 何时生效 |
+|---|------|---------|
+| Python | `tool_installer/managers/apt_policy.py` | tool-installer 可用之后的所有 apt 调用 |
+| shell | `scripts/lib/apt.sh` | 引导 python3、Layer 1 门禁——它们跑在 tool-installer 启动**之前**，无法依赖工具自己（鸡生蛋） |
+
+- `AptManager` 覆写 `install()`：装包前源预检（只提示不阻断）→ 带有界参数执行 → 回显 apt
+  输出 → 失败归因。它此前是**零使用、零测试**的空壳（`subprocess.run` 无 timeout，与 shell
+  改造前一样会挂死），`manifest.toml` 里至今没有 `manager = "apt"` 条目。
+- `SubprocessRunner` 给**所有** manager 加了 3600s 兜底 timeout，并把 `TimeoutExpired` 转成
+  `InstallationError`——裸超时会让 executor 走 traceback，绕过 `allow_fail` 的汇总处理。
+- 两侧数值（30s / 1 次 / 60s）必须一致，改一侧同步另一侧；回归测试
+  `tool-installer/tests/test_apt_policy.py`（21 例，离线，跑在 CI 的 unittest discover）。
+- **已知不一致（Step 2 裁决）**：`AptManager` 仍不设 `DEBIAN_FRONTEND=noninteractive`，
+  shell 侧全线设。在 manifest 真正接线前改它没有收益，只扩大变更面。
+- **Step 2（未做）**：把 `scripts/install-system-packages.sh` 的清单迁到声明式
+  `manager = "apt"`（macOS 走 `manager = "brew"`，`BrewManager` 同样零使用）。前置条件是
+  先裁决两件事：清单语义（脚本用 `command -v` 判命令名，`AptManager.check` 只认 dpkg 包名）、
+  以及 `docs/config-consistency-check-sop.md` 对该脚本 `for pkg in` 的 sed 抓取。
+
 ---
 
 ## 5. 实施步骤（迁移期记录）

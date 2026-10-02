@@ -25,6 +25,21 @@ class CommandRunner(Protocol):
         ...
 
 
+# 兜底上限：任何外部命令都不允许无限等（黑洞源、挂死的 registry 最终都会撞上它）。
+# 正常命令远达不到：最慢的是 cargo 源码编译，1 小时足够；短查询各自带更小的 timeout。
+DEFAULT_COMMAND_TIMEOUT = 3600
+
+
+def _timeout_detail(exc: subprocess.TimeoutExpired) -> str:
+    """超时前已捕获的输出（可能为 bytes），让调用方仍能据此归因。"""
+    chunks = []
+    for raw in (exc.stdout, exc.stderr):
+        if not raw:
+            continue
+        chunks.append(raw.decode(errors="replace") if isinstance(raw, bytes) else str(raw))
+    return "\n".join(chunks)
+
+
 class SubprocessRunner:
     def run(self, args: Sequence[str], check: bool = False, **kwargs: object) -> subprocess.CompletedProcess[str]:
         kwargs.setdefault("text", True)
@@ -34,7 +49,17 @@ class SubprocessRunner:
         if cargo_bin not in env.get("PATH", ""):
             env["PATH"] = cargo_bin + os.pathsep + env.get("PATH", "")
             kwargs["env"] = env
-        return subprocess.run(list(args), check=check, **kwargs)
+        kwargs.setdefault("timeout", DEFAULT_COMMAND_TIMEOUT)
+        try:
+            return subprocess.run(list(args), check=check, **kwargs)
+        except subprocess.TimeoutExpired as exc:
+            # 转成受控异常：executor 只 catch InstallationError，裸超时会变成
+            # traceback 中断整轮安装，还丢掉"卡在哪"的现场。
+            detail = _timeout_detail(exc)
+            raise InstallationError(
+                f"Command timed out after {exc.timeout}s: {args[0]}"
+                + (f"\n{detail}" if detail else "")
+            ) from None
 
 
 def _is_root() -> bool:

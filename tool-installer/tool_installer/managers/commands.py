@@ -8,6 +8,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
@@ -19,7 +20,16 @@ from typing import List, Optional
 from ..errors import InstallationError
 from ..github_token import detect_github_token
 from ..models import PlanItem
-from .base import CheckResult, CommandManager, CommandRunner
+from .apt_policy import (
+    APT_COMMAND_TIMEOUT,
+    APT_HTTP_TIMEOUT,
+    APT_LOCK_TIMEOUT,
+    APT_RETRIES,
+    apt_options,
+    failure_message,
+    preflight_source_warnings,
+)
+from .base import CheckResult, CommandManager, CommandRunner, _run_with_sudo
 
 
 def _selector(item: PlanItem) -> str:
@@ -61,6 +71,14 @@ class AptManager(CommandManager):
     Mirrors dotfiles setup.sh sudo_run() behavior:
     - Uses sudo when not root (password prompt in interactive terminal)
     - Runs apt-get install interactively (no DEBIAN_FRONTEND=noninteractive)
+
+    执行策略与 scripts/lib/apt.sh 同源（见 managers/apt_policy.py）：装包前预检源、
+    有界超时/重试/锁等待、失败归因到可复制的修复命令。
+
+    已知不一致（待裁决，见 migration-plan §4.3 Step 2）：shell 侧全线设
+    DEBIAN_FRONTEND=noninteractive 以免无人值守安装被 dpkg 提问挂起，本 manager
+    仍保留"不设"的原语义。两侧只能有一个答案，但在 manifest 条目真正使用
+    manager = "apt" 之前改它没有收益，只扩大变更面。
     """
 
     needs_privilege = True
@@ -137,6 +155,51 @@ class AptManager(CommandManager):
         if _selector(item) != "latest":
             pkg = f"{pkg}={_selector(item)}"
         return ["apt-get", "install", "-y", pkg]
+
+    def install(self, item: PlanItem) -> None:
+        """有界、可见、可归因的 apt 安装（覆盖基类的裸执行）。
+
+        与 scripts/lib/apt.sh 的 apt_run 同步骤：源预检（只提示不阻断）→
+        带 apt 命令行超时参数执行 → 输出回显（不用 capture 静默掉进度）→
+        失败时把 apt 输出翻译成可执行的修复动作。
+        """
+        # 装包名/版本的语义仍只由 install_command 负责，这里不重复计算
+        raw_cmd = self.install_command(item)
+        pkg = raw_cmd[-1]
+
+        for line in preflight_source_warnings():
+            print(line)
+
+        # apt-get [options] install -y <pkg>：选项放子命令前最安全
+        cmd = [raw_cmd[0], *apt_options(), *raw_cmd[1:]]
+        print(
+            f"⏳ {' '.join(cmd)}"
+            f"（有界：连接 {APT_HTTP_TIMEOUT}s / 重试 {APT_RETRIES} 次 / dpkg 锁 {APT_LOCK_TIMEOUT}s）"
+        )
+
+        kwargs: dict = {
+            "check": False,
+            "capture_output": True,
+            "text": True,
+            "timeout": APT_COMMAND_TIMEOUT,
+        }
+        try:
+            if self.needs_privilege:
+                result = _run_with_sudo(cmd, runner=self.runner, **kwargs)
+            else:
+                result = self.runner.run(cmd, **kwargs)
+        except InstallationError as exc:
+            # runner 层的超时（带超时前已捕获的输出）→ 仍然走归因
+            raise InstallationError(failure_message(pkg, str(exc))) from None
+
+        # 执行完再回显：capture 是为了拿日志做归因，不是为了让用户看不到 apt 干了什么
+        if result.stdout:
+            print(result.stdout, end="")
+        if result.stderr:
+            print(result.stderr, end="", file=sys.stderr)
+        if result.returncode != 0:
+            log = f"{result.stdout or ''}\n{result.stderr or ''}"
+            raise InstallationError(failure_message(pkg, log))
 
 
 class BrewManager(CommandManager):
