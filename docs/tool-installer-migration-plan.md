@@ -201,6 +201,7 @@ Vendor 目录只存放满足以下条件**之一**的资源；三条之外一律
 |------|------|
 | Layer 0 | 保证 tool-installer 可安装，不处理工具下载 |
 | Layer 1 | 负责所有工具的网络获取，内置 retry、timeout、镜像 fallback |
+| 系统包（apt/brew）| 走 `scripts/lib/apt.sh`：有界超时、装包前源预检、失败归因（见 §4.3） |
 | Manager 内部 | 每个 manager 实现自己的网络容错（如 github-release 的 mirror 列表） |
 
 ### 4.2 cargo-binstall 的自举
@@ -216,6 +217,37 @@ tool-installer 的 `cargo-install` manager 已实现 `_ensure_binstall`：
 - 掩盖 `_ensure_binstall` 的验证 bug
 - 导致测试环境无法覆盖真实 fallback 路径
 - 增加 vendor 维护负担
+
+### 4.3 系统包（apt）策略：有界、可见、可归因
+
+`setup.sh`（Layer 1 运行时依赖预检）与 `scripts/install-system-packages.sh`（Layer 0）
+共用 `scripts/lib/apt.sh`，这是本仓库 apt 执行策略的单一事实来源。
+
+| 原则 | 实现 |
+|------|------|
+| **有界** | `Acquire::http(s)::Timeout=30`、`Acquire::Retries=1`、`DPkg::Lock::Timeout=60`（命令行参数，覆盖 `/etc/apt/apt.conf.d`），坏源与锁占用都在分钟内失败，不会把安装挂死 |
+| **可见** | 不再使用 `-qq`；装包前打印 `📦 正在通过 apt 补齐...`，apt 输出原样透出 |
+| **可归因** | `apt_sources_health_check` 在装包前逐源 5s 探测，先暴露不可达源；`apt_failure_hint` 把 apt 输出翻译成「原因 + 可直接执行的修复命令」（区分：无 sudo、锁占用、DNS 失败、源不可达/云内网源） |
+
+> **2026-09 事故**：宿主把 apt 源指向腾讯云内网源 `mirrors.tencentyun.com`（解析到链路本地
+> 地址 `169.254.0.3`），在非腾讯云内网环境是 TCP 黑洞。旧代码 `apt-get update -qq` 静默重试，
+> `./setup.sh` 在 `🔍 缺少 Layer 1 运行时依赖` 之后挂起 4 分钟以上，最终只留下
+> `❌ 运行时依赖安装失败`，没有任何可执行的修复指引。
+>
+> **边界**：`apt.sh` 只诊断、只提示，绝不改写 `/etc/apt` 下的用户源配置——换源属于用户决策，
+> 脚本只打印一条可复制的修复命令。
+>
+> 同次修复：`DEBIAN_FRONTEND=noninteractive` 原先写在 `sudo` 之前，会被 `sudo` 的 `env_reset`
+> 丢弃（改用 `sudo env VAR=... apt-get`）；`./setup.sh --install` 单跑时没有 sudo 缓存，原先
+> 直接判死，现在交互终端会现场 `sudo -v` 提升一次。
+
+**与 `apt-retry.conf` 的区别（刻意不同，不要互相对齐）**：Docker 构建复制该文件
+（`Retries 5` / `Timeout 300`），面向「CI 偶发网络抖动，宁可久等也要成功」；本机安装走
+fail-fast，「宁可快速失败也要给出归因」。
+
+**尚未接入本库的 apt 调用点（按需单独提交）**：`scripts/install-wezterm.sh`、
+`scripts/install-fonts.sh`、`scripts/llvmup`、`scripts/setup-rootless-docker.sh`。它们各有
+自己的容错（跳过 / 警告），接入是同一套 `source` + `apt_run` 改动。
 
 ---
 

@@ -3,6 +3,10 @@
 # Always exits 0; prints warnings on failure instead of failing.
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# apt 执行策略（有界超时 / 源预检 / 失败归因）的单一事实来源，与 setup.sh 共用
+source "${SCRIPT_DIR}/lib/apt.sh"
+
 OS="$(uname -s)"
 
 if [[ "$OS" == "Darwin" ]]; then
@@ -37,8 +41,9 @@ if [[ "$OS" == "Linux" ]]; then
     export DEBIAN_FRONTEND=noninteractive
     sudo_cmd="sudo"
     command -v sudo &>/dev/null || sudo_cmd=""
-    $sudo_cmd apt-get update -qq || echo "⚠️  apt-get update 失败"
-    $sudo_cmd apt-get install -y "${missing[@]}" || echo "⚠️  部分包安装失败"
+    apt_sources_health_check || true
+    apt_run "$sudo_cmd" update || echo "⚠️  apt-get update 失败（原因见上方归因）"
+    apt_run "$sudo_cmd" install -y "${missing[@]}" || echo "⚠️  部分包安装失败（原因见上方归因）"
     exit 0
 fi
 

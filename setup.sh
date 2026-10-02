@@ -7,6 +7,9 @@ set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# apt 执行策略（有界超时 / 源预检 / 失败归因）的单一事实来源，Layer 0 与 Layer 1 共用
+source "${SCRIPT_DIR}/scripts/lib/apt.sh"
+
 # deploy 冲突（如目标是已存在的非空真实目录）不阻断后续 Layer，最后汇总报告
 DEPLOY_CONFLICT=false
 
@@ -62,18 +65,27 @@ preflight_runtime_deps() {
     [ ${#missing[@]} -eq 0 ] && return 0
 
     echo "🔍 缺少 Layer 1 运行时依赖: ${missing[*]}"
-    local sudo_cmd
+    local sudo_cmd=""
     if [ "$(id -u)" -eq 0 ]; then
         sudo_cmd=""
     elif sudo -n true 2>/dev/null; then
+        sudo_cmd="sudo"
+    elif [ -t 0 ] && sudo -v; then
+        # 交互终端（如单跑 ./setup.sh --install，无 sudo 缓存）：现场提升一次，
+        # 不能因为"当前没有缓存"就直接判死，否则提示用户手动装的正是脚本本可装的包
         sudo_cmd="sudo"
     else
         echo "❌ 无法自动安装（需要 sudo 终端）。请执行后重跑 setup:"
         echo "   sudo apt-get update && sudo apt-get install -y ${missing[*]}"
         return 1
     fi
-    $sudo_cmd apt-get update -qq || true
-    if DEBIAN_FRONTEND=noninteractive $sudo_cmd apt-get install -y --no-install-recommends "${missing[@]}"; then
+
+    echo "📦 正在通过 apt 补齐（有界超时，坏源会快速归因）..."
+    apt_sources_health_check || true
+    if ! apt_run "$sudo_cmd" update; then
+        echo "⚠️  apt-get update 未完全成功（原因见上方归因），继续用现有索引尝试安装"
+    fi
+    if apt_run "$sudo_cmd" install -y --no-install-recommends "${missing[@]}"; then
         echo "✅ 运行时依赖已补齐"
     else
         echo "❌ 运行时依赖安装失败: ${missing[*]}"
