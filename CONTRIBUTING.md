@@ -34,9 +34,9 @@ Docker 镜像用于验证 `setup.sh` 在干净 Ubuntu 环境中可正常执行�
 
 ```bash
 # xdotter 部署的符号链接
-~/.zshrc -> ~/.config/shells/zsh/zshrc
-~/.config/mise -> ~/.local/share/mise
-~/.config/yazi -> ~/.config/yazi
+~/.zshrc -> ~/dotfiles/shells/zsh/zshrc
+~/.config/mise -> ~/dotfiles/mise
+~/.config/yazi/yazi.toml -> ~/dotfiles/yazi/yazi.toml   # keymap/theme/init.lua/package.toml 同理
 
 # 配置文件
 ~/.cargo/config.toml  # Rust 镜像源配置
