@@ -225,6 +225,25 @@ class BinstallFallback(unittest.TestCase):
 
         self.assertEqual(len(calls), 2)
 
+    def test_binstall_command_generation(self) -> None:
+        mgr = CargoInstallManager(runner=mock.Mock())
+        item = self.item()
+        cmd = mgr._binstall_command(item, ["cargo", "binstall"])
+        self.assertEqual(
+            cmd,
+            ["cargo", "binstall", "-y", "--disable-strategies", "compile", "--version", "0.10.0", "taplo-cli"],
+        )
+
+        custom_fields = {
+            "pkg": "custom-cli",
+            "binstall_fallback_compile": True,
+        }
+        cmd2 = mgr._binstall_command(item, ["/usr/bin/cargo-binstall"], fields=custom_fields)
+        self.assertEqual(
+            cmd2,
+            ["/usr/bin/cargo-binstall", "-y", "--version", "0.10.0", "custom-cli"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

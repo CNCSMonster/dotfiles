@@ -24,10 +24,13 @@
 # =============================================================================
 
 # zoxide - 智能 cd 命令增强（交互式快捷键）
-eval "$(zoxide init $SH)"
+if command -v zoxide >/dev/null 2>&1; then eval "$(zoxide init $SH)"; fi
 
 # starship - Shell 提示符（仅交互式显示）
-eval "$(starship init $SH)"
+if command -v starship >/dev/null 2>&1; then eval "$(starship init $SH)"; fi
+
+# navi - 命令快捷键（Ctrl+N）
+if command -v navi >/dev/null 2>&1; then eval "$(navi widget $SH)"; fi
 
 # =============================================================================
 # 历史搜索（fzf 增强，替换 Ctrl+R）
@@ -112,9 +115,6 @@ else
   }
   bind -x '"\C-r": _fhd_widget'
 fi
-
-# navi - 命令快捷键（Ctrl+N）
-eval "$(navi widget $SH)"
 
 # xdotter / xd - dotfiles 管理器命令补全
 if command -v xd >/dev/null 2>&1; then

@@ -15,7 +15,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from ..errors import InstallationError
 from ..github_token import detect_github_token
@@ -763,7 +763,7 @@ class CargoInstallManager(CommandManager):
             command = list(invocation) + ["-y", "--disable-strategies", "compile"]
         if _selector(item) != "latest":
             command.extend(["--version", _selector(item)])
-        command.append(item.strategy.fields["pkg"])
+        command.append(fields["pkg"])
         return command
 
     def _ensure_binstall(self, item: PlanItem, retry: int = 0) -> Optional[List[str]]:
