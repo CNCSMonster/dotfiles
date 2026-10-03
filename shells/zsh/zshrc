@@ -21,4 +21,4 @@ command_not_found_handler() {
     fi
 }
 
-. "$HOME/.local/share/../bin/env"
+[[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"

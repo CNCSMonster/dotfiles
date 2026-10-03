@@ -233,5 +233,36 @@ class InstallWiring(unittest.TestCase):
         self.assertFalse((self.home / ".local" / "bin" / "yq").exists())
 
 
+class SafeExtractTarTest(unittest.TestCase):
+    """测试 tar 解压路径校验与硬链接提取。"""
+
+    def test_extract_tar_with_hardlink(self):
+        import tarfile
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            tar_path = tmp / "test.tar"
+            with tarfile.open(tar_path, "w") as tf:
+                data = b"hello hardlink"
+                ti = tarfile.TarInfo("file.txt")
+                ti.size = len(data)
+                tf.addfile(ti, io.BytesIO(data))
+
+                link_ti = tarfile.TarInfo("link.txt")
+                link_ti.type = tarfile.LNKTYPE
+                link_ti.linkname = "file.txt"
+                tf.addfile(link_ti)
+
+            dest_dir = tmp / "dest"
+            dest_dir.mkdir()
+            gr.GithubReleaseManager._safe_extract_tar(tar_path, dest_dir)
+
+            file_txt = dest_dir / "file.txt"
+            link_txt = dest_dir / "link.txt"
+            self.assertTrue(file_txt.exists())
+            self.assertTrue(link_txt.exists())
+            self.assertEqual(link_txt.read_bytes(), b"hello hardlink")
+            self.assertEqual(file_txt.stat().st_ino, link_txt.stat().st_ino)
+
+
 if __name__ == "__main__":
     unittest.main()

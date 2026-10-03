@@ -454,6 +454,11 @@ class GithubReleaseManager:
                     if target.exists() or target.is_symlink():
                         target.unlink()
                     target.symlink_to(member.linkname)
+                elif member.islnk():
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    if target.exists() or target.is_symlink():
+                        target.unlink()
+                    os.link(dest_resolved / member.linkname, target)
                 elif member.isfile():
                     target.parent.mkdir(parents=True, exist_ok=True)
                     src = tf.extractfile(member)

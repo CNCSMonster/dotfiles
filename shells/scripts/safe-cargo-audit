@@ -13,9 +13,9 @@
 #
 # 安全特性:
 #   - 项目目录只读挂载（防止恶意修改源码）
-#   - 默认禁用网络（防止数据外泄）
-#   - 隔离 /home 目录（防止访问用户文件）
-#   - 最小化设备访问
+#   - 允许网络访问以更新漏洞数据库，隔离宿主凭证
+#   - 隔离 /home 与 /root 目录（防止访问用户私有文件与凭证）
+#   - 最小化设备访问与隔离临时目录
 # =============================================================================
 
 set -eo pipefail
@@ -82,19 +82,25 @@ main() {
     
     log_info "Safe Cargo Audit (沙箱模式)"
     log_info "项目目录：$PROJECT_DIR"
-    log_info "网络访问：允许（沙箱内联网更新漏洞数据库）"
+    log_info "网络访问：允许（用于更新漏洞数据库）"
     echo ""
-    
+
     # 创建临时目录用于 cargo 缓存
     # 包括：registry（crate 信息）和 advisory-db（漏洞数据库）
     local CARGO_CACHE_DIR=$(mktemp -d)
     mkdir -p "$CARGO_CACHE_DIR/registry" "$CARGO_CACHE_DIR/advisory-db"
-    trap "rm -rf $CARGO_CACHE_DIR" EXIT
-    
+    trap 'rm -rf "$CARGO_CACHE_DIR"' EXIT
+
     # 使用 bwrap 运行 cargo audit，转发所有参数
     # --share-net: 允许网络访问（更新漏洞数据库需要）
-    bwrap \
+    local exit_code=0
+    if bwrap \
         --ro-bind "$PROJECT_DIR" "$PROJECT_DIR" \
+        --ro-bind /usr /usr \
+        --ro-bind-try /lib /lib \
+        --ro-bind-try /lib64 /lib64 \
+        --ro-bind-try /bin /bin \
+        --ro-bind-try /etc/resolv.conf /etc/resolv.conf \
         --ro-bind /etc/ssl /etc/ssl \
         --ro-bind /etc/ca-certificates /etc/ca-certificates \
         --tmpfs /home \
@@ -106,18 +112,15 @@ main() {
         --bind "$CARGO_CACHE_DIR/advisory-db" "$HOME/.cargo/advisory-db" \
         --chdir "$PROJECT_DIR" \
         --share-net \
-        -- cargo audit "$@"
-    
-    local exit_code=$?
-    
-    if [ $exit_code -eq 0 ]; then
+        -- cargo audit "$@"; then
         echo ""
         log_success "审计完成，未发现安全漏洞"
     else
+        exit_code=$?
         echo ""
         log_warn "审计完成，发现安全漏洞（见上文详情）"
     fi
-    
+
     return $exit_code
 }
 

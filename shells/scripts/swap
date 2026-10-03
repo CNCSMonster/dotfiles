@@ -1,10 +1,64 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Swap - 安全交换两个文件或目录的名称
+# =============================================================================
 
-## 交换文件名
-function swap {
-	mv $1 "$1.swapping"
-	mv $2 $1
-	mv "$1.swapping" $2
+set -eo pipefail
+
+usage() {
+    echo "用法: $(basename "$0") <file1> <file2>" >&2
+    echo "交换两个文件或目录的名称" >&2
+    exit 1
+}
+
+swap() {
+    # 校验参数个数必须为 2
+    if [ "$#" -ne 2 ]; then
+        usage
+    fi
+
+    local file1="$1"
+    local file2="$2"
+
+    # 检查源文件是否存在且可访问
+    if [ ! -e "$file1" ] && [ ! -L "$file1" ]; then
+        echo "错误: 文件 '$file1' 不存在" >&2
+        exit 1
+    fi
+
+    if [ ! -e "$file2" ] && [ ! -L "$file2" ]; then
+        echo "错误: 文件 '$file2' 不存在" >&2
+        exit 1
+    fi
+
+    # 指向同一个文件时无需交换
+    if [ "$file1" -ef "$file2" ]; then
+        echo "提示: '$file1' 与 '$file2' 是同一个文件，无需交换" >&2
+        exit 0
+    fi
+
+    # 使用原子安全临时文件名（与 file1 在同一目录下以保证同文件系统原子重命名）
+    local tmp
+    tmp=$(mktemp -u "${file1}.swap.XXXXXX")
+
+    # 执行三步交换，若中途失败尽量安全恢复
+    if ! mv "$file1" "$tmp"; then
+        echo "错误: 无法将 '$file1' 移动到临时文件 '$tmp'" >&2
+        exit 1
+    fi
+
+    if ! mv "$file2" "$file1"; then
+        echo "错误: 无法将 '$file2' 移动到 '$file1'，正在尝试恢复 '$file1'..." >&2
+        mv "$tmp" "$file1" || echo "致命错误: 无法恢复 '$file1'，内容暂存于 '$tmp'" >&2
+        exit 1
+    fi
+
+    if ! mv "$tmp" "$file2"; then
+        echo "错误: 无法将临时文件移动到 '$file2'，正在尝试恢复现场..." >&2
+        mv "$file1" "$file2" || echo "致命错误: 无法恢复 '$file2'（当前位于 '$file1'）" >&2
+        mv "$tmp" "$file1" || echo "致命错误: 无法恢复 '$file1'，内容暂存于 '$tmp'" >&2
+        exit 1
+    fi
 }
 
 swap "$@"
