@@ -13,9 +13,9 @@ export ZSH_CONFIG_HOME="$XDG_CONFIG_HOME/shells/zsh"
 
 source "$ZSH_CONFIG_HOME/config.zsh"
 
-source "$SH_COMMON_DIR/inter.sh"
-source "$SH_COMMON_DIR/alias.sh"
 source "$SH_COMMON_DIR/fn.sh"
+source "$SH_COMMON_DIR/alias.sh"
+source "$SH_COMMON_DIR/inter.sh"
 
 
 # 整理 PATH，删除重复路径
