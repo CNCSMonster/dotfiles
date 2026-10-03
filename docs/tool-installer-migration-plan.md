@@ -68,6 +68,12 @@
 | `npm` / `pip` | 包管理器 | LSP 服务器 |
 | `script` | 自定义脚本 | rustup-install |
 
+> **注意**：语言运行时当前**不走** manifest 的 `manager = "mise"`，而是由 `tools.toml`
+> 的 `mise-install@1` script job（`scripts/mise-install.sh`）统一执行 `mise install`，
+> 版本单点锁定在 `mise/config.toml` 的 `[tools]`。manifest 中曾存在的 mise 条目
+> 从未被 tools.toml 引用，已于 2026-10 清理；`mise` manager 类型仍被 tool-installer
+> 支持，需要时可重新声明。
+
 **关键设计：**
 - `binstall_first = true` 时，优先尝试 `cargo-binstall` 下载预编译二进制，失败自动 fallback 到 `cargo install`
 - 所有版本必须 pin，禁止 `latest`

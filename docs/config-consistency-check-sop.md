@@ -5,7 +5,7 @@
 ## 背景
 
 项目通过多种渠道安装 CLI 工具：
-- `mise` — 管理 go、node、zig、yazi 等
+- `mise` — 管理 go、node、pnpm、zig、yazi、gopls（版本锁定在 `mise/config.toml`）
 - `cargo binstall/install` — 安装 Rust 工具
 - `apt` — 安装系统级工具
 - 二进制下载 — helix、wezterm 等

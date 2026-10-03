@@ -1027,65 +1027,9 @@ sha256 = "7f9fdd9584866245de9a79e0add8f9236fae6f40a8a45e2c4771ccc14db4e0fa"
 
 # ============================================================
 # Languages & Runtimes (via mise)
+# 由 tools.toml 的 `mise-install@1` script job 安装，版本单点锁定在
+# mise/config.toml [tools]；manifest 不再声明 manager = "mise" 条目。
 # ============================================================
-
-[go]
-[go.linux]
-manager = "mise"
-plugin = "go"
-
-[go.macos]
-manager = "mise"
-plugin = "go"
-
-[node]
-[node.linux]
-manager = "mise"
-plugin = "node"
-
-[node.macos]
-manager = "mise"
-plugin = "node"
-
-[pnpm]
-[pnpm.linux]
-manager = "mise"
-plugin = "pnpm"
-
-[pnpm.macos]
-manager = "mise"
-plugin = "pnpm"
-
-[zig]
-[zig.linux]
-manager = "mise"
-plugin = "zig"
-
-[zig.macos]
-manager = "mise"
-plugin = "zig"
-
-[yazi]
-[yazi.linux]
-manager = "mise"
-plugin = "yazi"
-
-[yazi.macos]
-manager = "mise"
-plugin = "yazi"
-
-[gopls]
-[gopls.linux]
-manager = "mise"
-plugin = "go:golang.org/x/tools/gopls"
-
-# ============================================================
-# Node.js Global Tools (npm-global)
-# ============================================================
-
-[gopls.macos]
-manager = "mise"
-plugin = "go:golang.org/x/tools/gopls"
 
 # ============================================================
 # Node.js Global Tools (npm-global)
