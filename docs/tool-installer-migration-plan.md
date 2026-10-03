@@ -301,7 +301,7 @@ fail-fast，「宁可快速失败也要给出归因」。
 | 状态 | 性质 | 无 `--yes` 且有 TTY | `--yes` | 无 TTY 且无 `--yes` |
 |---|---|---|---|---|
 | 下载安装、版本对齐 | 预期 | 不问（apt 恒带 `-y`） | 不问 | 不问 |
-| 命令已存在但非 apt 装的 | 非预期 | 问，**默认 N** | 直接过 | 跳过该工具 + 结束汇总 |
+| 命令已存在但非 apt 装的 | 非预期 | **check 判已满足直接 Skip**（批次 2 收尾重裁，见下） | 同左，不装 apt 版（覆盖走 `force = true`） | 同左 |
 | 配置文件被本地改过 | 非预期 | 问（保留为默认） | **仍保留用户文件**，覆盖需显式 `--force-confnew` | 保留用户文件 |
 | `sudo` 密码 | 认证≠决策 | 问 | **照样问** | 报错不挂起 |
 
@@ -311,9 +311,11 @@ fail-fast，「宁可快速失败也要给出归因」。
   三态不能压成布尔——"拒绝"与"没人能答"是两回事，后者必须交给汇总。
 - `tool-installer install --yes` → `TOOL_INSTALLER_ASSUME_YES=1`（与 `TOOL_INSTALLER_STRICT`
   同一传播约定：环境变量，manager 在任何深度都能读到，调用方不会忘记层层传参）。
-- `apt_policy.unexpected_binary_state()`：`command -v` 视角 × `dpkg` 视角交叉判定——
-  "命令在、包不在" = 会静默装出第二份实现。manifest 为 `apt` 新增可选 `bin` 字段
-  （包名与命令名不同时声明）。
+- **缺口粒度（批次 2 收尾重裁）**：`install` 只装“能力与 dpkg 双视角都判缺”的包，
+  不再问询；“命令在、dpkg 无”由 check 的能力视角判已满足。原 `unexpected_binary_state`
+  授权检测已退役——它与能力视角 check 组合会在部分满足的清单上把整组拖进无 TTY 跳过，
+  真缺的包装不上（三容器矩阵实测复现）。授权框架
+  （`AuthorizationRequired`/`interaction`/executor pending）保留，当前无 apt 触发源。
 - `AuthorizationRequired(InstallationError)` + executor 专门分支：**缺授权永不中断整轮安装**
   （跳过该工具继续装其余的，两种模式都打印汇总、**退出码都不受影响**——“没人可问”
   不是失败，strict 只管真失败）；它必须在
@@ -382,6 +384,34 @@ fail-fast，「宁可快速失败也要给出归因」。
 
 验证：`check-manifest-platforms.sh` 4/4 平台、121 测试、dry-run 输出
 `version=latest manager=apt`、清单逐字 diff、`bash -n`。
+
+**Step 2 批次 2 收尾（2026-10-03）：缺口粒度 + 三容器矩阵实测**
+
+幂等检查（第二次 `install` 必须 `Skip`）连续三轮报 `check 未识别出 system-packages`，
+根因是 check（能力视角）与 install（授权问询）判定不一致：26 包清单里 clang 命令可用
+但元包无 dpkg 记录 → check 判组内有真缺 → 进 install → 授权检测把 clang 当“非预期已
+存在”问询 → 无 TTY 整组跳过 → 真缺的包装不上 → 每轮重演。
+
+容器矩阵实测（Ubuntu 22.04 / 24.04 / 26.04 × 裸 / 模拟 runner / 元包齐三态，真实
+`tool-installer install system-packages` 跑两轮判幂等）：
+
+| 镜像状态 | 22.04 | 24.04 | 26.04 |
+|---|---|---|---|
+| 裸（无预装） | PASS | PASS | PASS |
+| 模拟 runner（命令在、dpkg 无记录） | **FAIL**（修前）→ PASS（修后） | **FAIL** → PASS | 修前未复现* → PASS |
+| 元包齐 | PASS | PASS | PASS |
+
+\* 首轮矩阵中 26.04 的 runner_like 现场未造成（`clang-N` 不提供 `clang` 命令，
+修前复现以 22.04/24.04 为准；修后 26.04 补测 PASS）。
+
+结论：**行为差异不是发行版差异，是镜像预装状态差异**；dpkg/which 语义三版本一致，
+22.04 还验证了 vendored tomli 的 py3.10 路径。裁决 = `install` 改缺口粒度（能力 OR
+dpkg 任一满足即不重装、不进 apt 参数、全程不问询），授权问询从 apt 退役——“不覆盖已
+有实现”由 check 更早完成，结果与拍板默认 N 一致；`--yes` 的“强装能力已满足包”随之
+退役，显式覆盖走 `force = true`。顺手修了 `failure_message` 的归因参数（原为 for 循环
+泄漏变量，只报最后一个包）。
+
+验证：129 测试（删 9 例问询契约、增 4 例缺口契约）、三容器矩阵修后全 PASS。
 
 ---
 

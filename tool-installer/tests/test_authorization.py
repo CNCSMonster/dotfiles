@@ -35,7 +35,6 @@ from tool_installer.interaction import (  # noqa: E402
     Decision,
     ask,
 )
-from tool_installer.managers.apt_policy import unexpected_binary_state  # noqa: E402
 from tool_installer.managers.base import CheckResult  # noqa: E402
 from tool_installer.managers.commands import AptManager  # noqa: E402
 from tool_installer.models import (  # noqa: E402
@@ -116,52 +115,35 @@ class AskDecisionTest(EnvBase):
                     self.assertEqual(ask("确认?"), Decision.UNAUTHORIZED)
 
 
-class UnexpectedStateTest(unittest.TestCase):
-    def test_command_exists_but_not_apt_managed(self) -> None:
-        state = unexpected_binary_state(
-            "git", "git", installed_in_apt=False, which=lambda _: "/usr/local/bin/git"
-        )
-        self.assertIsNotNone(state)
-        self.assertIn("/usr/local/bin/git", state or "")
-        self.assertIn("git", state or "")
+class AptGapInstallTest(EnvBase):
+    """install 的缺口粒度契约（Ubuntu 22.04/24.04/26.04 容器矩阵实测的裁决）。
 
-    def test_absent_command_is_expected(self) -> None:
-        self.assertIsNone(
-            unexpected_binary_state("git", "git", installed_in_apt=False, which=lambda _: None)
-        )
+    能力满足（命令可用）≠ 缺口；缺口直接装、全程不问询。"不覆盖已有实现"由
+    check 的能力视角更早完成——install 再问一次只会把整组拖下水（无 TTY 跳过，
+    真缺的包装不上，幂等检查每轮报 "check 未识别出 system-packages"）。
+    """
 
-    def test_apt_managed_command_is_expected(self) -> None:
-        self.assertIsNone(
-            unexpected_binary_state(
-                "git", "git", installed_in_apt=True, which=lambda _: "/usr/bin/git"
-            )
-        )
-
-    def test_manifest_bin_name_is_the_one_probed(self) -> None:
-        """包名与命令名不同时（bin 字段），检测必须针对命令名。"""
-        probed = []
-        result = unexpected_binary_state(
-            "fd", "fd-find", installed_in_apt=False, which=lambda name: probed.append(name) or None
-        )
-        self.assertIsNone(result)
-        self.assertEqual(probed, ["fd"])
-
-
-class AptManagerAuthorizationTest(EnvBase):
     def setUp(self) -> None:
         super().setUp()
         root = mock.patch("tool_installer.managers.base._is_root", return_value=True)
         root.start()
         self.addCleanup(root.stop)
+        no_cmd = mock.patch(
+            "tool_installer.managers.commands.shutil.which", return_value=None
+        )
+        no_cmd.start()
+        self.addCleanup(no_cmd.stop)
 
     @staticmethod
     def runner(installed: bool = False) -> mock.Mock:
-        """dpkg-query 报未装，其余命令成功——正是"命令在、包不在"的现场。"""
+        """dpkg-query 按 installed 回报全组状态，其余命令成功。"""
         runner = mock.Mock()
 
         def side_effect(args, **kwargs):  # noqa: ANN001
             if args and args[0] == "dpkg-query":
-                return subprocess.CompletedProcess(args, 0 if installed else 1, "1.0" if installed else "", "")
+                return subprocess.CompletedProcess(
+                    args, 0 if installed else 1, "1.0" if installed else "", ""
+                )
             return subprocess.CompletedProcess(args, 0, "", "")
 
         runner.run.side_effect = side_effect
@@ -169,68 +151,74 @@ class AptManagerAuthorizationTest(EnvBase):
 
     @staticmethod
     def apt_calls(runner: mock.Mock) -> list:
-        return [c[0][0] for c in runner.run.call_args_list if c[0][0] and "apt-get" in c[0][0]]
+        return [
+            c[0][0]
+            for c in runner.run.call_args_list
+            if c[0][0] and "apt-get" in c[0][0]
+        ]
 
-    def test_conflict_without_tty_skips_without_running_apt(self) -> None:
-        runner = self.runner()
-        with mock.patch(
-            "tool_installer.managers.apt_policy.shutil.which",
-            return_value="/usr/local/bin/libclang-dev",
-        ):
-            with mock.patch("tool_installer.interaction.is_interactive", return_value=False):
-                with redirect_stdout(io.StringIO()):
-                    with self.assertRaises(AuthorizationRequired) as ctx:
-                        AptManager(runner=runner).install(apt_item())
-        self.assertIn("--yes", str(ctx.exception))
-        self.assertEqual(self.apt_calls(runner), [])
+    @staticmethod
+    def with_pkgs(pkgs: str) -> PlanItem:
+        item = apt_item()
+        item.strategy.fields["pkg"] = pkgs
+        return item
 
-    def test_conflict_with_assume_yes_installs(self) -> None:
-        os.environ[ASSUME_YES_ENV] = "1"
-        runner = self.runner()
-        with mock.patch(
-            "tool_installer.managers.apt_policy.shutil.which",
-            return_value="/usr/local/bin/libclang-dev",
-        ):
-            with redirect_stdout(io.StringIO()):
-                AptManager(runner=runner).install(apt_item())
-        self.assertEqual(len(self.apt_calls(runner)), 1)
-
-    def test_conflict_interactive_default_skips(self) -> None:
-        runner = self.runner()
-        with mock.patch(
-            "tool_installer.managers.apt_policy.shutil.which",
-            return_value="/usr/local/bin/libclang-dev",
-        ):
-            with mock.patch("tool_installer.interaction.is_interactive", return_value=True):
-                with mock.patch("builtins.input", return_value=""):
-                    with redirect_stdout(io.StringIO()):
-                        with self.assertRaises(AuthorizationRequired) as ctx:
-                            AptManager(runner=runner).install(apt_item())
-        self.assertIn("用户选择跳过", str(ctx.exception))
-        self.assertEqual(self.apt_calls(runner), [])
-
-    def test_conflict_interactive_yes_installs(self) -> None:
-        runner = self.runner()
-        with mock.patch(
-            "tool_installer.managers.apt_policy.shutil.which",
-            return_value="/usr/local/bin/libclang-dev",
-        ):
-            with mock.patch("tool_installer.interaction.is_interactive", return_value=True):
-                with mock.patch("builtins.input", return_value="y"):
-                    with redirect_stdout(io.StringIO()):
-                        AptManager(runner=runner).install(apt_item())
-        self.assertEqual(len(self.apt_calls(runner)), 1)
-
-    def test_expected_state_never_asks(self) -> None:
-        """命令不存在 = 预期情况，全程不该出现任何问询。"""
-        runner = self.runner()
-        with mock.patch("tool_installer.managers.apt_policy.shutil.which", return_value=None):
-            with mock.patch(
-                "builtins.input", side_effect=AssertionError("预期状态不应询问")
-            ):
+    def test_gap_installs_without_asking_even_without_tty(self) -> None:
+        """缺口（which None + dpkg 无）直接装：无 TTY 不阻塞、全程不问。"""
+        runner = self.runner(installed=False)
+        with mock.patch("tool_installer.interaction.is_interactive", return_value=False):
+            with mock.patch("builtins.input", side_effect=AssertionError("不该问")):
                 with redirect_stdout(io.StringIO()):
                     AptManager(runner=runner).install(apt_item())
         self.assertEqual(len(self.apt_calls(runner)), 1)
+
+    def test_capability_satisfied_package_is_not_a_gap(self) -> None:
+        """命令可用但 dpkg 无记录 = 能力已满足：不装、不问。
+
+        这就是曾把整组拖下水的场景（runner 的 clang 命令在、元包无 dpkg 记录）。"""
+        runner = self.runner(installed=False)
+        with mock.patch(
+            "tool_installer.managers.commands.shutil.which",
+            return_value="/usr/local/bin/libclang-dev",
+        ):
+            with mock.patch("builtins.input", side_effect=AssertionError("不该问")):
+                with redirect_stdout(io.StringIO()):
+                    AptManager(runner=runner).install(apt_item())
+        self.assertEqual(self.apt_calls(runner), [], "整组已满足就不跑 apt")
+
+    def test_apt_managed_package_is_not_a_gap(self) -> None:
+        """dpkg 已记录 = 已满足（能力探测可失败，系统视角兜底）。"""
+        runner = self.runner(installed=True)
+        with redirect_stdout(io.StringIO()):
+            AptManager(runner=runner).install(apt_item())
+        self.assertEqual(self.apt_calls(runner), [])
+
+    def test_only_gaps_are_installed(self) -> None:
+        """部分满足的组只装缺口：已满足的包不进 apt 参数（旧清单的逐包语义）。"""
+        runner = mock.Mock()
+
+        def side_effect(args, **kwargs):  # noqa: ANN001
+            if args and args[0] == "dpkg-query":
+                if args[-1] == "dpkg-hit":
+                    return subprocess.CompletedProcess(args, 0, "1.0", "")
+                return subprocess.CompletedProcess(args, 1, "", "")
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        runner.run.side_effect = side_effect
+        with mock.patch(
+            "tool_installer.managers.commands.shutil.which",
+            side_effect=lambda name: "/usr/bin/cap-hit" if name == "cap-hit" else None,
+        ):
+            with redirect_stdout(io.StringIO()):
+                AptManager(runner=runner).install(
+                    self.with_pkgs("cap-hit dpkg-hit real-gap")
+                )
+        calls = self.apt_calls(runner)
+        self.assertEqual(len(calls), 1, "缺口清单一次成批，不多跑")
+        args = calls[0]
+        self.assertIn("real-gap", args)
+        self.assertNotIn("cap-hit", args, "能力已满足的包不进 apt 参数")
+        self.assertNotIn("dpkg-hit", args, "dpkg 已记录的包不进 apt 参数")
 
 
 def plan_with(*names: str) -> InstallPlan:

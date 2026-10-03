@@ -20,7 +20,6 @@ from __future__ import annotations
 import glob
 import os
 import re
-import shutil
 import socket
 from typing import Callable, Iterable, List, Optional, Sequence
 
@@ -237,31 +236,3 @@ def preflight_source_warnings(
     else:
         warnings.append("   处理: 把该源替换为本机可达的公网源后重跑 ./setup.sh")
     return warnings
-
-
-# ── 非预期状态检测（Step 2 的"重复安装"防线） ──
-
-
-def unexpected_binary_state(
-    binary: str,
-    pkg: str,
-    installed_in_apt: bool,
-    which: Optional[Callable[[str], Optional[str]]] = None,
-) -> Optional[str]:
-    """命令已存在、但对应包不在 dpkg 数据库 → 装下去会引入第二份实现。
-
-    这是两个视角的差异，缺一不可：
-
-    - ``command -v``（能力视角）回答"我能不能用它"——第三方源码编译 / 手动解压 / mise
-      装的都算数；旧的 ``scripts/install-system-packages.sh`` 就是靠它跳过的。
-    - ``dpkg``（系统视角）回答"apt 装过吗"——只有 ``AptManager.check`` 用它，单靠它会把
-      上面那种"已经能用"的工具判成没装，然后 apt 再装一份：PATH 上从此两个实现，
-      用哪个取决于 PATH 顺序，而用户毫无察觉。
-
-    返回描述字符串（= 非预期，需要授权），``None`` = 与预期一致。
-    ``which`` 默认运行时解析为 ``shutil.which``，可注入供测试。
-    """
-    path = (which or shutil.which)(binary)
-    if not path or installed_in_apt:
-        return None
-    return f"检测到 {binary} 已存在（{path}），但 {pkg} 并非 apt 安装的包"

@@ -17,9 +17,8 @@ import urllib.request
 from pathlib import Path
 from typing import List, Optional, Sequence
 
-from ..errors import AuthorizationRequired, InstallationError
+from ..errors import InstallationError
 from ..github_token import detect_github_token
-from ..interaction import Decision, ask
 from ..models import PlanItem
 from .apt_policy import (
     APT_COMMAND_TIMEOUT,
@@ -29,7 +28,6 @@ from .apt_policy import (
     apt_options,
     failure_message,
     preflight_source_warnings,
-    unexpected_binary_state,
 )
 from .base import CheckResult, CommandManager, CommandRunner, _run_with_sudo
 
@@ -201,7 +199,7 @@ class AptManager(CommandManager):
         """系统视角：dpkg 数据库是否记录了这个包（不比对版本）。
 
         与 check() 分工：check 要版本值做对齐判定，这里只回答"是不是 apt 装的"，
-        供非预期状态检测用（见 apt_policy.unexpected_binary_state）。
+        供 install() 的缺口分类用（能力视角或 dpkg 任一满足即不是缺口）。
         """
         try:
             result = self.runner.run(
@@ -250,47 +248,49 @@ class AptManager(CommandManager):
     def install(self, item: PlanItem) -> None:
         """有界、可见、可归因的 apt 安装（覆盖基类的裸执行）。
 
-        与 scripts/lib/apt.sh 的 apt_run 同步骤：**先授权**（非预期状态）→ 源预检（只
-        提示不阻断）→ 带 apt 命令行超时参数执行 → 输出回显（不用 capture 静默掉进度）
-        → 失败时把 apt 输出翻译成可执行的修复动作。
+        **只装缺口**（能力与 dpkg 双视角都判缺的包）；源预检已上移 preflight
+        （每轮一次）；带 apt 命令行超时参数执行、输出回显，失败时翻译成可执行的
+        修复动作。
+
+        缺口粒度是三容器矩阵实测的结论（Ubuntu 22.04/24.04/26.04）：能力视角下
+        check 已把"命令可用"判为满足，若 install 再把组内能力满足的包（clang 命令
+        在、元包无 dpkg 记录）当"非预期已存在"去问询，无 TTY 场景会把**整组**跳过
+        ——真正缺的包永远装不上，幂等检查每轮报 "check 未识别出 system-packages"。
+        "不覆盖已有实现"由 check 的能力视角更早完成，install 不再问询。
         """
         # 装包名/版本的语义仍只由 install_command 负责（顺带校验 pin 合法性）
         raw_cmd = self.install_command(item)
         pkgs = _package_list(item)
         binary_field = item.strategy.fields.get("bin")
+        single = len(pkgs) == 1
 
-        # ── 授权：命令已存在但非 apt 装的，直接装会静默多出一份实现 ──
-        # 多包清单逐包收集、一次问询（逐包问会把用户按在终端里答 28 遍）
-        conflicts = []
+        missing = []
         for pkg in pkgs:
-            binary = (binary_field or pkg) if len(pkgs) == 1 else pkg
-            state = unexpected_binary_state(binary, pkg, self._dpkg_installed(pkg))
-            if state:
-                conflicts.append(state)
-        if conflicts:
-            detail = "\n".join(f"    - {c}" for c in conflicts)
-            decision = ask(
-                f"⚠️  检测到 {len(conflicts)} 个非预期状态（命令已存在，但对应包非 apt 安装）：\n"
-                f"{detail}\n  仍要安装 apt 版吗？"
-            )
-            summary = f"{len(conflicts)} 个包与已有命令冲突（{conflicts[0]}"
-            summary += " 等）" if len(conflicts) > 1 else "）"
-            if decision is Decision.UNAUTHORIZED:
-                raise AuthorizationRequired(
-                    f"{item.tool.reference.name}: {summary}"
-                    "（无交互终端且未传 --yes，已跳过）"
-                )
-            if decision is Decision.NO:
-                raise AuthorizationRequired(
-                    f"{item.tool.reference.name}: {summary}（用户选择跳过）"
-                )
+            name = (binary_field or pkg) if single else pkg
+            if shutil.which(name) or self._dpkg_installed(pkg):
+                # 能力视角（与 check 同构）或 dpkg 已记录 = 已满足，不是缺口
+                continue
+            missing.append(pkg)
+        if not missing:
+            # check 到 install 之间的竞态窗口（别处刚装上），整组已满足
+            return
 
+        # pin 单包时 missing == pkgs 必然成立（否则上面已 return）——走 raw_cmd
+        # 保住 pin；latest 多包的缺口子集单独成命令（只装缺的，已满足的不重下）
+        cmd_body = raw_cmd[1:] if missing == pkgs else ["install", "-y", *missing]
+        pkg_label = ", ".join(missing)
         # 源预检已上移到 preflight（每轮一次）：逐项跑会在慢源上把探测放大成 N 轮
         # apt-get [options] install -y <pkg>：选项放子命令前最安全
-        cmd = _noninteractive(["apt-get", *apt_options(), *raw_cmd[1:]])
+        cmd = _noninteractive(["apt-get", *apt_options(), *cmd_body])
+        suffix = (
+            f"（{len(pkgs) - len(missing)} 个包已满足，跳过）"
+            if len(missing) < len(pkgs)
+            else ""
+        )
         print(
             f"⏳ {' '.join(cmd)}"
             f"（有界：连接 {APT_HTTP_TIMEOUT}s / 重试 {APT_RETRIES} 次 / dpkg 锁 {APT_LOCK_TIMEOUT}s）"
+            f"{suffix}"
         )
 
         kwargs: dict = {
@@ -306,7 +306,7 @@ class AptManager(CommandManager):
                 result = self.runner.run(cmd, **kwargs)
         except InstallationError as exc:
             # runner 层的超时（带超时前已捕获的输出）→ 仍然走归因
-            raise InstallationError(failure_message(pkg, str(exc))) from None
+            raise InstallationError(failure_message(pkg_label, str(exc))) from None
 
         # 执行完再回显：capture 是为了拿日志做归因，不是为了让用户看不到 apt 干了什么
         if result.stdout:
@@ -315,7 +315,7 @@ class AptManager(CommandManager):
             print(result.stderr, end="", file=sys.stderr)
         if result.returncode != 0:
             log = f"{result.stdout or ''}\n{result.stderr or ''}"
-            raise InstallationError(failure_message(pkg, log))
+            raise InstallationError(failure_message(pkg_label, log))
 
 
 class BrewManager(CommandManager):

@@ -227,10 +227,10 @@ class AptManagerInstallTest(unittest.TestCase):
         root = mock.patch("tool_installer.managers.base._is_root", return_value=True)
         root.start()
         self.addCleanup(root.stop)
-        # 授权检测依赖宿主 PATH（万一测试机上真有个同名命令就会误触发）。
-        # 本类只关心执行策略，非预期状态判定有专门的 test_authorization.py 覆盖。
+        # 缺口探测依赖宿主 PATH（万一测试机上真有个同名命令就会被当成"已满足"）。
+        # 本类只关心执行策略，缺口语义有专门的 test_authorization.py 覆盖。
         no_conflict = mock.patch(
-            "tool_installer.managers.apt_policy.shutil.which", return_value=None
+            "tool_installer.managers.commands.shutil.which", return_value=None
         )
         no_conflict.start()
         self.addCleanup(no_conflict.stop)
@@ -263,7 +263,18 @@ class AptManagerInstallTest(unittest.TestCase):
         self.assertEqual(runner.run.call_args[1]["timeout"], apt_policy.APT_COMMAND_TIMEOUT)
 
     def test_success_echoes_apt_output(self) -> None:
-        runner = self.runner(stdout="Reading package lists... Done\n")
+        # dpkg 视角必须报未装（否则按新契约是"已装不重装"，轮不到 apt 跑）；
+        # apt-get 的成功输出才是本测试要断言的回显
+        runner = mock.Mock()
+
+        def side_effect(args, **kwargs):  # noqa: ANN001
+            if args and args[0] == "dpkg-query":
+                return subprocess.CompletedProcess(args, 1, "", "")
+            return subprocess.CompletedProcess(
+                args, 0, "Reading package lists... Done\n", ""
+            )
+
+        runner.run.side_effect = side_effect
         with redirect_stdout(io.StringIO()) as out:
             AptManager(runner=runner).install(apt_item())
         self.assertIn("Reading package lists... Done", out.getvalue())
@@ -427,7 +438,7 @@ class PreflightTest(unittest.TestCase):
         root.start()
         self.addCleanup(root.stop)
         no_conflict = mock.patch(
-            "tool_installer.managers.apt_policy.shutil.which", return_value=None
+            "tool_installer.managers.commands.shutil.which", return_value=None
         )
         no_conflict.start()
         self.addCleanup(no_conflict.stop)
@@ -537,11 +548,6 @@ class AptManagerCheckTest(unittest.TestCase):
         self.addCleanup(root.stop)
         # which 默认 None：本测试锁 dpkg 视角的判定，能力视角有专门用例，
         # 否则宿主上巧合存在的同名命令会污染断言
-        which_policy = mock.patch(
-            "tool_installer.managers.apt_policy.shutil.which", return_value=None
-        )
-        which_policy.start()
-        self.addCleanup(which_policy.stop)
         which_commands = mock.patch(
             "tool_installer.managers.commands.shutil.which", return_value=None
         )

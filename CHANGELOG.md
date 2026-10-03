@@ -90,6 +90,19 @@ All notable changes to this project will be documented in this file.
     这类无命令的包），冲突检测退为纵深防御；**授权跳过不受 strict 影响**（"没人可问"
     不是失败，tolerated 才是）+ `AptManagerCheckTest` 能力视角用例与 which 隔离
   - 已推 `1b6bac3`（sudo 探测 + 测试隔离）；本条为后续提交
+- **修复：apt 清单改为缺口粒度安装（三容器矩阵实测的裁决）**（2026-10-03）
+  - 幂等失败链的最终解：check 已是能力视角（`command -v` 命中即满足），install 却仍把
+    组内“命令在、dpkg 无记录”的包（runner 的 clang）当非预期状态问询 → 无 TTY 整组
+    跳过 → 真缺的包装不上 → 幂等检查每轮报错。容器矩阵（Ubuntu 22.04/24.04/26.04 ×
+    裸/模拟 runner/元包齐三态，真实两轮安装）：修前 runner_like 在 22.04/24.04 复现
+    FAIL，修后九组全 PASS；**行为差异是镜像预装状态差异，不是发行版差异**（dpkg/which
+    语义三版本一致，22.04 另验证了 vendored tomli 的 py3.10 路径）
+  - `install` 只装缺口（能力 OR dpkg 任一满足即不重装、不进 apt 参数、全程不问询）；
+    授权问询（`unexpected_binary_state`）从 apt 退役——“不覆盖已有实现”由 check 更早
+    完成，结果与拍板默认 N 一致（`--yes` 的强装能力随之退役，显式覆盖走 `force = true`）；
+    授权框架（`AuthorizationRequired`/executor pending）保留，当前无 apt 触发源
+  - 顺手修 `failure_message` 归因参数：原为 for 循环泄漏变量（只报最后一个包），现报缺口列表
+  - 测试：`AptGapInstallTest` 4 例替换旧问询 5 例 + 直测 4 例（129 例全绿，含 STRICT=1）
 - **修复：apt 索引刷新与源预检的执行时机（tool-installer）**
   - 新增 `Manager.preflight(items)` 钩子（每轮一次，executor 在逐项执行前按 manager
     分组调用）；`AptManager` 在其中 `apt-get update` **一轮一次**，对齐 shell 侧 apt_run
