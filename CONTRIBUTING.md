@@ -70,9 +70,10 @@ GitHub Actions 共 4 个 workflow，覆盖改动验证与镜像发布：
 ## 修改后流程
 
 1. 本地修改 dotfiles 配置
-2. 运行 `./scripts/docker-build-test.sh --gh-token "$(gh auth token)"` 做完整 Docker 构建验证（可选但推荐）
-3. 按脚本提示运行镜像内验证命令，确保验证通过（`失败：0`）
-4. 提交并推送（runner direct CI 自动验证）
+2. （首次克隆推荐）启用本地 git hook：`git config core.hooksPath .githooks`，提交时将自动触发轻量守卫（冲突标记检查、Shell 语法检查、manifest 架构矩阵解析，以及 `tool-installer` 源码改动后的单测与 vendor 同步检查）
+3. 运行 `./scripts/docker-build-test.sh --gh-token "$(gh auth token)"` 做完整 Docker 构建验证（可选但推荐）
+4. 按脚本提示运行镜像内验证命令，确保验证通过（`失败：0`）
+5. 提交并推送（runner direct CI 自动验证）
 
 ## 自动化工具优先原则
 
