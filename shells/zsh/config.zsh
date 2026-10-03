@@ -62,11 +62,6 @@ _comp_options+=(globdots)
 #
 zstyle ':fzf-tab:complete:*' fzf-bindings 'ctrl-s:toggle' 'ctrl-a:toggle-all'
 
-cmds=('bat')
-for cmd in "${(@kv)cmds}"; do
-    zstyle ":fzf-tab:complete:${cmd}:*" fzf-preview 'exa -a1 --color=auto -s=type $realpath'
-done
-
 # ------------------
 # Initialize modules
 # ------------------
@@ -133,6 +128,7 @@ _zcomet_load() {
                 rm -rf "$ZCOMET_DIR" 2>/dev/null
                 if git clone --depth 1 https://github.com/agkozak/zcomet "$ZCOMET_DIR" 2>&1; then
                     echo "[zsh] zcomet 安装完成！重启 shell 后生效"
+                    rmdir "$LOCK_DIR" 2>/dev/null || true
                 else
                     echo "[zsh] zcomet 安装失败，请检查网络连接"
                     rmdir "$LOCK_DIR" 2>/dev/null
@@ -208,7 +204,7 @@ zstyle ':fzf-tab:complete:*' fzf-bindings 'ctrl-s:toggle' 'ctrl-a:toggle-all'
 
 cmds=('bat')
 for cmd in "${(@kv)cmds}"; do
-    zstyle ":fzf-tab:complete:${cmd}:*" fzf-preview 'exa -a1 --color=auto -s=type $realpath'
+    zstyle ":fzf-tab:complete:${cmd}:*" fzf-preview 'eza -a1 --color=auto -s=type $realpath'
 done
 
 zcomet load zsh-users/zsh-autosuggestions@v0.7.1

@@ -6,7 +6,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Tuple
 
 from .errors import ManifestError, StrategyError
 from .models import Environment, InstallPlan, MergedStrategy, PlanItem, ToolSpec
@@ -234,7 +234,7 @@ def _validate_github_release(tool_name: str, fields: Mapping[str, Any]) -> None:
         raise StrategyError(f"github-release sha256 must be a 64-character hex digest for {tool_name}")
 
 
-def _validate_script(tool_name: str, fields: Mapping[str, Any], manifest_dir: Path) -> None:
+def _validate_script(tool_name: str, fields: MutableMapping[str, Any], manifest_dir: Path) -> None:
     raw_path = fields["path"]
     path = Path(raw_path)
     if path.is_absolute() or ".." in path.parts:
