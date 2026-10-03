@@ -2,24 +2,21 @@
 
 # 检查暂存区文件中是否存在 Git 冲突标志
 check_conflicts() {
-    local conflict_files=()
     local conflict_pattern="<<<<<<<|=======|>>>>>>>"
-    local staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
 
-    for file in $staged_files; do
+    while IFS= read -r -d '' file; do
         if git diff --cached -- "$file" | grep -q -E "$conflict_pattern"; then
-            conflict_files+=("$file")
+            printf "%s\n" "$file"
         fi
-    done
-
-    echo "${conflict_files[@]}"
+    done < <(git diff --cached -z --name-only --diff-filter=ACMR)
 }
 
 # 主逻辑
 main() {
-    conflict_files=$(check_conflicts)
+    local conflict_files=()
+    mapfile -t conflict_files < <(check_conflicts)
 
-    if [[ -n "$conflict_files" ]]; then
+    if [ ${#conflict_files[@]} -gt 0 ]; then
         echo "检测到以下文件中存在 Git 冲突标志："
         printf "  %s\n" "${conflict_files[@]}"
         echo "中断提交，请解决冲突后再试。"
