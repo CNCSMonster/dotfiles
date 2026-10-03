@@ -29,7 +29,7 @@ tool-installer install devbox-tools    # 目前是 rootless docker（免 sudo；
 | 类别 | 内容 |
 |------|------|
 | **Shell** | zsh + zcomet + starship + zoxide + fzf + eza + bat + fd + ripgrep |
-| **编辑器** | Neovim (nightly) + Helix，9 种语言 LSP |
+| **编辑器** | Neovim (钉版) + Helix，9 种语言 LSP |
 | **语言** | Rust + Go + Node.js + Zig，[mise](https://mise.jdx.dev/) 统一版本管理 |
 | **终端** | WezTerm + Zellij + Yazi + macchina + navi + Nerd Fonts |
 | **Rust 生态** | 20+ 工具：sccache, cargo-binstall, cargo-nextest, gitui, tokei, uv, nu 等 |
@@ -63,7 +63,7 @@ cd dotfiles
 
 ## 支持平台
 
-Ubuntu 22.04/24.04 · WSL2 · macOS (arm64/x86_64) · Termux（Android，最小远程开发工具集）
+Ubuntu 24.04/26.04 · WSL2 · macOS (arm64/x86_64) · Termux（Android，最小远程开发工具集）
 
 ## 文档
 

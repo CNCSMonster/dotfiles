@@ -22,7 +22,7 @@
 zsh + zcomet plugin manager + starship prompt + zoxide (smart cd) + fzf (fuzzy finder) + eza (modern ls) + bat (modern cat) + fd (modern find) + ripgrep (modern grep)
 
 **Editors**
-Neovim (nightly) + Helix — with LSP servers for 9 languages: TypeScript, Python, Go, Zig, Lua, Bash, YAML, TOML, Markdown
+Neovim (pinned release) + Helix — with LSP servers for 9 languages: TypeScript, Python, Go, Zig, Lua, Bash, YAML, TOML, Markdown
 
 **Language Toolchains**
 Rust (stable) + Go + Node.js + Zig — managed by [mise](https://mise.jdx.dev/)
@@ -52,6 +52,13 @@ Options: deploy configs only (no tool install) or install tools only (configs al
 ./setup.sh --install  # Install dev tools only
 ```
 
+Optional modules are not installed by default; install them on demand (module list in `tools.toml`):
+
+```bash
+tool-installer install network-tools   # rathole (NAT traversal / reverse-tunnel proxy)
+tool-installer install devbox-tools    # rootless Docker (no sudo; macOS only gets colima guidance)
+```
+
 ### Docker Verification
 
 ```bash
@@ -59,6 +66,27 @@ Options: deploy configs only (no tool install) or install tools only (configs al
 ```
 
 Verifies setup.sh runs correctly in a clean Ubuntu container.
+
+### Termux (Android) — minimal remote-dev environment
+
+Termux only provides the tools needed to connect from a phone to a remote dev environment; it does not install the full local language runtimes, editor ecosystem, or AI CLIs. First install Git inside Termux, then fetch the repository:
+
+```bash
+pkg update
+pkg install -y git
+
+git clone https://github.com/CNCSMonster/dotfiles.git
+cd dotfiles
+./setup-termux.sh
+```
+
+Installs `openssh`, `git`, `tmux`, `fzf`, `ripgrep`, `zoxide`, `yazi`, `vim`, and `tree`. The script only installs missing packages and does not run a full system upgrade by default; package versions follow the Termux repositories.
+
+Preview pending packages:
+
+```bash
+./setup-termux.sh --dry-run
+```
 
 ---
 
@@ -77,9 +105,10 @@ Config and installation are decoupled: changing configs doesn't require reinstal
 
 | Environment | Status |
 |-------------|--------|
-| Ubuntu 22.04 / 24.04 | Primary support |
+| Ubuntu 24.04 / 26.04 | Primary support (CI-verified) |
 | WSL2 (Ubuntu) | Fully compatible |
 | macOS (arm64/x86_64) | Supported (Homebrew) |
+| Termux (Android) | Minimal remote-dev toolset via `setup-termux.sh` |
 
 ---
 

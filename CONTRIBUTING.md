@@ -50,16 +50,20 @@ Docker 镜像用于验证 `setup.sh` 在干净 Ubuntu 环境中可正常执行�
 
 ## CI 流程
 
-GitHub Actions 有两类验证：
+GitHub Actions 共 4 个 workflow，覆盖改动验证与镜像发布：
 
-1. **自动验证**：每次 push / PR 触发 `E2E Full Install`，在最小镜像容器 `ubuntu:24.04` / `ubuntu:26.04`（GitHub runner 裸机跑 macOS）内直接运行 `./setup.sh`，再执行验证脚本检查工具 + 配置 + 功能。使用最小容器是为了真实暴露 setup.sh 对环境的隐含依赖（runner 镜像预装 clang/libicu/unzip 会掩盖这类问题）。纯文档改动（`**.md` / `docs/**`）不触发两条安装链。
-2. **完整 Docker 验证**：`Dockerfile Build Check` 通过 GitHub Actions 页面手动触发，矩阵构建 `ubuntu:24.04` / `ubuntu:26.04` 基镜像并在镜像内运行验证脚本。
+1. **E2E 自动验证**（`runner-verify.yml`）：每次 push / PR 触发 `E2E Full Install`，在最小镜像容器 `ubuntu:24.04` / `ubuntu:26.04`（GitHub runner 裸机跑 macOS）内直接运行 `./setup.sh`，再执行验证脚本检查工具 + 配置 + 功能。使用最小容器是为了真实暴露 setup.sh 对环境的隐含依赖（runner 镜像预装 clang/libicu/unzip 会掩盖这类问题）。纯文档改动（`**.md` / `docs/**`）不触发两条安装链。
+2. **tool-installer 验证**（`tool-installer-verify.yml`）：同样在 push / PR 触发（纯文档改动跳过），跑双 OS `Dry-run (all modules)`（离线解析全模块安装计划）与安装链作业；CI 中 `TOOL_INSTALLER_STRICT=1`，`allow_fail` 失败同样计入汇总并使作业非零退出（本地默认只报告、不改退出码）。
+3. **完整 Docker 验证**（`docker-build.yml`）：`Dockerfile Build Check` 通过 GitHub Actions 页面手动触发，矩阵构建 `ubuntu:24.04` / `ubuntu:26.04` 基镜像并在镜像内运行验证脚本。
+4. **镜像发布**（`docker-release.yml`）：release 发布时自动（或手动）矩阵构建两个基镜像并推送 GHCR（`latest` / `<version>`，26.04 基镜像带 `-26.04` 后缀）。
 
-验证脚本输出 `通过：XX  失败：0` 即通过。
+验证脚本输出 `通过: N` / `失败: 0` 即通过。
 
 详情见：
 - [`.github/workflows/runner-verify.yml`](.github/workflows/runner-verify.yml)
+- [`.github/workflows/tool-installer-verify.yml`](.github/workflows/tool-installer-verify.yml)
 - [`.github/workflows/docker-build.yml`](.github/workflows/docker-build.yml)
+- [`.github/workflows/docker-release.yml`](.github/workflows/docker-release.yml)
 
 ---
 
@@ -90,13 +94,20 @@ CI 用的就是同一套脚本，本地 = CI 行为。
 
 ```
 .
-├── setup.sh                    # 一键安装脚本
+├── setup.sh                    # 一键安装脚本（三层架构）
 ├── xdotter.toml                # xdotter 配置
-├── scripts/
+├── tools.toml                  # 工具组声明（版本钉定）
+├── manifest.toml               # 工具清单（下载源 / 校验和）
+├── tool-installer/             # 声明式安装器（Python 源码 + 离线测试）
+├── scripts/                    # 自动化脚本（节选，共 20+）
 │   ├── docker-build-test.sh    # Docker 构建脚本
-│   └── verify-docker-build.sh  # 验证脚本
-├── .github/workflows/
-│   └── docker-build.yml        # CI 配置
+│   ├── verify-docker-build.sh  # 验证脚本
+│   └── check-manifest-platforms.sh  # 平台覆盖校验
+├── .github/workflows/          # CI（共 4 个）
+│   ├── runner-verify.yml       # E2E 安装验证（最小容器 + macOS）
+│   ├── tool-installer-verify.yml  # dry-run + 安装链验证
+│   ├── docker-build.yml        # Docker 镜像构建验证（手动触发）
+│   └── docker-release.yml      # release 镜像发布（GHCR）
 ├── shells/                     # Shell 配置
 └── docs/                       # 用户文档
 ```

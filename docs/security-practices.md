@@ -15,29 +15,26 @@
 - **官方源被入侵** - 上游发布被篡改的文件
 - **传输错误** - 网络问题导致的文件损坏
 
-### 实现示例
+### 实现
 
-```bash
-# 定义期望的 SHA256 值
-local HELIX_SHA256="3f08e63ecd388fff657ad39722f88bb03dcf326f1f2da2700d99e1dc40ab2e8b"
+SHA256 在 `manifest.toml` 中按工具、按平台声明，由 `tool-installer` 下载后校验：
 
-# 下载后校验
-local ACTUAL_SHA256=$(sha256sum "$DEST" | cut -d' ' -f1)
-if [ "$ACTUAL_SHA256" != "$HELIX_SHA256" ]; then
-    echo "错误：SHA256 校验失败!"
-    return 1
-fi
+```toml
+[helix.linux.x86_64]
+sha256 = "3f08e63ecd388fff657ad39722f88bb03dcf326f1f2da2700d99e1dc40ab2e8b"
 ```
+
+当前所有 `github-release` 条目均带 `sha256` 声明。
 
 ### 更新哈希值
 
-当升级软件版本时，需要更新对应的 SHA256 值：
+升级工具版本时，同步更新 `manifest.toml` 对应条目的 `sha256`：
 
 ```bash
-# 获取新版本的 SHA256
+# 计算新版本的 SHA256
 curl -sL <download-url> | sha256sum
 
-# 或直接下载后计算
+# 或先下载再计算
 curl -sL -o /tmp/test.tar.xz <download-url>
 sha256sum /tmp/test.tar.xz
 ```
@@ -57,7 +54,7 @@ sha256sum /tmp/test.tar.xz
 
 ### 本项目方案
 
-本项目**不依赖任何外部插件仓库**，采用以下方式：
+本项目**不依赖外部版本管理器插件仓库**（asdf/mise plugin 一类），采用以下方式：
 
 - 安装逻辑集中在 `tool-installer`（Python 包）与声明式 `manifest.toml` / `tools.toml`
 - 从官方源下载（GitHub Releases、官方镜像）
@@ -71,13 +68,23 @@ sha256sum /tmp/test.tar.xz
 | asdf/mise 插件 | ✅ 有 | ❌ 无 | ⚠️ 部分 |
 | 本项目方案 | ❌ 无 | ✅ 有 | ✅ 完全 |
 
+> 边界说明：shell 插件（zcomet 管理的 `zsh-completions` 等）从 GitHub 拉取但钉死版本，且只参与 shell 配置层，不进入工具安装链。
+
 ---
 
 ## 固定版本号
 
 ### 原则
 
-所有安装的工具都使用**固定版本号**，而不是 `latest` 或 `stable`。
+安装的工具默认使用**固定版本号**，而不是 `latest` 或 `stable`。
+
+例外及其语义是显式设计，写在 `tools.toml` 中：
+
+| 例外 | 写法 | 语义 |
+|------|------|------|
+| 系统包 | `system-packages@latest` | apt 侧“装了即满足”，不比 candidate、不隐式升级 |
+| Rust 工具链 | `rust@stable` | moving channel，跟随 rustup stable |
+| 脚本型安装任务 | `mise-install@1` | 任务型条目，`@1` 为迭代号 |
 
 ### 原因
 
@@ -87,12 +94,11 @@ sha256sum /tmp/test.tar.xz
 
 ### 实现
 
-```bash
-# 好的做法 - 固定版本
-local HELIX_VERSION="25.07.1"
+```toml
+# 好的做法 - tools.toml 中钉版
+"helix@25.07.1" = "Helix 编辑器"
 
-# 避免 - 使用 latest
-local HELIX_VERSION="latest"
+# 避免 - 未经设计的 latest（例外场景按上表语义显式声明）
 ```
 
 ---
