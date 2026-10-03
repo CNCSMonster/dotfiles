@@ -305,6 +305,32 @@ class ExecutorAuthorizationSkipTest(EnvBase):
             executor.execute_plan(InstallPlan(items=[allow_fail_item]), {"apt": first})
         self.assertIn("allow_fail", err.getvalue())
 
+    def test_strict_mode_prints_pending_summary_before_tolerated_failure_exception(self) -> None:
+        """严格模式下即使 tolerated 失败抛出异常，pending（授权跳过）汇总也必须先输出到 stderr。"""
+        apt_mgr = mock.Mock()
+        apt_mgr.check.return_value = CheckResult.NOT_SATISFIED
+        apt_mgr.install.side_effect = [
+            AuthorizationRequired("git: 需要授权"),
+            InstallationError("boom"),
+        ]
+        git_item = apt_item("git")
+        curl_item = apt_item("curl")
+        allow_fail_curl = PlanItem(
+            module_name=curl_item.module_name,
+            tool=ToolSpec(reference=curl_item.tool.reference, allow_fail=True),
+            strategy=curl_item.strategy,
+            environment=curl_item.environment,
+        )
+        os.environ["TOOL_INSTALLER_STRICT"] = "1"
+        self.addCleanup(os.environ.pop, "TOOL_INSTALLER_STRICT", None)
+        err = io.StringIO()
+        with redirect_stdout(io.StringIO()), redirect_stderr(err):
+            with self.assertRaises(InstallationError):
+                executor.execute_plan(InstallPlan(items=[git_item, allow_fail_curl]), {"apt": apt_mgr})
+        text = err.getvalue()
+        self.assertIn("authorization required", text)
+        self.assertIn("git", text)
+
 
 class CliFlagTest(unittest.TestCase):
     def test_yes_flag_is_parsed(self) -> None:

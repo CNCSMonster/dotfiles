@@ -58,6 +58,19 @@ def execute_plan(plan: InstallPlan, managers: Mapping[str, Manager]) -> None:
                     token_reported = True
                 continue
             raise
+    # 授权跳过**不是失败**：它是"这个环境下没有人能授权"（无 TTY 且未传 --yes），
+    # 拍板语义就是跳过 + 汇总、不中断。strict 管的是**失败**（tolerated），把
+    # "没人可问"升格成 fatal 会让无人值守 CI 永远红，而它要报告的信息一个字不少。
+    # CI 实测（STRICT=1）：clang 已存在于 /usr/bin（能用）、dpkg 无记录，跳过正是
+    # 不覆盖已有实现的正确选择；它不阻塞后续安装，汇总也照打。
+    if pending:
+        summary = f"{len(pending)} tool(s) skipped pending authorization: {', '.join(pending)}"
+        print(
+            f"⚠️  Skipped, authorization required: {summary}. "
+            "Re-run with --yes, or run in an interactive terminal.",
+            file=sys.stderr,
+        )
+
     # Fail at the end rather than immediately: later tools are independent,
     # and CI gets the complete failure list in one run.
     #
@@ -74,18 +87,6 @@ def execute_plan(plan: InstallPlan, managers: Mapping[str, Manager]) -> None:
         print(
             f"⚠️  Tolerated failures (non-strict, install continues): {summary}. "
             "Set TOOL_INSTALLER_STRICT=1 to fail instead.",
-            file=sys.stderr,
-        )
-    # 授权跳过**不是失败**：它是"这个环境下没有人能授权"（无 TTY 且未传 --yes），
-    # 拍板语义就是跳过 + 汇总、不中断。strict 管的是**失败**（tolerated），把
-    # "没人可问"升格成 fatal 会让无人值守 CI 永远红，而它要报告的信息一个字不少。
-    # CI 实测（STRICT=1）：clang 已存在于 /usr/bin（能用）、dpkg 无记录，跳过正是
-    # 不覆盖已有实现的正确选择；它不阻塞后续安装，汇总也照打。
-    if pending:
-        summary = f"{len(pending)} tool(s) skipped pending authorization: {', '.join(pending)}"
-        print(
-            f"⚠️  Skipped, authorization required: {summary}. "
-            "Re-run with --yes, or run in an interactive terminal.",
             file=sys.stderr,
         )
 

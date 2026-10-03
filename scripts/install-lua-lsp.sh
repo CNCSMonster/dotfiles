@@ -43,13 +43,17 @@ BIN_PATH="$BIN_DIR/lua-language-server"
 
 mkdir -p "$INSTALL_DIR" "$BIN_DIR"
 
-# 幂等检查：已存在且能正常返回版本则跳过
+# 幂等检查：已存在且版本匹配且非强制安装则跳过
 if [ -x "$BIN_PATH" ]; then
-    if "$BIN_PATH" --version >/dev/null 2>&1; then
-        echo "lua-language-server 已安装且可用，跳过"
-        exit 0
+    if current_version="$("$BIN_PATH" --version 2>&1)"; then
+        if [[ "$current_version" == *"${VERSION}"* ]] && [ "${TOOL_INSTALLER_FORCE:-false}" != "true" ]; then
+            echo "lua-language-server ${VERSION} 已安装且可用，跳过"
+            exit 0
+        fi
+        echo "检测到 lua-language-server 版本不匹配，重新安装..."
+    else
+        echo "检测到旧的 lua-language-server 不完整，重新安装..."
     fi
-    echo "检测到旧的 lua-language-server 不完整，重新安装..."
 fi
 
 TMP_DIR="$(mktemp -d)"
