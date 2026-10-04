@@ -43,9 +43,15 @@ return {
     },
     exit_behavior = "Close",
     keys = {
-        -- Ctrl+V 不显式绑定，走 WezTerm 默认粘贴行为
-        -- 显式绑定 act.PasteFrom("Clipboard") 会拦截图片粘贴，导致 Qwen Code 无法接收剪贴板图片
-        -- 注意：Vim/Neovim 中 Visual Block 模式请改用 Ctrl+Q
+        -- Ctrl+V：禁用 WezTerm 默认的 PasteFrom，让按键透传给应用
+        -- 依据（wezterm show-keys 实测）：默认 CTRL+V -> PasteFrom(Clipboard) 会吞掉按键，
+        --   pi/Qwen Code 收不到 → 图片粘贴静默失败。不禁用则无论绑不绑都无效。
+        -- pi 侧配套：~/.pi/agent/keybindings.json 设
+        --   "app.clipboard.pasteImage": ["ctrl+v", "alt+v"]
+        -- 文本粘贴仍用 Ctrl+Shift+V；Vim/Neovim Visual Block 请改用 Ctrl+Q
+        -- 文本粘贴：Ctrl+Shift+V 的默认会随 Ctrl+V 一并被消掉（实测无法用配置单独复原）
+        --   → 终端里改用 Super+V 或 Shift+Insert；pi 内 Ctrl+V 自带【文字回退】也可粘文字
+        { key = "V", mods = "CTRL", action = act.DisableDefaultAssignment },
         -- 命令面板 (Ctrl+Shift+P) - 可搜索 Top/Middle/Bottom 等命令
         { key = "P", mods = "CTRL|SHIFT", action = act.ActivateCommandPalette },
         -- 重新加载配置 (Ctrl+Shift+R)
