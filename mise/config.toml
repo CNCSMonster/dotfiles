@@ -33,7 +33,3 @@ uv_venv_auto = true
 # mise 会自动尝试 14 个社区镜像源，失败后回退到官方源
 # 详见：https://ziglang.org/download/community-mirrors/
 use_community_mirrors = true
-
-[env]
-# 私有环境变量不入库：实际内容在 mise/local.env（已被 .gitignore 排除）
-_.file = "{{env.HOME}}/dotfiles/mise/local.env"
