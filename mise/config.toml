@@ -5,6 +5,9 @@ pnpm = "10.20.0"
 yazi = "26.1.22"
 zig = "0.16.0"
 "go:golang.org/x/tools/gopls" = "0.23.0"
+# Cloudflare CLI（agent 操作 Cloudflare 用，1.0.0-beta.x 系列为当前版本）
+# ⚠️ 必须显式 npm: 后端：registry 里裸名 `cf` 指向 Cloud Foundry CLI（github:cloudfoundry/cli）
+"npm:cf" = "1.0.0-beta.12"
 
 [settings]
 # 网络重试配置：Docker 构建时网络不稳定，需要重试
@@ -32,3 +35,5 @@ uv_venv_auto = true
 use_community_mirrors = true
 
 [env]
+# 私有环境变量不入库：实际内容在 mise/local.env（已被 .gitignore 排除）
+_.file = "{{env.HOME}}/dotfiles/mise/local.env"

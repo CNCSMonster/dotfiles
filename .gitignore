@@ -12,6 +12,8 @@ build-monitor.log
 # Local configuration
 git/ignore
 .qoder/settings.local.json
+# 私有环境变量（密钥不入库）
+mise/local.env
 
 # Build artifacts
 .buildx-cache-new/
