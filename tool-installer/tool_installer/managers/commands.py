@@ -225,6 +225,12 @@ class AptManager(CommandManager):
 
         失败只警告不中断：update 失败 ≠ 装不上（apt 仍用已缓存的索引），而 install
         侧的归因对"缺包/锁/死源"分辨得更细，不该被一个全局预检越俎代庖。
+
+        提权不可用（无 TTY 且无免密 sudo）同理：警告后跳过 update。本轮可能一个
+        apt 包都不缺（check 全 SATISF 时逐项 install 根本不会触发），而其余
+        npm/script/cargo 安装全是用户级操作、用不到 root——不能让一个用不到的
+        预检把整轮带崩；真缺包时逐项 install 会带完整归因报错（2026-10-05 实测：
+        `install ai-clis` 在此中止，pi 始终装不上）。
         """
         if not items:
             return
@@ -236,6 +242,16 @@ class AptManager(CommandManager):
             result = _run_with_sudo(cmd, runner=self.runner, check=False)
         except OSError:
             # 连 sudo 都起不来：留给逐项 install 报错，那里有完整归因
+            return
+        except InstallationError as exc:
+            # 提权不可用（`_run_with_sudo` 抛的是 InstallationError 而非 OSError——
+            # 最初的 except OSError 漏接了它）。按本方法契约只警告不中断，见 docstring。
+            print(
+                f"⚠️  apt-get update skipped ({exc})\n"
+                "    Continuing with the cached index; a later install that truly needs "
+                "a package will re-attempt privilege escalation with full attribution.",
+                file=sys.stderr,
+            )
             return
         if result.returncode != 0:
             print(

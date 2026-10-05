@@ -532,6 +532,80 @@ class PreflightTest(unittest.TestCase):
         self.assertEqual(sum(1 for c in commands if "install" in c), 2, "每包各装一次")
         self.assertIn("update", commands[0], "所有前置必须先于任何 install")
 
+    @staticmethod
+    def _no_privilege() -> list:
+        """模拟无提权环境：非 root、无免密 sudo、无 TTY（本机 agent 环境即此形）。"""
+        return [
+            mock.patch("tool_installer.managers.base._is_root", return_value=False),
+            mock.patch(
+                "tool_installer.managers.base._passwordless_sudo_available",
+                return_value=False,
+            ),
+            mock.patch("tool_installer.managers.base._has_tty", return_value=False),
+        ]
+
+    def test_preflight_no_privilege_warns_but_does_not_raise(self) -> None:
+        """无提权：preflight 只警告不中断（2026-10-05 回归）。
+
+        当初 `except OSError` 漏接了 `_run_with_sudo` 抛的 `InstallationError`
+        （无 TTY 且无免密 sudo 时的正常形态），与 preflight 自身 docstring 的
+        “失败只警告不中断”契约相悖——一个本轮可能根本用不到的 apt 预检把整轮
+        （含纯用户级的 npm/script 安装）带崩。
+        """
+        runner = self.runner()
+        patches = self._no_privilege()
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        with redirect_stderr(io.StringIO()) as err:
+            AptManager(runner=runner).preflight(self.items("pkg-a"))
+        self.assertIn("apt-get update skipped", err.getvalue())
+        # 提权拿不到 → apt-get update 根本不该被尝试执行
+        self.assertEqual(self.apt_commands(runner), [])
+
+    def test_executor_round_survives_preflight_no_privilege(self) -> None:
+        """端到端回归：apt 预检拿不到提权，用户级工具照常装完整轮。
+
+        现实场景（2026-10-05 本机）：system-packages 全部已装（apt 项 check
+        满足、无需 root），pi 等 npm 工具是纯用户级安装——却因 preflight 漏接
+        InstallationError 整轮中止，pi 始终装不上。
+        """
+        runner = mock.Mock()
+
+        def side_effect(args, **kwargs):  # noqa: ANN001
+            if args and args[0] == "dpkg-query":
+                # apt 项在 dpkg 数据库中 → check 满足 → 不需要真装、不碰 sudo
+                return subprocess.CompletedProcess(args, 0, "1.2.3", "")
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        runner.run.side_effect = side_effect
+        apt_item = self.items("pkg-a")[0]
+        user_item = PlanItem(
+            module_name="ai-clis",
+            tool=ToolSpec(
+                reference=ToolReference(
+                    raw="pi-coding-agent@1.0.2", name="pi-coding-agent", version="1.0.2"
+                ),
+                allow_fail=False,
+            ),
+            strategy=MergedStrategy(
+                tool_name="pi-coding-agent", manager="npm-global", fields={}
+            ),
+            environment=Environment(os="linux", arch="x86_64"),
+        )
+        npm = mock.Mock()  # check 返回 Mock（非 SATISFIED/CHECK_ERROR）→ 走 install
+        patches = self._no_privilege()
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as err:
+            executor.execute_plan(
+                InstallPlan(items=[apt_item, user_item]),
+                {"apt": AptManager(runner=runner), "npm-global": npm},
+            )
+        self.assertIn("apt-get update skipped", err.getvalue())
+        npm.install.assert_called_once_with(user_item)
+
 
 class AptManagerCheckTest(unittest.TestCase):
     """check 的契约：能力视角（command -v）优先、dpkg 接住无命令的包；
