@@ -7,7 +7,7 @@
 # 带着"规划期直接中止"和"下载成另一个架构的二进制"的缺陷，却始终绿着。
 #
 # 断言（全部离线，不访问网络）：
-#   1. 四个平台的安装计划都能生成（捕获 StrategyError / ManifestError）
+#   1. 三个平台的安装计划都能生成（捕获 StrategyError / ManifestError）
 #   2. 每个 github-release 条目都带 64 位十六进制 sha256
 #      （缺字段时 `_verify_checksum` 会静默 return，等于没有校验）
 #   3. asset / bin 能完成占位符渲染，且不残留 `{`（捕获未知占位符）
@@ -43,11 +43,12 @@ from tool_installer.strategy import build_install_plan  # noqa: E402
 
 # 项目声称支持的平台（README「支持平台」）。Termux 走 setup-termux.sh + pkg，
 # 与本矩阵无关，故不在列。
+# 注意：macOS x86_64 (Intel) 已从支持列表中移除（2026-10-15），
+# 因为 Apple 已宣布 macOS 27 不再支持 Intel Mac，且主流生态已停止支持。
 PLATFORMS = [
     Environment("linux", "x86_64"),
     Environment("linux", "aarch64"),
     Environment("macos", "aarch64"),
-    Environment("macos", "x86_64"),
 ]
 
 # 渲染后的 asset/bin 里出现这些 token，说明它其实是**另一个**架构的产物。

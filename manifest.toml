@@ -1083,17 +1083,6 @@ bin = "qwen"
 # AI CLI 工具 (npm-global)
 # ============================================================
 
-[claude-code]
-[claude-code.linux]
-manager = "npm-global"
-pkg = "@anthropic-ai/claude-code"
-bin = "claude"
-
-[claude-code.macos]
-manager = "npm-global"
-pkg = "@anthropic-ai/claude-code"
-bin = "claude"
-
 [codex]
 [codex.linux]
 manager = "npm-global"
@@ -1126,17 +1115,6 @@ bin = "pi"
 manager = "npm-global"
 pkg = "@earendil-works/pi-coding-agent"
 bin = "pi"
-
-[qoder-cli]
-[qoder-cli.linux]
-manager = "npm-global"
-pkg = "@qoder-ai/qodercli"
-bin = "qoder"
-
-[qoder-cli.macos]
-manager = "npm-global"
-pkg = "@qoder-ai/qodercli"
-bin = "qoder"
 
 # ============================================================
 # Python Tools (uv-tool)
@@ -1199,3 +1177,28 @@ path = "scripts/setup-rootless-docker.sh"
 [rootless-docker.macos]
 manager = "script"
 path = "scripts/setup-rootless-docker.sh"
+
+# ============================================================
+# Codanna - Tree-sitter AST code search with semantic embeddings
+# ============================================================
+
+[codanna]
+[codanna.linux]
+manager = "github-release"
+repo = "bartolli/codanna"
+asset = "codanna-{version}-linux-x64.tar.xz"
+bin = "codanna"
+[codanna.linux.x86_64]
+sha256 = "41b429e1c8f639d474a14a43b23a0054ad3aece6f0848ef3392e153a717d3739"
+[codanna.linux.aarch64]
+# codanna 官方未提供 linux-arm64 构建，x86_64 二进制通过 Rosetta 2 运行
+asset = "codanna-{version}-linux-x64.tar.xz"
+sha256 = "41b429e1c8f639d474a14a43b23a0054ad3aece6f0848ef3392e153a717d3739"
+
+[codanna.macos]
+manager = "github-release"
+repo = "bartolli/codanna"
+asset = "codanna-{version}-macos-arm64.tar.xz"
+bin = "codanna"
+[codanna.macos.aarch64]
+sha256 = "158bea6911a38fba969e8d9ed206e6c5a365621f400c594d70718fb9040c3713"

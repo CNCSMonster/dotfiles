@@ -76,6 +76,7 @@ depends = ["build-base", "cargo-binstall"]
 [user-tools]
 "gh@v2.97.0" = "GitHub CLI"
 "ripgrep@15.2.0" = "快速 grep"
+"codanna@0.17.1" = "Tree-sitter AST 代码语义搜索"
 
 # ── Layer 1d: 编辑器和终端工具（独立，不需要 Rust）──
 [editors]
@@ -104,11 +105,9 @@ depends = ["languages"]
 # ── Layer 1e-ai: AI CLI 工具（npm 全局，node 大版本切换后需重装）──
 [ai-clis]
 depends = ["languages"]
-"claude-code@2.1.277" = { desc = "Claude Code", allow_fail = true }
 "codex@0.155.1" = { desc = "OpenAI Codex CLI", allow_fail = true }
 "dsh@0.1.5-rc.2" = { desc = "DeepSeek 终端助手", allow_fail = true }
 "pi-coding-agent@1.0.2" = { desc = "Pi Coding Agent", allow_fail = true }
-"qoder-cli@1.1.63" = { desc = "Qoder CLI", allow_fail = true }
 "qwen-code@0.24.0" = { desc = "Qwen Code", allow_fail = true }
 
 # ── Layer 1f: 其他（独立）──

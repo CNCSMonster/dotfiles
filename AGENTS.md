@@ -35,6 +35,7 @@ Before changing files, read the relevant current docs:
 
 - Do not add shell completion commands unless verified by official docs or direct local command testing.
 - Do not add placeholder config for tools that do not expose a usable shell completion command.
+- Do not add closed-source tools (code-agent CLIs included) to `manifest.toml` / `tools.toml`: verify license and public source before adding, and remove closed-source entries when found.
 - Do not modify download logic unless explicitly requested; download optimization is handled separately.
 - Do not bypass project scripts with ad-hoc commands when a script already exists.
 - Do not create platform-specific config branches for normal Linux/macOS differences.
