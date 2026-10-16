@@ -76,7 +76,7 @@ depends = ["build-base", "cargo-binstall"]
 [user-tools]
 "gh@v2.97.0" = "GitHub CLI"
 "ripgrep@15.2.0" = "快速 grep"
-"codanna@0.17.1" = "Tree-sitter AST 代码语义搜索"
+"codanna@v0.17.1" = "Tree-sitter AST 代码语义搜索"
 
 # ── Layer 1d: 编辑器和终端工具（独立，不需要 Rust）──
 [editors]
