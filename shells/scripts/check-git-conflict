@@ -2,8 +2,8 @@
 
 # 检查暂存区文件中是否存在 Git 冲突标志
 check_conflicts() {
-    # 冲突标志必须出现在行首（可能带前导空格），避免误匹配注释中的 === 分隔符
-    local conflict_pattern="^<<<<<<<|^=======|^>>>>>>>"
+    # 冲突标志必须出现在行首（在 git diff 中以 + 开头，可能带前导空格），避免误匹配注释中的 === 分隔符
+    local conflict_pattern="^\+[[:space:]]*(<{7}|={7}|>{7})"
 
     while IFS= read -r -d '' file; do
         if git diff --cached -- "$file" | grep -q -E "$conflict_pattern"; then
