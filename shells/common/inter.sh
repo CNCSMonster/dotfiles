@@ -133,7 +133,7 @@ fi
 
 # opencode - OpenCode 代码助手补全
 if command -v opencode >/dev/null 2>&1; then
-    eval "$(opencode completion "$SH" 2>/dev/null)"
+    eval "$(opencode --completions "$SH" 2>/dev/null)"
 fi
 
 # just - 命令运行器补全

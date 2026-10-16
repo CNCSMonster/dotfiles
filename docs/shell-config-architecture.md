@@ -82,7 +82,7 @@ if command -v codex >/dev/null 2>&1; then
     eval "$(codex completion "$SH" 2>/dev/null)"
 fi
 if command -v opencode >/dev/null 2>&1; then
-    eval "$(opencode completion "$SH" 2>/dev/null)"
+    eval "$(opencode --completions "$SH" 2>/dev/null)"
 fi
 
 # ❌ 不应该放在 inter.sh
