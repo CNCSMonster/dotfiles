@@ -87,7 +87,7 @@ TOOL_INSTALLER_STRICT=1
 # 默认使用中国镜像源（国内构建），--no-china-mirror 切换为官方源
 USE_CHINA_MIRROR=1
 # 基础镜像，默认使用官方源，--use-china-image 切换为中国镜像站
-BASE_IMAGE="ubuntu:24.04"
+BASE_IMAGE="ubuntu:26.04"
 
 # 本地缓存目录（与 builder 解耦，支持不同 builder 复用）
 CACHE_DIR=".buildx-cache"

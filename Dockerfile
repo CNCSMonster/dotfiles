@@ -26,8 +26,8 @@
 
 # 使用基础镜像，默认官方源
 # 国内构建可传入中国镜像站：
-#   --build-arg BASE_IMAGE=docker.m.daocloud.io/library/ubuntu:24.04
-ARG BASE_IMAGE=ubuntu:24.04
+#   --build-arg BASE_IMAGE=docker.m.daocloud.io/library/ubuntu:26.04
+ARG BASE_IMAGE=ubuntu:26.04
 FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -61,10 +61,13 @@ COPY ./apt-retry.conf /etc/apt/apt.conf.d/99-retry-timeout.conf
 
 # Rust 镜像源由 setup.sh 内 do_deploy (xd deploy) 统一软链接 ~/.cargo/config.toml，此处不预 COPY 避免路径冲突
 
-# 安装 ca-certificates：
+# 安装基础引导工具与 ca-certificates：
 # - 国内 (USE_CHINA_MIRROR=1): 先用 HTTP 清华源安装，再切回 HTTPS
 #   （codename 从 /etc/os-release 动态获取，兼容 ubuntu:24.04/26.04 等不同基镜像）
 # - 海外 (USE_CHINA_MIRROR=0): 保留基镜像自带官方源，仅安装系统已带的 ca-certificates
+# 仅安装 setup.sh 引导所需的最小工具链 (git, curl, wget, python3, ca-certificates)；
+# 完整的 build-essential, clang, cmake 等由 setup.sh Layer 0 (system-packages 模块) 统一安装，
+# 并在同层立即清理 apt 索引与缓存，避免中间层膨胀冻结。
 RUN . /etc/os-release && \
     if [ "${USE_CHINA_MIRROR}" = "1" ]; then \
       rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null; true; \
@@ -73,29 +76,13 @@ RUN . /etc/os-release && \
       echo "deb http://mirrors.tuna.tsinghua.edu.cn/ubuntu/ ${VERSION_CODENAME}-security main restricted universe multiverse" >> /etc/apt/sources.list; \
     fi && \
     for i in 1 2 3 4 5; do \
-      apt-get update && apt-get install -y --no-install-recommends ca-certificates && break; \
+      apt-get update && apt-get install -y --no-install-recommends ca-certificates git curl wget python3 && break; \
       [ "$i" -eq 5 ] && exit 1; echo "apt 失败，15s 后重试 $i/5"; sleep 15; \
     done && \
     if [ "${USE_CHINA_MIRROR}" = "1" ]; then \
       sed -i 's|http://mirrors.tuna.tsinghua.edu.cn|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list; \
-    fi
-
-# 清理默认源配置（仅在国内镜像模式下需要，官方模式保留基镜像源）
-# 上一段 mirror=1 分支已删除 .sources 并写入 sources.list，这里不再重复删除，
-# 避免误删 mirror=0 模式正在使用的 ubuntu.sources
-
-# 清理默认源配置（避免冲突）
-# 安装基础工具（带重试）
-# 国内: 走 HTTPS 清华源（已安装 ca-certificates）
-# 海外: 走默认源
-# 包含 gcc/build-essential/python3（setup.sh 引导所需的绝对最小集合）
-# 注意：不预装 clang/libicu/unzip——这些正是本镜像要验证的"环境假设"，
-# 必须由 setup.sh Layer 0 (system-packages 模块, manifest manager="apt") /
-# Layer 2 (llvmup) 自行装好
-RUN for i in 1 2 3 4 5; do \
-      apt-get update && apt-get install -y --no-install-recommends wget git curl gcc build-essential python3 && break; \
-      [ "$i" -eq 5 ] && exit 1; echo "apt 失败，15s 后重试 $i/5"; sleep 15; \
-    done
+    fi && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # 复制 dotfiles 并执行一键配置
 COPY . /root/dotfiles
@@ -135,23 +122,29 @@ RUN --mount=type=secret,id=github_token,required=false \
       export GITHUB_TOKEN=$(cat /run/secrets/github_token); \
     fi && \
     chmod +x ./setup.sh && ./setup.sh && \
-    rm -rf \
-      ~/.cargo/registry/src \
-      ~/.cargo/registry/cache \
-      ~/.cargo/git \
-      ~/.cargo/.package-cache \
-      ~/.cargo/target \
-      ~/.rustup/toolchains/*/share/doc \
-      ~/.rustup/toolchains/*/share/man \
-      ~/.cache/pip \
-      ~/.cache/uv \
-      ~/.npm/_cacache \
-      /var/cache/apt/archives/* \
-      /var/lib/apt/lists/* \
-      /tmp/* \
-      /var/tmp/* \
-    && apt-get clean \
-    && find ~/.cargo/bin -name '*.crate' -delete 2>/dev/null || true
+    # ── 生产镜像体积深度优化与构建残留清理 ── \
+    # 1. 清理 Go 编译缓存与模块缓存 (gopls 构建遗留，省 ~540MB) \
+    rm -rf /root/.cache/go-build /root/go/pkg/mod /root/go/pkg/sumdb && \
+    # 2. 清理 Cargo 编译缓存与注册表索引 (省 ~40MB) \
+    rm -rf /root/.cargo/registry /root/.cargo/.package-cache /root/.cargo/target && \
+    # 3. 移除 LLVM 静态归档库（只保留 clang/clang++ 运行时所需的 .so 动态库，省 ~550MB） \
+    rm -f /usr/lib/llvm-*/lib/*.a && \
+    # 4. 移除 Node.js / 全局 npm 包的 SourceMap 调试文件 (省 ~120MB) \
+    find /root/.local -name "*.map" -delete 2>/dev/null || true && \
+    # 5. 清理 Python 字节码缓存 (省 ~25MB) \
+    find /root /usr -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
+    find /root /usr -name "*.pyc" -delete 2>/dev/null || true && \
+    # 6. 二进制符号剥离 (省 ~120MB，注意必须排除 .NET 单文件打包的 marksman 避免 bundle 损坏) \
+    find /root/.cargo/bin /root/.local/bin /root/.rustup/toolchains/*/bin -type f ! -name "marksman" -exec strip --strip-unneeded {} + 2>/dev/null || true && \
+    # 7. 清理 Rust 文档与 crate 临时安装包 \
+    rm -rf /root/.rustup/toolchains/*/share/doc /root/.rustup/toolchains/*/share/man && \
+    find /root/.cargo/bin -name '*.crate' -delete 2>/dev/null || true && \
+    # 8. 清理系统文档、man 手册与各包管理器缓存 \
+    rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* \
+      /root/.local/share/mise/downloads/* /root/.cache/mise/* \
+      /root/.cache/pip /root/.cache/uv /root/.npm/_logs /root/.npm/_cacache \
+      /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    apt-get clean
 
 WORKDIR /root
 
