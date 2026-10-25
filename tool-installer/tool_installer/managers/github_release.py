@@ -222,20 +222,49 @@ class GithubReleaseManager:
             install_dir.mkdir(parents=True, exist_ok=True)
             destination = install_dir / item.strategy.fields.get("install_name", item.tool.reference.name)
 
-            # Atomic install: create temp file in the same directory as destination
-            # then use os.replace for atomic rename on same filesystem
-            tmp_dest = install_dir / f".installing_{item.tool.reference.name}.tmp"
-            try:
-                shutil.copy2(executable, tmp_dest)
-                tmp_dest.chmod(tmp_dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-                os.replace(str(tmp_dest), str(destination))
-            except OSError:
-                # Clean up temp file if rename failed
+            extract_dir_name = item.strategy.fields.get("extract_dir")
+            if extract_dir_name:
+                share_dir = Path(home) / ".local" / "share" / extract_dir_name
+                extracted_root = temp_dir / "extract"
+                if share_dir.exists():
+                    shutil.rmtree(share_dir)
+                share_dir.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(extracted_root, share_dir, symlinks=True)
+
+                bin_rel_path = executable.relative_to(extracted_root)
+                target_exec = share_dir / bin_rel_path
+                target_exec.chmod(target_exec.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+                wrapper_script = (
+                    f"#!/usr/bin/env bash\n"
+                    f'exec "{target_exec}" "$@"\n'
+                )
+                tmp_dest = install_dir / f".installing_{item.tool.reference.name}.tmp"
                 try:
-                    tmp_dest.unlink()
+                    tmp_dest.write_text(wrapper_script, encoding="utf-8")
+                    tmp_dest.chmod(0o755)
+                    os.replace(str(tmp_dest), str(destination))
                 except OSError:
-                    pass
-                raise
+                    try:
+                        tmp_dest.unlink()
+                    except OSError:
+                        pass
+                    raise
+            else:
+                # Atomic install: create temp file in the same directory as destination
+                # then use os.replace for atomic rename on same filesystem
+                tmp_dest = install_dir / f".installing_{item.tool.reference.name}.tmp"
+                try:
+                    shutil.copy2(executable, tmp_dest)
+                    tmp_dest.chmod(tmp_dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+                    os.replace(str(tmp_dest), str(destination))
+                except OSError:
+                    # Clean up temp file if rename failed
+                    try:
+                        tmp_dest.unlink()
+                    except OSError:
+                        pass
+                    raise
 
     def _build_download_urls(self, repo: str, path: str) -> List[str]:
         """Build a list of URLs to try: mirrors first, then direct GitHub."""

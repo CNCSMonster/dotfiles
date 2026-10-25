@@ -27,10 +27,10 @@ _SUPPORTED: Dict[str, Dict[str, Any]] = {
     "npm-global": {"required": {"pkg"}, "optional": {"bin", "registry"}},
     "pnpm-global": {"required": {"pkg"}, "optional": {"bin", "registry"}},
     "uv-tool": {"required": {"pkg"}, "optional": {"bin", "python", "with"}},
-    "github-release": {"required": {"repo", "asset", "bin"}, "optional": {"sha256", "install_name", "version_probe"}},
+    "github-release": {"required": {"repo", "asset", "bin"}, "optional": {"sha256", "install_name", "version_probe", "extract_dir"}},
     "script": {"required": {"path"}, "optional": set()},
 }
-_STRING_FIELDS = {"manager", "pkg", "bin", "registry", "plugin", "python", "git", "tag", "branch", "rev", "profile", "repo", "asset", "sha256", "install_name", "path"}
+_STRING_FIELDS = {"manager", "pkg", "bin", "registry", "plugin", "python", "git", "tag", "branch", "rev", "profile", "repo", "asset", "sha256", "install_name", "path", "extract_dir"}
 _BOOL_FIELDS = {"force", "locked", "binstall_first", "set_default", "binstall_fallback_compile"}
 _INT_FIELDS = {"binstall_retry"}
 _ARRAY_FIELDS = {"with", "components", "targets"}
@@ -232,6 +232,9 @@ def _validate_github_release(tool_name: str, fields: Mapping[str, Any]) -> None:
     sha256 = fields.get("sha256")
     if sha256 and not re.match(r"^[0-9a-fA-F]{64}$", sha256):
         raise StrategyError(f"github-release sha256 must be a 64-character hex digest for {tool_name}")
+    extract_dir = fields.get("extract_dir")
+    if extract_dir and (Path(extract_dir).is_absolute() or ".." in Path(extract_dir).parts):
+        raise StrategyError(f"github-release extract_dir must be a safe relative directory for {tool_name}")
 
 
 def _validate_script(tool_name: str, fields: MutableMapping[str, Any], manifest_dir: Path) -> None:
