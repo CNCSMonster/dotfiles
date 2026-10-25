@@ -39,6 +39,7 @@ pkg = """
     build-essential gcc g++ clang cmake ninja-build pkg-config
     libssl-dev libbz2-dev libreadline-dev libsqlite3-dev liblzma-dev
     libclang-dev libicu-dev unzip iproute2 fzf zsh tree git htop
+    bubblewrap libarchive-tools p7zip-full graphviz
     """
 [system-packages.macos]
 manager = "script"
