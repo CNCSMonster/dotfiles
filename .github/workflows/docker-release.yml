@@ -89,6 +89,7 @@ jobs:
           # 注释必须放在 build-args 块外：块内每行都会被当作 --build-arg 参数传入
           build-args: |
             BASE_IMAGE=${{ matrix.base_image }}
+            USE_CHINA_MIRROR=0
             TOOL_INSTALLER_STRICT=1
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}

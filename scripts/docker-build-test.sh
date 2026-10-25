@@ -99,16 +99,23 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# ===== 获取系统资源 =====
-TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-TOTAL_MEM_GB=$((TOTAL_MEM_KB / 1024 / 1024))
-AVAIL_MEM_KB=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
-AVAIL_MEM_GB=$((AVAIL_MEM_KB / 1024 / 1024))
-TOTAL_CPU=$(nproc)
+# ===== 获取系统资源 (跨平台兼容 Linux / macOS) =====
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    TOTAL_MEM_BYTES=$(sysctl -n hw.memsize 2>/dev/null || echo 8589934592)
+    TOTAL_MEM_GB=$((TOTAL_MEM_BYTES / 1024 / 1024 / 1024))
+    AVAIL_MEM_GB=$((TOTAL_MEM_GB * 6 / 10))
+    TOTAL_CPU=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
+    DISK_AVAIL=$(df -g . 2>/dev/null | tail -1 | awk '{print $4}' || echo 50)
+else
+    TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 8388608)
+    TOTAL_MEM_GB=$((TOTAL_MEM_KB / 1024 / 1024))
+    AVAIL_MEM_KB=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 4194304)
+    AVAIL_MEM_GB=$((AVAIL_MEM_KB / 1024 / 1024))
+    TOTAL_CPU=$(nproc 2>/dev/null || echo 4)
+    DISK_AVAIL=$(df -BG . 2>/dev/null | tail -1 | awk '{print $4}' | tr -d 'G' || echo 50)
+fi
 
-# 检查磁盘空间
-DISK_AVAIL=$(df -BG . | tail -1 | awk '{print $4}' | tr -d 'G')
-if [ "$DISK_AVAIL" -lt 10 ]; then
+if [ -n "$DISK_AVAIL" ] && [ "$DISK_AVAIL" -lt 10 ] 2>/dev/null; then
     log_warn "磁盘可用空间不足 10GB (当前: ${DISK_AVAIL}GB)，构建可能失败"
 fi
 
