@@ -177,9 +177,21 @@ function remove-llvm-version() {
     LLVM_VERSION=$1
     LLVM_PATH="/usr/lib/llvm-${LLVM_VERSION}"
 
-    if [ -d "${LLVM_PATH}" ]; then
-        sudo_run rm -rf "${LLVM_PATH}"
-        echo "已删除 LLVM ${LLVM_VERSION}"
+    if [ -d "${LLVM_PATH}" ] || dpkg -l "llvm-${LLVM_VERSION}" >/dev/null 2>&1; then
+        echo "正在卸载 LLVM ${LLVM_VERSION} 相关软件包..."
+        llvm_apt remove -y             "llvm-${LLVM_VERSION}*"             "clang-${LLVM_VERSION}*"             "clangd-${LLVM_VERSION}*"             "lldb-${LLVM_VERSION}*"             "lld-${LLVM_VERSION}*"             "clang-tools-${LLVM_VERSION}*" 2>/dev/null || true
+
+        # 清理残留目录
+        if [ -d "${LLVM_PATH}" ]; then
+            sudo_run rm -rf "${LLVM_PATH}"
+        fi
+
+        # 若当前符号链接指向已删除版本，清理悬空链接
+        if [ -L /usr/lib/llvm ] && [ "$(readlink /usr/lib/llvm 2>/dev/null)" == "${LLVM_PATH}" ]; then
+            sudo_run rm -f /usr/lib/llvm
+            echo "已清理指向已删除版本的 /usr/lib/llvm 符号链接"
+        fi
+        echo "已完全卸载并清理 LLVM ${LLVM_VERSION}"
     else
         echo "错误: LLVM ${LLVM_VERSION} 未安装" >&2
         exit 1
@@ -201,13 +213,20 @@ function use-llvm-version() {
     fi
 
     # 已指向目标版本则跳过，避免无谓的 sudo 调用（非交互环境会失败）
-    if [ -L /usr/lib/llvm ] && [ "$(readlink /usr/lib/llvm)" == "/usr/lib/llvm-${VERSION}" ]; then
+    if [ -L /usr/lib/llvm ] && [ "$(readlink /usr/lib/llvm 2>/dev/null)" == "/usr/lib/llvm-${VERSION}" ]; then
         echo "已在使用 LLVM ${VERSION}，跳过切换"
         return 0
     fi
 
-    sudo_run rm /usr/lib/llvm || true
-    sudo_run ln -s /usr/lib/llvm-$VERSION /usr/lib/llvm
+    # 防御性处理：若为真实目录则备份，若为旧软链则移除
+    if [ -e /usr/lib/llvm ] && [ ! -L /usr/lib/llvm ]; then
+        echo "警告: /usr/lib/llvm 是普通目录，备份为 /usr/lib/llvm.bak..."
+        sudo_run mv /usr/lib/llvm /usr/lib/llvm.bak.$(date +%s)
+    elif [ -L /usr/lib/llvm ]; then
+        sudo_run rm -f /usr/lib/llvm
+    fi
+
+    sudo_run ln -sfn "/usr/lib/llvm-${VERSION}" /usr/lib/llvm
     echo "已切换到 LLVM ${VERSION}"
 }
 
