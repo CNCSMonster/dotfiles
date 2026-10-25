@@ -1,7 +1,105 @@
+# =============================================================================
+# Helix Languages & LSP Configuration
+# =============================================================================
+# 统一管理项目声明安装的语言服务器 (LSP) 与代码格式化配置
+
+# ── Python ──
 [[language]]
 name = "python"
 language-servers = ["pyright"]
+auto-format = true
 
 [language-server.pyright]
 command = "pyright-langserver"
 args = ["--stdio"]
+
+# ── Rust ──
+[[language]]
+name = "rust"
+language-servers = ["rust-analyzer"]
+auto-format = true
+
+[language-server.rust-analyzer.config]
+checkOnSave = { command = "clippy" }
+cargo = { allFeatures = true }
+
+# ── Go ──
+[[language]]
+name = "go"
+language-servers = ["gopls"]
+auto-format = true
+
+[language-server.gopls]
+command = "gopls"
+
+# ── TypeScript / JavaScript ──
+[[language]]
+name = "typescript"
+language-servers = ["typescript-language-server"]
+auto-format = true
+
+[[language]]
+name = "javascript"
+language-servers = ["typescript-language-server"]
+auto-format = true
+
+[language-server.typescript-language-server]
+command = "typescript-language-server"
+args = ["--stdio"]
+
+# ── Zig ──
+[[language]]
+name = "zig"
+language-servers = ["zls"]
+auto-format = true
+
+[language-server.zls]
+command = "zls"
+
+# ── Bash / Shell ──
+[[language]]
+name = "bash"
+language-servers = ["bash-language-server"]
+auto-format = true
+
+[language-server.bash-language-server]
+command = "bash-language-server"
+args = ["start"]
+
+# ── YAML ──
+[[language]]
+name = "yaml"
+language-servers = ["yaml-language-server"]
+auto-format = true
+
+[language-server.yaml-language-server]
+command = "yaml-language-server"
+args = ["--stdio"]
+
+# ── Markdown ──
+[[language]]
+name = "markdown"
+language-servers = ["marksman"]
+
+[language-server.marksman]
+command = "marksman"
+args = ["server"]
+
+# ── Lua ──
+[[language]]
+name = "lua"
+language-servers = ["lua-language-server"]
+auto-format = true
+
+[language-server.lua-language-server]
+command = "lua-language-server"
+
+# ── TOML ──
+[[language]]
+name = "toml"
+language-servers = ["taplo"]
+auto-format = true
+
+[language-server.taplo]
+command = "taplo"
+args = ["lsp", "stdio"]
