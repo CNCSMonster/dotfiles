@@ -163,15 +163,12 @@ if ! (( $+functions[zcomet] )); then
 fi
 
 # Update every 7 days.
-# Start p10k instant prompt only when no update, otherwise update logs might not be displayed.
 _qc_last_update=($ZSH_CONFIG_HOME/.zcomet/update(Nm-7))
 if [[ -z $_qc_last_update ]] {
     touch $ZSH_CONFIG_HOME/.zcomet/update
     zcomet self-update
     zcomet update
     zcomet compile $ZSH_CONFIG_HOME/*.zsh  # NOTE: https://github.com/romkatv/zsh-bench#cutting-corners
-} else {
-    _source-existent ~cache/p10k-instant-prompt-${(%):-%n}.zsh
 }
 
 zcomet fpath zsh-users/zsh-completions@0.36.0 src
@@ -215,12 +212,9 @@ zcomet load zdharma-continuum/fast-syntax-highlighting@v1.56
 unset 'FAST_HIGHLIGHT[chroma-man]'  # chroma-man will stick history browsing
 unset 'FAST_HIGHLIGHT[chroma-ssh]'  # old ssh highlighting has false positives with args
 
-zcomet load romkatv/powerlevel10k@v1.20.0
 
 # ------------------------------
 # Post-init module configuration
 # ------------------------------
 
 # }}} End configuration added by Zim install
-
-_source-existent $ZSH_CONFIG_HOME/p10k.zsh
