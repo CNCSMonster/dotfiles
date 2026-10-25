@@ -1,7 +1,6 @@
 [dependencies]
 langs = "langs"
 shells = "shells"
-nvims = "nvims"
 helix = "helix"
 
 

@@ -10,10 +10,9 @@
 
 ```
 dotfiles/
-├── xdotter.toml          # 主配置 - 定义 4 个模块依赖
+├── xdotter.toml          # 主配置 - 定义 3 个模块依赖
 ├── langs/xdotter.toml    # 语言工具 (Go, Rust)
 ├── shells/xdotter.toml   # Shell 配置 (bash, zsh)
-├── nvims/xdotter.toml    # Neovim 配置占位（配置已移除，links 为空）
 ├── helix/xdotter.toml    # Helix 编辑器配置
 └── ...                   # 其他 dotfiles (git, yazi, wezterm 等)
 ```
@@ -27,7 +26,6 @@ xdotter.toml 使用 TOML 格式：
 [dependencies]
 langs = "langs"
 shells = "shells"
-nvims = "nvims"
 helix = "helix"
 
 # 符号链接

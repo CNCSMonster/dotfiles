@@ -22,7 +22,7 @@
 zsh + zcomet plugin manager + starship prompt + zoxide (smart cd) + fzf (fuzzy finder) + eza (modern ls) + bat (modern cat) + fd (modern find) + ripgrep (modern grep)
 
 **Editors**
-Neovim (pinned release) + Helix — with LSP servers for 9 languages: TypeScript, Python, Go, Zig, Lua, Bash, YAML, TOML, Markdown
+Helix — modern modal editor with LSP servers for 9 languages: TypeScript, Python, Go, Zig, Lua, Bash, YAML, TOML, Markdown
 
 **Language Toolchains**
 Rust (stable) + Go + Node.js + Zig — managed by [mise](https://mise.jdx.dev/)
