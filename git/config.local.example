@@ -1,0 +1,5 @@
+# ~/.config/git/config.local
+# 本地 Git 私有配置样例（本文件由 setup.sh 自动引导或手动创建，不纳入版本控制）
+[user]
+    name = Your Name
+    email = your_email@example.com

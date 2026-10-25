@@ -223,7 +223,29 @@ ensure_git_config_include() {
     echo "=========================================="
 
     command -v git &>/dev/null || return 0
-    local xdg_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/git/config"
+    local git_dir="${XDG_CONFIG_HOME:-$HOME/.config}/git"
+    local xdg_cfg="${git_dir}/config"
+    local local_cfg="${git_dir}/config.local"
+
+    # 确保本地私有配置文件存在（避免硬编码个人信息污染全局）
+    if [ ! -f "${local_cfg}" ]; then
+        local curr_name curr_email
+        curr_name=$(git config --global user.name 2>/dev/null || true)
+        curr_email=$(git config --global user.email 2>/dev/null || true)
+        mkdir -p "${git_dir}"
+        if [ -n "${curr_name}" ] && [ -n "${curr_email}" ] && [ "${curr_name}" != "cncsmonster" ]; then
+            cat > "${local_cfg}" <<EOF
+[user]
+    name = ${curr_name}
+    email = ${curr_email}
+EOF
+            echo "✅ 已根据系统既有 Git 身份自动生成 ${local_cfg}"
+        elif [ -f "${PROJECT_DIR}/git/config.local.example" ]; then
+            cp "${PROJECT_DIR}/git/config.local.example" "${local_cfg}"
+            echo "⚠️  已生成 ${local_cfg}，请按需修改本地用户名与邮箱"
+        fi
+    fi
+
     [ -f "${xdg_cfg}" ] || return 0
     if [ ! -f "${HOME}/.gitconfig" ]; then
         echo "✅ 无 ~/.gitconfig，git 直接读取 XDG 配置"
