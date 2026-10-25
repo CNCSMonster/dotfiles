@@ -1,14 +1,33 @@
 #!/usr/bin/env bash
+# =============================================================================
+# csi - 即时编译并运行 C 源码文件
+# =============================================================================
+set -eo pipefail
 
-gcc $1 -o ~/tmp/$(basename $1 .c)
-
-if [ $? -ne 0 ]; then
-    echo "Compilation failed"
+if [ -z "$1" ]; then
+    echo "用法: $(basename "$0") <c源文件> [程序参数...]" >&2
     exit 1
 fi
 
-~/tmp/$(basename $1 .c) $@
-ret=$?
+c_file="$1"
+shift
 
-rm ~/tmp/$(basename $1 .c)
-exit $ret
+if [ ! -f "$c_file" ]; then
+    echo "错误: 文件 '$c_file' 不存在" >&2
+    exit 1
+fi
+
+temp_dir=$(mktemp -d)
+trap 'rm -rf "$temp_dir"' EXIT
+
+filename=$(basename "$c_file" .c)
+bin_path="$temp_dir/$filename"
+
+compiler=${CC:-gcc}
+
+if ! $compiler "$c_file" -o "$bin_path"; then
+    echo "编译失败" >&2
+    exit 1
+fi
+
+"$bin_path" "$@"

@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
+# =============================================================================
+# run-fuzz - 运行 Rust Fuzzing 测试并生成覆盖率报告
+# =============================================================================
+set -eo pipefail
 
-TARGET=$1
-MAX_TOTAL_TIME=${2:-10}
+if [ -z "$1" ]; then
+    echo "用法: $(basename "$0") <fuzz_target> [max_total_time_seconds]" >&2
+    exit 1
+fi
 
-cargo +nightly fuzz run $TARGET -- -max_total_time=$MAX_TOTAL_TIME
+TARGET="$1"
+MAX_TOTAL_TIME="${2:-10}"
 
-cargo +nightly fuzz coverage $TARGET
+cargo +nightly fuzz run "$TARGET" -- -max_total_time="$MAX_TOTAL_TIME"
+cargo +nightly fuzz coverage "$TARGET"
 
 HOST_TUPLE=$(rustc --print host-tuple)
 
-grcov . -s . --binary-path ./target/$HOST_TUPLE/coverage/$HOST_TUPLE/release \
---branch --ignore-not-existing \
--t html \
--o fuzz_coverage_report/
+grcov . -s . --binary-path "./target/$HOST_TUPLE/coverage/$HOST_TUPLE/release" \
+    --branch --ignore-not-existing \
+    -t html \
+    -o fuzz_coverage_report/
 
 echo "Fuzzing complete. Coverage report generated at fuzz_coverage_report/index.html"
-
