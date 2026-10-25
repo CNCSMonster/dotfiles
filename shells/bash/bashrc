@@ -2,7 +2,17 @@
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
-# If not running interactively, don't do anything
+export SH=bash
+export SH_COMMON_DIR="${HOME}/.config/shells/common"
+
+# 1. 基础环境层（所有场景均需加载，包含非交互式脚本与 IDE 子进程，耗时 < 5ms）
+if [ -f "$SH_COMMON_DIR/env.sh" ]; then
+    source "$SH_COMMON_DIR/env.sh"
+fi
+[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
+[[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
+
+# 2. 非交互式拦截（非交互式会话在此返回，避免加载提示符与交互特性）
 case $- in
     *i*) ;;
     *) return;;
@@ -126,13 +136,7 @@ fi
 
 
 
-export SH=bash
-export SH_COMMON_DIR=$HOME/.config/shells/common
-source $SH_COMMON_DIR/env.sh
-source $SH_COMMON_DIR/fn.sh
-source $SH_COMMON_DIR/alias.sh
-source $SH_COMMON_DIR/inter.sh
-
-# 安全 source - 文件不存在时不报错
-[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
-[[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
+# 交互式功能与扩展配置
+source "$SH_COMMON_DIR/fn.sh"
+source "$SH_COMMON_DIR/alias.sh"
+source "$SH_COMMON_DIR/inter.sh"
