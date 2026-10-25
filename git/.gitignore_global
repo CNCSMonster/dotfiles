@@ -3,3 +3,5 @@
 .qwen/
 AGENTS.local.md
 *.local.md
+# Agent 运行时临时目录（工作区内，仅本机，不提交）
+**/.opencode/tmp/

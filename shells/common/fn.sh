@@ -61,3 +61,17 @@ function use-npm-official() {
     echo "✅ 已切换到官方源"
 }
 
+# ============================================================
+# Windows 宿主命令执行（以 Windows 家目录与环境变量规范运行）
+# ============================================================
+function winrun() {
+    powershell.exe -NoProfile -Command "
+        \$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User');
+        if (-not \$env:CNCSMONSTER_API_KEY) {
+            \$env:CNCSMONSTER_API_KEY = [Environment]::GetEnvironmentVariable('CNCSMONSTER_API_KEY', 'User')
+        };
+        cd \$HOME;
+        $*
+    "
+}
+
