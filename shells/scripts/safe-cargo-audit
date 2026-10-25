@@ -108,6 +108,8 @@ main() {
         --tmpfs /tmp \
         --proc /proc \
         --dev /dev \
+        --dir "$HOME/.cargo/registry" \
+        --dir "$HOME/.cargo/advisory-db" \
         --bind "$CARGO_CACHE_DIR/registry" "$HOME/.cargo/registry" \
         --bind "$CARGO_CACHE_DIR/advisory-db" "$HOME/.cargo/advisory-db" \
         --chdir "$PROJECT_DIR" \
