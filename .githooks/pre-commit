@@ -28,6 +28,16 @@ fi
 HAS_SHELL_ERRORS=0
 while IFS= read -r file; do
     [ -z "$file" ] && continue
+    # 针对 Python 脚本执行 py_compile 语法检查
+    if [[ "$file" =~ \.py$ ]]; then
+        if [ -f "$file" ]; then
+            if ! python3 -m py_compile "$file" 2>&1; then
+                echo "❌ Python 语法错误: $file"
+                HAS_SHELL_ERRORS=1
+            fi
+        fi
+        continue
+    fi
     # 仅针对 .sh 文件或 shells/scripts/ 下的文件做语法检查
     if [[ "$file" =~ \.sh$ ]] || [[ "$file" =~ ^shells/scripts/ ]]; then
         if [ -f "$file" ]; then
