@@ -51,14 +51,14 @@ WORDCHARS=${WORDCHARS//[\/]}
 # Completion
 _comp_options+=(globdots)
 
-# 现代 Tab 补全优化：
-# 1. 显式开启菜单补全模式，确保单次按 Tab 立即唤起 fzf-tab 浮动菜单
-zstyle ":completion:*" menu yes select
-# 2. 单次按 Tab 立即弹出候选列表/fzf-tab，消除按两次 Tab 的迟滞
-setopt NO_LIST_AMBIGUOUS
-setopt MENU_COMPLETE
-# 3. 允许在光标所在单词中间顺畅执行补全
+# 补全选项与 fzf-tab 联动配置：
+# 1. 禁用 zsh 原生菜单选择，允许 fzf-tab 接管菜单展示与捕获公共前缀
+zstyle ":completion:*" menu no
+# 2. 补全行为选项：自动菜单（非 fzf-tab 场景回退），保留歧义列表，允许在词内顺畅执行补全
+setopt AUTO_MENU
+setopt LIST_AMBIGUOUS
 setopt COMPLETE_IN_WORD
+unsetopt MENU_COMPLETE
 
 #
 # fzf-tab
@@ -195,29 +195,19 @@ zcomet load hlissner/zsh-autopair@v1.0
 # Plugins (Part 2) #
 #==================#
 
-# 开启快速缓存校验模式（-C），并指定 XDG 缓存目录
-zstyle ":zcomet:compinit" dump-file "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
-zstyle ":zcomet:compinit" arguments -C
+# 开启快速缓存校验模式（-C），若超过24小时或不存在则刷新全量缓存
+local _comp_dump="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
+zstyle ":zcomet:compinit" dump-file "$_comp_dump"
+setopt EXTENDED_GLOB
+if [[ -f "$_comp_dump" && -n "$_comp_dump"(#qN.mh-24) ]]; then
+    zstyle ":zcomet:compinit" arguments -C
+fi
 zcomet compinit
 
 zcomet load Aloxaf/fzf-tab@v1.3.0  # NOTE: after updating this plugin, run `build-fzf-tab-module` in its directory to compile the optional C module for better performance
 
-# 修复 Linux/WSL 环境下 fzf-tab 首次按 Tab 阻塞需按两次才弹出选项的根因：
-# fzf-tab 内部执行 `command "$dd" bs=1G count=1 status=none iflag=nonblock < /dev/tty` 预读输入。
-# 当系统默认 dd 为 rust-coreutils (uutils) 时，dd 不支持终端 nonblock 读取，直接挂起阻塞等待下次按键；
-# 而 GNU dd 的 iflag=nonblock 又会遗留 O_NONBLOCK 导致后续 fzf 读取 tty 发生 EAGAIN 闪退。
-# fzf-tab 原生设计当未找到有效 dd 时回退至 true (空操作)。
-# 在 -ftb-fzf 内部确保 gdd 映射到 /usr/bin/true，规避阻塞与 tty 状态损坏，实现单次按 Tab 瞬间唤起浮动菜单。
-autoload +X -Uz -- -ftb-fzf 2>/dev/null || true
-if (( $+functions[-ftb-fzf] )); then
-    functions[-orig-ftb-fzf]="$functions[-ftb-fzf]"
-    -ftb-fzf() {
-        hash gdd=/usr/bin/true 2>/dev/null || true
-        -orig-ftb-fzf "$@"
-    }
-fi
-
-zstyle ':fzf-tab:*' fzf-bindings 'tab:accept'
+zstyle ':completion:*:descriptions' format '[%d]'
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':fzf-tab:*' switch-group '<' '>'
 zstyle ':fzf-tab:*' prefix       ''
 zstyle ':fzf-tab:complete:kill:argument-rest' fzf-preview 'ps hwwo cmd --pid=$word'

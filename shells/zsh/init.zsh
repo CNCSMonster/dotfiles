@@ -36,7 +36,4 @@ fi
 
 export PATH
 
-# 在 PATH 整理后立即确保 gdd 指向 true，防止 PATH 重新赋值清空 command hash 表
-hash gdd=/usr/bin/true 2>/dev/null || true
-
 

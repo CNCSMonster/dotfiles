@@ -1,0 +1,4 @@
+#!/bin/sh
+# Lightweight gdd stub for fzf-tab on Linux.
+# Prevents fzf-tab from invoking uutils/gnu dd with 1GB buffer on /dev/tty.
+exit 0
