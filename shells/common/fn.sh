@@ -99,16 +99,58 @@ _ai_shell_exec() {
     local ret=$?
 
     if [[ $ret -eq 0 && -n "$target_cmd" ]]; then
+        # 用户明确选择进入编辑模式 (按 e)
+        if [[ "$target_cmd" == EDIT:* ]]; then
+            target_cmd="${target_cmd#EDIT:}"
+            if [ -n "$ZSH_VERSION" ]; then
+                print -s "$target_cmd"
+                print -z "$target_cmd"
+            elif [ -n "$BASH_VERSION" ]; then
+                history -s "$target_cmd"
+                read -e -i "$target_cmd" -p "$ " edited_cmd
+                [[ -n "$edited_cmd" ]] && eval "$edited_cmd"
+            fi
+            return 0
+        fi
+
+        # 默认直接执行，并在异常时捕获 Stderr 自动反思修复
         if [ -n "$ZSH_VERSION" ]; then
             print -s "$target_cmd"
-            print -z "$target_cmd"
         elif [ -n "$BASH_VERSION" ]; then
             history -s "$target_cmd"
-            read -e -i "$target_cmd" -p "$ " edited_cmd
-            if [[ -n "$edited_cmd" ]]; then
-                history -s "$edited_cmd"
-                eval "$edited_cmd"
+        fi
+        echo -e "\033[32m▶ 执行:\033[0m $target_cmd"
+
+        local err_dir="/dev/shm"
+        [ ! -d "$err_dir" ] && err_dir="/tmp"
+        local err_tmp="$err_dir/ai_shell_err_$$.log"
+        rm -f "$err_tmp"
+
+        eval "$target_cmd" 2> >(tee >(tail -n 10 > "$err_tmp") >&2)
+        local cmd_ret=$?
+        sleep 0.05
+
+        # 命令非 0 失败、排除主动中断(130/143)、且有错误日志时，触发深度为1的反思
+        if [[ $cmd_ret -ne 0 && $cmd_ret -ne 130 && $cmd_ret -ne 143 && -s "$err_tmp" && -z "$AI_SHELL_REFLECT_DEPTH" ]]; then
+            export AI_SHELL_REFLECT_DEPTH=1
+            local fix_cmd
+            fix_cmd=$(python3 "$script_path" --fix "$target_cmd" --err-file "$err_tmp")
+            unset AI_SHELL_REFLECT_DEPTH
+            rm -f "$err_tmp"
+
+            if [[ -n "$fix_cmd" ]]; then
+                [[ "$fix_cmd" == EDIT:* ]] && fix_cmd="${fix_cmd#EDIT:}"
+                if [ -n "$ZSH_VERSION" ]; then
+                    print -s "$fix_cmd"
+                    print -z "$fix_cmd"
+                elif [ -n "$BASH_VERSION" ]; then
+                    history -s "$fix_cmd"
+                    read -e -i "$fix_cmd" -p "$ " edited_cmd
+                    [[ -n "$edited_cmd" ]] && eval "$edited_cmd"
+                fi
             fi
+        else
+            rm -f "$err_tmp"
         fi
     fi
 }
@@ -127,6 +169,11 @@ ai-shell() {
                     if [[ "$first" =~ ^([a-zA-Z0-9_-]+)[\?？]$ ]]; then
                         local tool="${match[1]}"
                         shift
+                        if [[ "$tool" == "fix" ]]; then
+                            local last_cmd="$(fc -ln -1 2>/dev/null)"
+                            _ai_shell_exec "上一条命令报错了，请诊断并给出修复建议: $last_cmd"
+                            return $?
+                        fi
                         _ai_shell_exec --scope "$tool" "$*"
                         return $?
                     fi
@@ -143,6 +190,11 @@ ai-shell() {
                     if [[ "$first" =~ ^([a-zA-Z0-9_-]+)[\?？]$ ]]; then
                         local tool="${BASH_REMATCH[1]}"
                         shift
+                        if [[ "$tool" == "fix" ]]; then
+                            local last_cmd="$(history -p '!!' 2>/dev/null)"
+                            _ai_shell_exec "上一条命令报错了，请诊断并给出修复建议: $last_cmd"
+                            return $?
+                        fi
                         _ai_shell_exec --scope "$tool" "$*"
                         return $?
                     fi
@@ -153,11 +205,13 @@ ai-shell() {
                 alias ??='_ai_shell_exec'
                 alias git?='_ai_shell_exec --scope git'
                 alias gh?='_ai_shell_exec --scope gh'
+                alias fix?='_ai_shell_exec fix'
             fi
             echo -e "\033[32m⚡ AI Shell 模式已开启\033[0m"
-            echo -e "   - 方式1: 直接输入自然语言回车"
-            echo -e "   - 方式2: ?? <通用需求>"
-            echo -e "   - 方式3: <工具>? <专属需求> (如 fd? docker? git? 等任意工具)"
+            echo -e "   - 方式1: 直接输入自然语言回车 (自动推导，执行报错自动反思)"
+            echo -e "   - 方式2: ?? <需求> (通用提问)"
+            echo -e "   - 方式3: <工具>? <需求> (如 fd? docker? git? 等任意工具)"
+            echo -e "   - 方式4: fix? (一键诊断并修复上一条失败命令)"
             echo -e "   - 关闭模式: 运行 'ai-shell off'"
             ;;
         off|disable)

@@ -111,6 +111,28 @@ def parse_candidates(raw_text):
 
     return candidates[:3]
 
+def sanitize_stderr(text):
+    """
+    轻量且精准的脱敏：仅针对明显的敏感凭证与用户路径，绝不过度脱敏影响报错分析
+    """
+    if not text:
+        return ""
+    # 清除 ANSI 颜色转义码
+    clean = re.sub(r"\033\[[0-9;]*[a-zA-Z]", "", text)
+    # 脱敏真实高特征 API Key 与 Token (如 sk-xxx, ghp_xxx)
+    clean = re.sub(r"sk-[a-zA-Z0-9_-]{20,}", "***API_KEY***", clean)
+    clean = re.sub(r"gh[pousr]-[a-zA-Z0-9]{20,}", "***GITHUB_TOKEN***", clean)
+    clean = re.sub(r"Bearer\s+[a-zA-Z0-9_\-\.]{20,}", "Bearer ***TOKEN***", clean, flags=re.IGNORECASE)
+    # 脱敏 URL 中明文密码
+    clean = re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", clean)
+    # 替换用户主目录为 ~
+    home = os.path.expanduser("~")
+    if home and len(home) > 3:
+        clean = clean.replace(home, "~")
+    lines = [l for l in clean.splitlines() if l.strip()]
+    tail_lines = lines[-5:] if len(lines) > 5 else lines
+    return "\n".join(tail_lines)[:512]
+
 def char_width(ch):
     if unicodedata.category(ch) in ("Cc", "Cf", "Cs"):
         return 0
@@ -177,6 +199,20 @@ def main():
     if not args:
         sys.exit(0)
     
+    fix_mode = False
+    failed_cmd = ""
+    err_file = ""
+
+    if "--fix" in args:
+        fix_mode = True
+        idx = args.index("--fix")
+        if idx + 1 < len(args):
+            failed_cmd = args[idx + 1]
+    if "--err-file" in args:
+        idx = args.index("--err-file")
+        if idx + 1 < len(args):
+            err_file = args[idx + 1]
+
     scope = "generic"
     if len(args) >= 2 and args[0] == "--scope":
         scope = args[1]
@@ -184,7 +220,7 @@ def main():
     else:
         query = " ".join(args)
 
-    if not query.strip():
+    if not query.strip() and not fix_mode:
         sys.exit(0)
 
     config = load_config()
@@ -209,7 +245,34 @@ def main():
     dirname, project_hints = detect_safe_context()
     proj_tag = f" ({project_hints[0]})" if project_hints else ""
 
-    if scope and scope != "generic":
+    if fix_mode:
+        err_text = ""
+        if err_file and os.path.isfile(err_file):
+            try:
+                with open(err_file, "r", encoding="utf-8", errors="replace") as f:
+                    err_text = f.read(2048)
+            except Exception:
+                pass
+        sanitized_err = sanitize_stderr(err_text)
+        if not sanitized_err.strip() and not failed_cmd:
+            sys.exit(0)
+
+        title = f"💡 自动反思与修复建议{proj_tag}"
+        system_prompt = f"""你是一个高级终端 CLI 与命令排错修复专家。
+当前环境: OS={os_info}, Shell={shell_info}, 项目={dirname}
+{f"项目特征: {', '.join(project_hints)}" if project_hints else ""}
+
+用户刚才执行的命令失败报错了：
+命令: `{failed_cmd}`
+错误信息:
+<ERROR_LOG>
+{sanitized_err}
+</ERROR_LOG>
+
+请根据上述具体错误原因进行深度反思，并推导出 1 到 2 条精准的修复命令（例如缺少 sudo 追加 sudo，路径或参数错误修正参数，缺少依赖包提示安装）。
+必须输出一个纯 JSON 数组，数组项包含 "cmd" (纯命令，不含markdown反引号) 和 "desc" (10字以内简要原因与修复动作说明)。严禁输出任何 Markdown 格式或解释文字。"""
+        query = f"请诊断并修复此报错: {failed_cmd}"
+    elif scope and scope != "generic":
         title = f"💡 推荐 {scope} 命令{proj_tag}"
         system_prompt = f"""你是一个高级终端 CLI 与 {scope} 命令推导专家。
 环境: OS={os_info}, Shell={shell_info}, 项目={dirname}
@@ -262,13 +325,15 @@ def main():
 
             if len(candidates) > 1:
                 select_prompt = (
-                    f"\033[1;37m[\033[1;32m回车\033[1;37m: 填入[1] | "
+                    f"\033[1;37m[\033[1;32m回车\033[1;37m: 执行[1] | "
+                    f"\033[1;34me\033[1;37m: 编辑 | "
                     f"\033[1;33m{' / '.join(str(i+1) for i in range(1, len(candidates)))}\033[1;37m: 选候选 | "
                     f"\033[1;31mCtrl+C\033[1;37m: 取消]\033[0m \033[1;36m❯\033[0m "
                 )
             else:
                 select_prompt = (
-                    "\033[1;37m[\033[1;32m回车\033[1;37m: 填入命令行 | "
+                    "\033[1;37m[\033[1;32m回车\033[1;37m: 执行 | "
+                    "\033[1;34me\033[1;37m: 编辑 | "
                     "\033[1;31mCtrl+C\033[1;37m: 取消]\033[0m \033[1;36m❯\033[0m "
                 )
 
@@ -282,6 +347,10 @@ def main():
 
             if choice == "" or choice.lower() in ("y", "yes", "1"):
                 sys.stdout.write(candidates[0]["cmd"])
+                sys.stdout.flush()
+                sys.exit(0)
+            elif choice.lower() == "e":
+                sys.stdout.write(f"EDIT:{candidates[0]['cmd']}")
                 sys.stdout.flush()
                 sys.exit(0)
             elif choice in ("2", "3") and int(choice) <= len(candidates):
