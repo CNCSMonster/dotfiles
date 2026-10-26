@@ -29,8 +29,47 @@ if command -v zoxide >/dev/null 2>&1; then eval "$(zoxide init $SH)"; fi
 # starship - Shell 提示符（仅交互式显示）
 if command -v starship >/dev/null 2>&1; then eval "$(starship init $SH)"; fi
 
-# navi - 命令快捷键（Ctrl+N）
-if command -v navi >/dev/null 2>&1; then eval "$(navi widget $SH)"; fi
+# navi - 交互式快捷键绑定（Ctrl+G / Ctrl+N）
+# 优化：静态函数加载，消灭开机调用 navi 二进制耗时（~74ms -> 0.1ms）
+if command -v navi >/dev/null 2>&1; then
+    if [[ -n "$ZSH_VERSION" ]]; then
+        _navi_call() {
+            local result="$(navi "$@" </dev/tty)"
+            printf "%s" "$result"
+        }
+        _navi_widget() {
+            local -r input="${LBUFFER}"
+            local -r last_command="$(echo "${input}" | navi fn widget::last_command)"
+            local replacement="$last_command"
+
+            if [ -z "$last_command" ]; then
+                replacement="$(_navi_call --print)"
+            elif [ "$LASTWIDGET" = "_navi_widget" ] && [ "$input" = "$previous_output" ]; then
+                replacement="$(_navi_call --print --query "$last_command")"
+            else
+                replacement="$(_navi_call --print --best-match --query "$last_command")"
+            fi
+
+            if [ -n "$replacement" ]; then
+                local -r find="${last_command}_NAVIEND"
+                previous_output="${input}_NAVIEND"
+                previous_output="${previous_output//$find/$replacement}"
+            else
+                previous_output="$input"
+            fi
+
+            zle kill-whole-line
+            LBUFFER="${previous_output}"
+            region_highlight=("P0 100 bold")
+            zle redisplay
+        }
+        zle -N _navi_widget
+        bindkey "^g" _navi_widget
+        bindkey "^n" _navi_widget
+    else
+        eval "$(navi widget $SH 2>/dev/null)"
+    fi
+fi
 
 # =============================================================================
 # 历史搜索（fzf 增强，替换 Ctrl+R）
@@ -116,29 +155,15 @@ else
   bind -x '"\C-r": _fhd_widget'
 fi
 
-# xdotter / xd - dotfiles 管理器命令补全
-if command -v xd >/dev/null 2>&1; then
-    eval "$(xd completion "$SH")"
-fi
-
-# llm-proxy - 本地 LLM 代理命令行补全
-if command -v llm-proxy >/dev/null 2>&1; then
-    eval "$(llm-proxy completion "$SH")"
-fi
-
-# codex - OpenAI 代码助手补全
-if command -v codex >/dev/null 2>&1; then
-    eval "$(codex completion "$SH" 2>/dev/null)"
-fi
-
-# opencode - OpenCode 代码助手补全
-if command -v opencode >/dev/null 2>&1; then
-    eval "$(opencode --completions "$SH" 2>/dev/null)"
-fi
-
-# just - 命令运行器补全
-if command -v just >/dev/null 2>&1; then
-    eval "$(JUST_COMPLETE="$SH" just)"
+# CLI 工具补全：
+# Zsh 模式：补全脚本已静态生成并加入 fpath（completions/_*），由 compinit 自动接管，启动 0ms 开销；
+# 非 Zsh 模式：回退至动态 eval。
+if [[ -z "$ZSH_VERSION" ]]; then
+    command -v xd >/dev/null 2>&1 && eval "$(xd completion "$SH" 2>/dev/null)"
+    command -v llm-proxy >/dev/null 2>&1 && eval "$(llm-proxy completion "$SH" 2>/dev/null)"
+    command -v codex >/dev/null 2>&1 && eval "$(codex completion "$SH" 2>/dev/null)"
+    command -v opencode >/dev/null 2>&1 && eval "$(opencode --completions "$SH" 2>/dev/null)"
+    command -v just >/dev/null 2>&1 && eval "$(JUST_COMPLETE="$SH" just 2>/dev/null)"
 fi
 
 # =============================================================================

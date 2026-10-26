@@ -4,3 +4,4 @@
 zshrc = "~/.zshrc"
 "init.zsh" = "~/.config/shells/zsh/init.zsh"
 "config.zsh" = "~/.config/shells/zsh/config.zsh"
+completions = "~/.config/shells/zsh/completions"

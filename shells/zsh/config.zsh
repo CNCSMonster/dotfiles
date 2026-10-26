@@ -49,13 +49,16 @@ bindkey -s "^Y" 'ya^M'
 WORDCHARS=${WORDCHARS//[\/]}
 
 # Completion
-# The following lines were added by compinstall
-zstyle :compinstall filename "$HOME/.zshrc"
-autoload -Uz compinit
-compinit
 _comp_options+=(globdots)
-# End of lines added by compinstall
 
+# 现代 Tab 补全优化：
+# 1. 显式开启菜单补全模式，确保单次按 Tab 立即唤起 fzf-tab 浮动菜单
+zstyle ":completion:*" menu yes select
+# 2. 单次按 Tab 立即弹出候选列表/fzf-tab，消除按两次 Tab 的迟滞
+setopt NO_LIST_AMBIGUOUS
+setopt MENU_COMPLETE
+# 3. 允许在光标所在单词中间顺畅执行补全
+setopt COMPLETE_IN_WORD
 
 #
 # fzf-tab
@@ -171,6 +174,10 @@ if [[ -z $_qc_last_update ]] {
     zcomet compile $ZSH_CONFIG_HOME/*.zsh  # NOTE: https://github.com/romkatv/zsh-bench#cutting-corners
 }
 
+# 自定义补全目录优先加载（启动 0 开销，按需 Tab 补全）
+[[ -d "$ZSH_CONFIG_HOME/completions" ]] && fpath=("$ZSH_CONFIG_HOME/completions" $fpath)
+[[ -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/completions" ]] && fpath=("${XDG_CACHE_HOME:-$HOME/.cache}/zsh/completions" $fpath)
+
 zcomet fpath zsh-users/zsh-completions@0.36.0 src
 zcomet fpath nix-community/nix-zsh-completions@0.5.1
 
@@ -188,9 +195,28 @@ zcomet load hlissner/zsh-autopair@v1.0
 # Plugins (Part 2) #
 #==================#
 
+# 开启快速缓存校验模式（-C），并指定 XDG 缓存目录
+zstyle ":zcomet:compinit" dump-file "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
+zstyle ":zcomet:compinit" arguments -C
 zcomet compinit
 
 zcomet load Aloxaf/fzf-tab@v1.3.0  # NOTE: after updating this plugin, run `build-fzf-tab-module` in its directory to compile the optional C module for better performance
+
+# 修复 Linux/WSL 环境下 fzf-tab 首次按 Tab 阻塞需按两次才弹出选项的根因：
+# fzf-tab 内部执行 `command "$dd" bs=1G count=1 status=none iflag=nonblock < /dev/tty` 预读输入。
+# 当系统默认 dd 为 rust-coreutils (uutils) 时，dd 不支持终端 nonblock 读取，直接挂起阻塞等待下次按键；
+# 而 GNU dd 的 iflag=nonblock 又会遗留 O_NONBLOCK 导致后续 fzf 读取 tty 发生 EAGAIN 闪退。
+# fzf-tab 原生设计当未找到有效 dd 时回退至 true (空操作)。
+# 在 -ftb-fzf 内部确保 gdd 映射到 /usr/bin/true，规避阻塞与 tty 状态损坏，实现单次按 Tab 瞬间唤起浮动菜单。
+autoload +X -Uz -- -ftb-fzf 2>/dev/null || true
+if (( $+functions[-ftb-fzf] )); then
+    functions[-orig-ftb-fzf]="$functions[-ftb-fzf]"
+    -ftb-fzf() {
+        hash gdd=/usr/bin/true 2>/dev/null || true
+        -orig-ftb-fzf "$@"
+    }
+fi
+
 zstyle ':fzf-tab:*' fzf-bindings 'tab:accept'
 zstyle ':fzf-tab:*' switch-group '<' '>'
 zstyle ':fzf-tab:*' prefix       ''

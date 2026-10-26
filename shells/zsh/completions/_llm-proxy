@@ -1,0 +1,2543 @@
+#compdef llm-proxy
+
+autoload -U is-at-least
+
+_llm-proxy() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-d+[Config directory path (contains config.toml, tokens.toml, etc.)]:CONFIG_DIR:_files' \
+'--config-dir=[Config directory path (contains config.toml, tokens.toml, etc.)]:CONFIG_DIR:_files' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_llm-proxy_commands" \
+"*::: :->llm-proxy" \
+&& ret=0
+    case $state in
+    (llm-proxy)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'--provider=[]:PROVIDER:_default' \
+'--model=[]:MODEL:_default' \
+'--probe[]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(cooldown)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_llm-proxy__subcmd__cooldown_commands" \
+"*::: :->cooldown" \
+&& ret=0
+
+    case $state in
+    (cooldown)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-cooldown-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'--provider=[]:PROVIDER:_default' \
+'--model=[]:MODEL:_default' \
+'--duration=[]:DURATION:_default' \
+'--protocol=[]:PROTOCOL:_default' \
+'--kind=[]:KIND:_default' \
+'--reason=[]:REASON:_default' \
+'--dry-run[]' \
+'-y[]' \
+'--yes[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+'--model=[]:MODEL:_default' \
+'--provider=[]:PROVIDER:_default' \
+'--dry-run[]' \
+'-y[]' \
+'--yes[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__cooldown__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-cooldown-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(connect)
+_arguments "${_arguments_options[@]}" : \
+'--api-key-env=[]:API_KEY_ENV:_default' \
+'--type=[]:PROVIDER_TYPE:_default' \
+'--endpoint-url=[]:ENDPOINT_URL:_default' \
+'*--model=[]:MODELS:_default' \
+'--no-api-key[]' \
+'--skip-probe[跳过网络可达性探测，直接写入配置 （探测发现不可达模型时，交互终端会询问是否照常写入；本开关供非交互场景显式放行）]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::product:_default' \
+&& ret=0
+;;
+(provider)
+_arguments "${_arguments_options[@]}" : \
+'--select=[]:SELECT:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_llm-proxy__subcmd__provider_commands" \
+"*::: :->provider" \
+&& ret=0
+
+    case $state in
+    (provider)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-provider-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--json[Output raw JSON instead of table format]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" : \
+'--api-key-env=[]:API_KEY_ENV:_default' \
+'--type=[]:PROVIDER_TYPE:_default' \
+'--endpoint-url=[]:ENDPOINT_URL:_default' \
+'*--model=[]:MODELS:_default' \
+'--no-api-key[]' \
+'--skip-probe[跳过网络可达性探测，直接写入配置 （探测发现不可达模型时，交互终端会询问是否照常写入；本开关供非交互场景显式放行）]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::product:_default' \
+&& ret=0
+;;
+(reselect)
+_arguments "${_arguments_options[@]}" : \
+'*--model=[]:MODELS:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::name:_default' \
+&& ret=0
+;;
+(login)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(copy)
+_arguments "${_arguments_options[@]}" : \
+'--api-key-env=[]:API_KEY_ENV:_default' \
+'--no-api-key[]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':source:_default' \
+':name:_default' \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+'--force[]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(reset-usage)
+_arguments "${_arguments_options[@]}" : \
+'--force[]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(logout)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(relogin)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(refresh)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(fallback)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_llm-proxy__subcmd__provider__subcmd__fallback_commands" \
+"*::: :->fallback" \
+&& ret=0
+
+    case $state in
+    (fallback)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-provider-fallback-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'--provider=[Provider that provides the fallback (the fallback provider)]:PROVIDER:_default' \
+'--target=[Target provider being backed up (the provider to add fallback for)]:TARGET:_default' \
+'*--bindings=[Binding specifications in model\:endpoint format (e.g. deepseek-v4-pro-lp\:chat). Supports regex (e.g. deepseek-v4-.*\:.*). Required, at least one]:BINDINGS:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__provider__subcmd__fallback__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-provider-fallback-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__provider__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-provider-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reselect)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(login)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(copy)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reset-usage)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(logout)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(relogin)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(refresh)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(fallback)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__provider__subcmd__help__subcmd__fallback_commands" \
+"*::: :->fallback" \
+&& ret=0
+
+    case $state in
+    (fallback)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-provider-help-fallback-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(model)
+_arguments "${_arguments_options[@]}" : \
+'--select=[]:SELECT:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_llm-proxy__subcmd__model_commands" \
+"*::: :->model" \
+&& ret=0
+
+    case $state in
+    (model)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-model-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':model:_default' \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" : \
+'(--copy-from --route)--context-window=[Required unless --copy-from/--from-discovery/--route; must be > 0 when provided]:CONTEXT_WINDOW:_default' \
+'(--copy-from --route)--max-output=[Required unless --copy-from/--from-discovery/--route; must be > 0 when provided]:MAX_OUTPUT:_default' \
+'(--from-discovery --context-window --max-output --upstream-model --route)--copy-from=[]:COPY_FROM:_default' \
+'(--copy-from --route)--from-discovery=[]:FROM_DISCOVERY:_default' \
+'(--copy-from)--upstream-model=[]:UPSTREAM_MODEL:_default' \
+'*--route=[Add a routing entry (level=target). Repeatable. Makes the model a routing model]:LEVEL=TARGET:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':model:_default' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'--context-window=[]:CONTEXT_WINDOW:_default' \
+'--max-output=[]:MAX_OUTPUT:_default' \
+'--thinking-level=[]:THINKING_LEVEL:_default' \
+'*--supported-thinking-level=[]:SUPPORTED_THINKING_LEVELS:_default' \
+'--supports-thinking=[]:SUPPORTS_THINKING:(true false)' \
+'--force-think=[]:FORCE_THINK:(true false)' \
+'--force-no-think=[]:FORCE_NO_THINK:(true false)' \
+'--default-think=[]:DEFAULT_THINK:(true false)' \
+'*--enable-feature=[]:ENABLE_FEATURES:_default' \
+'*--disable-feature=[]:DISABLE_FEATURES:_default' \
+'--description=[]:DESCRIPTION:_default' \
+'--chat-reasoning-off-format=[]:CHAT_REASONING_OFF_FORMAT:_default' \
+'--service-tier=[]:SERVICE_TIER:_default' \
+'--cooldown-network=[]:COOLDOWN_NETWORK:_default' \
+'--cooldown-server-error=[]:COOLDOWN_SERVER_ERROR:_default' \
+'--cooldown-rate-limit=[]:COOLDOWN_RATE_LIMIT:_default' \
+'--cooldown-model-unavailable=[]:COOLDOWN_MODEL_UNAVAILABLE:_default' \
+'--cooldown-client-error=[]:COOLDOWN_CLIENT_ERROR:_default' \
+'--cooldown-auth-error=[]:COOLDOWN_AUTH_ERROR:_default' \
+'--clear-description[]' \
+'--clear-chat-reasoning-off-format[]' \
+'--default-tier[]' \
+'(--default-tier)--forced-tier[]' \
+'(--service-tier)--clear-service-tier[]' \
+'--clear-cooldown[]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':model:_default' \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+'--force[]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':model:_default' \
+&& ret=0
+;;
+(rename)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':old_model:_default' \
+':new_model:_default' \
+&& ret=0
+;;
+(provider)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_llm-proxy__subcmd__model__subcmd__provider_commands" \
+"*::: :->provider" \
+&& ret=0
+
+    case $state in
+    (provider)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-model-provider-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'--type=[]:PROVIDER_TYPE:_default' \
+'--provider=[]:PROVIDER:_default' \
+'--upstream-model=[]:UPSTREAM_MODEL:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':model:_default' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'--type=[]:PROVIDER_TYPE:_default' \
+'--provider=[]:PROVIDER:_default' \
+'--upstream-model=[]:UPSTREAM_MODEL:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':model:_default' \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+'--type=[]:PROVIDER_TYPE:_default' \
+'--provider=[]:PROVIDER:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':model:_default' \
+&& ret=0
+;;
+(move)
+_arguments "${_arguments_options[@]}" : \
+'--type=[]:PROVIDER_TYPE:_default' \
+'--provider=[]:PROVIDER:_default' \
+'--to=[]:TO:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':model:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__model__subcmd__provider__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-model-provider-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(move)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__model__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-model-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rename)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(provider)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__model__subcmd__help__subcmd__provider_commands" \
+"*::: :->provider" \
+&& ret=0
+
+    case $state in
+    (provider)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-model-help-provider-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(move)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(serve)
+_arguments "${_arguments_options[@]}" : \
+'--foreground[]' \
+'--frontend[]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(shutdown)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(restart)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(doc)
+_arguments "${_arguments_options[@]}" : \
+'--section=[]:SECTION:_default' \
+'--list[]' \
+'--raw[]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(version)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(completion)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':shell:(bash zsh fish power-shell elvish)' \
+&& ret=0
+;;
+(launch)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_llm-proxy__subcmd__launch_commands" \
+"*::: :->launch" \
+&& ret=0
+
+    case $state in
+    (launch)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-launch-command-$line[1]:"
+        case $line[1] in
+            (codex)
+_arguments "${_arguments_options[@]}" : \
+'--codex-config-dir=[Target config directory (= CODEX_HOME; writes config.toml and model catalog; default\: \$CODEX_HOME or ~/.codex)]:CODEX_CONFIG_DIR:_files' \
+'--codex-home=[]::CODEX_HOME:_default' \
+'*--models=[Include only specified models in client configuration (comma-separated or repeated)]:MODELS:_default' \
+'*--exclude-models=[Exclude specified models from client configuration (comma-separated or repeated)]:EXCLUDE_MODELS:_default' \
+'--dry-run[]' \
+'--check[Check if the local model list matches the remote server'\''s current model list]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(codex-desktop)
+_arguments "${_arguments_options[@]}" : \
+'--codex-config-dir=[Target config directory (= CODEX_HOME; shared with codex; default\: \$CODEX_HOME or ~/.codex)]:CODEX_CONFIG_DIR:_files' \
+'--codex-home=[]::CODEX_HOME:_default' \
+'*--models=[Include only specified models in client configuration (comma-separated or repeated)]:MODELS:_default' \
+'*--exclude-models=[Exclude specified models from client configuration (comma-separated or repeated)]:EXCLUDE_MODELS:_default' \
+'--dry-run[]' \
+'--check[Check if the local model list matches the remote server'\''s current model list]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(pi)
+_arguments "${_arguments_options[@]}" : \
+'--pi-config-dir=[Target config directory (= PI_CODING_AGENT_DIR; writes models.json; default\: \$PI_CODING_AGENT_DIR or ~/.pi/agent)]:PI_CONFIG_DIR:_files' \
+'--pi-home=[]::PI_HOME:_default' \
+'*--models=[Include only specified models in client configuration (comma-separated or repeated)]:MODELS:_default' \
+'*--exclude-models=[Exclude specified models from client configuration (comma-separated or repeated)]:EXCLUDE_MODELS:_default' \
+'--dry-run[]' \
+'--check[Check if the local model list matches the remote server'\''s current model list]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(qwen-code)
+_arguments "${_arguments_options[@]}" : \
+'--qwen-config-dir=[Target config directory (= QWEN_HOME; writes settings.json; default\: \$QWEN_HOME or ~/.qwen)]:QWEN_CONFIG_DIR:_files' \
+'--qwen-home=[]::QWEN_HOME:_default' \
+'*--models=[Include only specified models in client configuration (comma-separated or repeated)]:MODELS:_default' \
+'*--exclude-models=[Exclude specified models from client configuration (comma-separated or repeated)]:EXCLUDE_MODELS:_default' \
+'--dry-run[]' \
+'--check[Check if the local model list matches the remote server'\''s current model list]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(claude-code)
+_arguments "${_arguments_options[@]}" : \
+'--claude-config-dir=[Target config directory (= CLAUDE_CONFIG_DIR; writes settings.json; default\: \$CLAUDE_CONFIG_DIR or ~/.claude)]:CLAUDE_CONFIG_DIR:_files' \
+'--claude-home=[]::CLAUDE_HOME:_default' \
+'*--models=[Include only specified models in client configuration (comma-separated or repeated)]:MODELS:_default' \
+'*--exclude-models=[Exclude specified models from client configuration (comma-separated or repeated)]:EXCLUDE_MODELS:_default' \
+'--dry-run[]' \
+'--check[Check if the local model list matches the remote server'\''s current model list]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(claude-desktop)
+_arguments "${_arguments_options[@]}" : \
+'--claude-desktop-config-dir=[Target config directory (custom write target, best-effort; no native env, see platform paths; writes claude_desktop_config.json)]:CLAUDE_DESKTOP_CONFIG_DIR:_files' \
+'--claude-desktop-home=[]::CLAUDE_DESKTOP_HOME:_default' \
+'--profile=[]:PROFILE:_default' \
+'*--models=[Include only specified models in client configuration (comma-separated or repeated)]:MODELS:_default' \
+'*--exclude-models=[Exclude specified models from client configuration (comma-separated or repeated)]:EXCLUDE_MODELS:_default' \
+'--dry-run[]' \
+'--check[Check if the local model list matches the remote server'\''s current model list]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(opencode)
+_arguments "${_arguments_options[@]}" : \
+'--opencode-config-dir=[Target config directory (= OPENCODE_CONFIG_DIR; writes opencode.json; default\: \$OPENCODE_CONFIG_DIR or XDG config)]:OPENCODE_CONFIG_DIR:_files' \
+'--opencode-home=[]::OPENCODE_HOME:_default' \
+'*--models=[Include only specified models in client configuration (comma-separated or repeated)]:MODELS:_default' \
+'*--exclude-models=[Exclude specified models from client configuration (comma-separated or repeated)]:EXCLUDE_MODELS:_default' \
+'--dry-run[]' \
+'--check[Check if the local model list matches the remote server'\''s current model list]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__launch__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-launch-help-command-$line[1]:"
+        case $line[1] in
+            (codex)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(codex-desktop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pi)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(qwen-code)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(claude-code)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(claude-desktop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(opencode)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(usage)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Time period (e.g., today, 7d, 2026-03-12\:2026-03-20)]:PERIOD:_default' \
+'--period=[Time period (e.g., today, 7d, 2026-03-12\:2026-03-20)]:PERIOD:_default' \
+'--provider=[Provider filter]:PROVIDER:_default' \
+'--model=[Model filter]:MODEL:_default' \
+'--endpoint=[Endpoint filter (openai_chat, openai_responses, anthropic)]:ENDPOINT:(openai-chat openai-responses anthropic)' \
+'--view=[View mode]:VIEW:(by-model by-provider by-endpoint by-hour by-day)' \
+'--limit=[Maximum number of records to return (default 1000, max 10000)]:LIMIT:_default' \
+'--offset=[Number of records to skip (for pagination)]:OFFSET:_default' \
+'--json[JSON output format]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(quota)
+_arguments "${_arguments_options[@]}" : \
+'--refresh[Force refresh OAuth tokens before querying (default\: auto-refresh only if expired)]' \
+'--json[Output in JSON format]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(token)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_llm-proxy__subcmd__token_commands" \
+"*::: :->token" \
+&& ret=0
+
+    case $state in
+    (token)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-token-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+'--name=[Human-readable token name (unique)]:NAME:_default' \
+'*--models=[Allowed models (comma-separated). Omit to allow all models]:MODELS:_default' \
+'*--window=[Quota window duration, repeatable in pairs with --quota-mode/--quota-limit (e.g. --window 5h --quota-mode requests --quota-limit 60)]:WINDOW:_default' \
+'*--quota-mode=[Quota mode aligned with each --window\: tokens | requests]:QUOTA_MODE:_default' \
+'*--quota-limit=[Quota limit aligned with each --window (positive integer)]:QUOTA_LIMIT:_default' \
+'--expires=[Deprecated and ignored\: tokens are revoked via \`token ban\`, not expiry]:EXPIRES:_default' \
+'*--group-models=[\: When set, the --window/--quota-mode/--quota-limit flags define a model quota group for these models (comma-separated) instead of flat token-wide windows. Creates a model_quota_groups entry]:GROUP_MODELS:_default' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'--json[Output raw JSON instead of table format]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(usage)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':key -- Token key or name:_default' \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':key -- Token key or name:_default' \
+&& ret=0
+;;
+(reset-usage)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':key -- Token key or name:_default' \
+&& ret=0
+;;
+(rename)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':key -- Token key or name:_default' \
+':new_name -- New token name:_default' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'(--unrestricted --deny-all)*--models=[Replace the allow-list with these models (comma-separated)]:MODELS:_default' \
+'(--deny-all)--unrestricted[Allow every model (clears the allow-list)]' \
+'--deny-all[Deny every model (empty allow-list with restrictions enabled)]' \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':key -- Token key or name:_default' \
+&& ret=0
+;;
+(migrate)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__token__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-token-help-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(usage)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reset-usage)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rename)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(migrate)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(complete-candidates)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[Load and statically validate the configuration, print desensitized diagnostics and runtime preflight checks, then exit — no listeners, state writes, or network. Equivalent to \`serve --dry-run\`]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':kind -- candidates type\: provider | model:(provider model)' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-help-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(cooldown)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__help__subcmd__cooldown_commands" \
+"*::: :->cooldown" \
+&& ret=0
+
+    case $state in
+    (cooldown)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-help-cooldown-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(connect)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(provider)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__help__subcmd__provider_commands" \
+"*::: :->provider" \
+&& ret=0
+
+    case $state in
+    (provider)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-help-provider-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reselect)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(login)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(copy)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reset-usage)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(logout)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(relogin)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(refresh)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(fallback)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__help__subcmd__provider__subcmd__fallback_commands" \
+"*::: :->fallback" \
+&& ret=0
+
+    case $state in
+    (fallback)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-help-provider-fallback-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(model)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__help__subcmd__model_commands" \
+"*::: :->model" \
+&& ret=0
+
+    case $state in
+    (model)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-help-model-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rename)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(provider)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__help__subcmd__model__subcmd__provider_commands" \
+"*::: :->provider" \
+&& ret=0
+
+    case $state in
+    (provider)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-help-model-provider-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(move)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(serve)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(shutdown)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(restart)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(doc)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(version)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(completion)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(launch)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__help__subcmd__launch_commands" \
+"*::: :->launch" \
+&& ret=0
+
+    case $state in
+    (launch)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-help-launch-command-$line[1]:"
+        case $line[1] in
+            (codex)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(codex-desktop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pi)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(qwen-code)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(claude-code)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(claude-desktop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(opencode)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(usage)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(quota)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(token)
+_arguments "${_arguments_options[@]}" : \
+":: :_llm-proxy__subcmd__help__subcmd__token_commands" \
+"*::: :->token" \
+&& ret=0
+
+    case $state in
+    (token)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:llm-proxy-help-token-command-$line[1]:"
+        case $line[1] in
+            (create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(usage)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reset-usage)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rename)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(migrate)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(complete-candidates)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_llm-proxy_commands] )) ||
+_llm-proxy_commands() {
+    local commands; commands=(
+'init:' \
+'status:' \
+'cooldown:' \
+'connect:' \
+'provider:' \
+'model:' \
+'serve:' \
+'shutdown:' \
+'restart:' \
+'doc:' \
+'version:' \
+'completion:' \
+'launch:Generate client configuration files for supported AI coding clients' \
+'usage:Token usage statistics' \
+'quota:Subscription quota for OAuth providers' \
+'token:Manage API tokens for access control & quota' \
+'complete-candidates:内部命令：输出补全候选（隐藏，供 shell 补全脚本调用）' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__complete-candidates_commands] )) ||
+_llm-proxy__subcmd__complete-candidates_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy complete-candidates commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__completion_commands] )) ||
+_llm-proxy__subcmd__completion_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy completion commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__connect_commands] )) ||
+_llm-proxy__subcmd__connect_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy connect commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__cooldown_commands] )) ||
+_llm-proxy__subcmd__cooldown_commands() {
+    local commands; commands=(
+'list:' \
+'set:' \
+'clear:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy cooldown commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__cooldown__subcmd__clear_commands] )) ||
+_llm-proxy__subcmd__cooldown__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy cooldown clear commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__cooldown__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__cooldown__subcmd__help_commands() {
+    local commands; commands=(
+'list:' \
+'set:' \
+'clear:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy cooldown help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__cooldown__subcmd__help__subcmd__clear_commands] )) ||
+_llm-proxy__subcmd__cooldown__subcmd__help__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy cooldown help clear commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__cooldown__subcmd__help__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__cooldown__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy cooldown help help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__cooldown__subcmd__help__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__cooldown__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy cooldown help list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__cooldown__subcmd__help__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__cooldown__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy cooldown help set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__cooldown__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__cooldown__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy cooldown list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__cooldown__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__cooldown__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy cooldown set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__doc_commands] )) ||
+_llm-proxy__subcmd__doc_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy doc commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__help_commands() {
+    local commands; commands=(
+'init:' \
+'status:' \
+'cooldown:' \
+'connect:' \
+'provider:' \
+'model:' \
+'serve:' \
+'shutdown:' \
+'restart:' \
+'doc:' \
+'version:' \
+'completion:' \
+'launch:Generate client configuration files for supported AI coding clients' \
+'usage:Token usage statistics' \
+'quota:Subscription quota for OAuth providers' \
+'token:Manage API tokens for access control & quota' \
+'complete-candidates:内部命令：输出补全候选（隐藏，供 shell 补全脚本调用）' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__complete-candidates_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__complete-candidates_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help complete-candidates commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__completion_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__completion_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help completion commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__connect_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__connect_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help connect commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__cooldown_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__cooldown_commands() {
+    local commands; commands=(
+'list:' \
+'set:' \
+'clear:' \
+    )
+    _describe -t commands 'llm-proxy help cooldown commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__cooldown__subcmd__clear_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__cooldown__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help cooldown clear commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__cooldown__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__cooldown__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help cooldown list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__cooldown__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__cooldown__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help cooldown set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__doc_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__doc_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help doc commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__init_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help init commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__launch_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__launch_commands() {
+    local commands; commands=(
+'codex:' \
+'codex-desktop:' \
+'pi:' \
+'qwen-code:' \
+'claude-code:' \
+'claude-desktop:' \
+'opencode:Generate OpenCode provider configuration (JSON/JSONC)' \
+    )
+    _describe -t commands 'llm-proxy help launch commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__launch__subcmd__claude-code_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__launch__subcmd__claude-code_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help launch claude-code commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__launch__subcmd__claude-desktop_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__launch__subcmd__claude-desktop_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help launch claude-desktop commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__launch__subcmd__codex_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__launch__subcmd__codex_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help launch codex commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__launch__subcmd__codex-desktop_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__launch__subcmd__codex-desktop_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help launch codex-desktop commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__launch__subcmd__opencode_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__launch__subcmd__opencode_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help launch opencode commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__launch__subcmd__pi_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__launch__subcmd__pi_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help launch pi commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__launch__subcmd__qwen-code_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__launch__subcmd__qwen-code_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help launch qwen-code commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model_commands() {
+    local commands; commands=(
+'list:' \
+'info:' \
+'add:' \
+'set:' \
+'remove:' \
+'rename:' \
+'provider:' \
+    )
+    _describe -t commands 'llm-proxy help model commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__info_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model info commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__provider_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__provider_commands() {
+    local commands; commands=(
+'add:' \
+'set:' \
+'remove:' \
+'move:' \
+    )
+    _describe -t commands 'llm-proxy help model provider commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__provider__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__provider__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model provider add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__provider__subcmd__move_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__provider__subcmd__move_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model provider move commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__provider__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__provider__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model provider remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__provider__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__provider__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model provider set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__rename_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__rename_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model rename commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__model__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__model__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help model set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider_commands() {
+    local commands; commands=(
+'list:List configured providers (table format by default)' \
+'add:' \
+'reselect:Reconcile catalog model bindings for an existing catalog-backed provider' \
+'info:' \
+'login:' \
+'copy:' \
+'remove:' \
+'reset-usage:' \
+'logout:' \
+'relogin:' \
+'refresh:' \
+'fallback:Batch fallback configuration (insert provider as fallback for another)' \
+    )
+    _describe -t commands 'llm-proxy help provider commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__copy_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__copy_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider copy commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__fallback_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__fallback_commands() {
+    local commands; commands=(
+'add:Insert a provider as fallback after a target provider for specified (model, endpoint) combinations' \
+    )
+    _describe -t commands 'llm-proxy help provider fallback commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__fallback__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__fallback__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider fallback add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__info_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider info commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__login_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__login_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider login commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__logout_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__logout_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider logout commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__refresh_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__refresh_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider refresh commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__relogin_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__relogin_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider relogin commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__reselect_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__reselect_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider reselect commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__provider__subcmd__reset-usage_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__provider__subcmd__reset-usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help provider reset-usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__quota_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__quota_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help quota commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__restart_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__restart_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help restart commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__serve_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__serve_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help serve commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__shutdown_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__shutdown_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help shutdown commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__status_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help status commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__token_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__token_commands() {
+    local commands; commands=(
+'create:Create a token, generate a key, write to tokens.toml' \
+'list:List all tokens with a usage summary' \
+'usage:Show detailed window usage for one token (by key or name)' \
+'delete:Delete a token (from tokens.toml + clear its quota state)' \
+'reset-usage:Reset a token'\''s usage counters' \
+'rename:Rename a token (updates tokens.toml and synchronizes cooldown entries)' \
+'set:Update an existing token'\''s model allow-list or restriction' \
+'migrate:\: Migrate tokens.toml to tokens/ directory (one file per token)' \
+    )
+    _describe -t commands 'llm-proxy help token commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__token__subcmd__create_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__token__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help token create commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__token__subcmd__delete_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__token__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help token delete commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__token__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__token__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help token list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__token__subcmd__migrate_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__token__subcmd__migrate_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help token migrate commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__token__subcmd__rename_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__token__subcmd__rename_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help token rename commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__token__subcmd__reset-usage_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__token__subcmd__reset-usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help token reset-usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__token__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__token__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help token set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__token__subcmd__usage_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__token__subcmd__usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help token usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__usage_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__help__subcmd__version_commands] )) ||
+_llm-proxy__subcmd__help__subcmd__version_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy help version commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__init_commands] )) ||
+_llm-proxy__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy init commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch_commands] )) ||
+_llm-proxy__subcmd__launch_commands() {
+    local commands; commands=(
+'codex:' \
+'codex-desktop:' \
+'pi:' \
+'qwen-code:' \
+'claude-code:' \
+'claude-desktop:' \
+'opencode:Generate OpenCode provider configuration (JSON/JSONC)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy launch commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__claude-code_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__claude-code_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch claude-code commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__claude-desktop_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__claude-desktop_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch claude-desktop commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__codex_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__codex_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch codex commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__codex-desktop_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__codex-desktop_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch codex-desktop commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__help_commands() {
+    local commands; commands=(
+'codex:' \
+'codex-desktop:' \
+'pi:' \
+'qwen-code:' \
+'claude-code:' \
+'claude-desktop:' \
+'opencode:Generate OpenCode provider configuration (JSON/JSONC)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy launch help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__help__subcmd__claude-code_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__help__subcmd__claude-code_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch help claude-code commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__help__subcmd__claude-desktop_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__help__subcmd__claude-desktop_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch help claude-desktop commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__help__subcmd__codex_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__help__subcmd__codex_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch help codex commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__help__subcmd__codex-desktop_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__help__subcmd__codex-desktop_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch help codex-desktop commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__help__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch help help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__help__subcmd__opencode_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__help__subcmd__opencode_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch help opencode commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__help__subcmd__pi_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__help__subcmd__pi_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch help pi commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__help__subcmd__qwen-code_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__help__subcmd__qwen-code_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch help qwen-code commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__opencode_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__opencode_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch opencode commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__pi_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__pi_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch pi commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__launch__subcmd__qwen-code_commands] )) ||
+_llm-proxy__subcmd__launch__subcmd__qwen-code_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy launch qwen-code commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model_commands] )) ||
+_llm-proxy__subcmd__model_commands() {
+    local commands; commands=(
+'list:' \
+'info:' \
+'add:' \
+'set:' \
+'remove:' \
+'rename:' \
+'provider:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy model commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help_commands() {
+    local commands; commands=(
+'list:' \
+'info:' \
+'add:' \
+'set:' \
+'remove:' \
+'rename:' \
+'provider:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy model help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__info_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help info commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__provider_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__provider_commands() {
+    local commands; commands=(
+'add:' \
+'set:' \
+'remove:' \
+'move:' \
+    )
+    _describe -t commands 'llm-proxy model help provider commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__provider__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__provider__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help provider add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__provider__subcmd__move_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__provider__subcmd__move_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help provider move commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__provider__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__provider__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help provider remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__provider__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__provider__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help provider set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__rename_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__rename_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help rename commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__help__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model help set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__info_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model info commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider_commands() {
+    local commands; commands=(
+'add:' \
+'set:' \
+'remove:' \
+'move:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy model provider commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model provider add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__help_commands() {
+    local commands; commands=(
+'add:' \
+'set:' \
+'remove:' \
+'move:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy model provider help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model provider help add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model provider help help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__move_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__move_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model provider help move commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model provider help remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model provider help set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__move_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__move_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model provider move commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model provider remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__provider__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__provider__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model provider set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__rename_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__rename_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model rename commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__model__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__model__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy model set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider_commands] )) ||
+_llm-proxy__subcmd__provider_commands() {
+    local commands; commands=(
+'list:List configured providers (table format by default)' \
+'add:' \
+'reselect:Reconcile catalog model bindings for an existing catalog-backed provider' \
+'info:' \
+'login:' \
+'copy:' \
+'remove:' \
+'reset-usage:' \
+'logout:' \
+'relogin:' \
+'refresh:' \
+'fallback:Batch fallback configuration (insert provider as fallback for another)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy provider commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__copy_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__copy_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider copy commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__fallback_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__fallback_commands() {
+    local commands; commands=(
+'add:Insert a provider as fallback after a target provider for specified (model, endpoint) combinations' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy provider fallback commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__fallback__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__fallback__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider fallback add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__fallback__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__fallback__subcmd__help_commands() {
+    local commands; commands=(
+'add:Insert a provider as fallback after a target provider for specified (model, endpoint) combinations' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy provider fallback help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__fallback__subcmd__help__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__fallback__subcmd__help__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider fallback help add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__fallback__subcmd__help__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__fallback__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider fallback help help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help_commands() {
+    local commands; commands=(
+'list:List configured providers (table format by default)' \
+'add:' \
+'reselect:Reconcile catalog model bindings for an existing catalog-backed provider' \
+'info:' \
+'login:' \
+'copy:' \
+'remove:' \
+'reset-usage:' \
+'logout:' \
+'relogin:' \
+'refresh:' \
+'fallback:Batch fallback configuration (insert provider as fallback for another)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy provider help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__copy_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__copy_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help copy commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__fallback_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__fallback_commands() {
+    local commands; commands=(
+'add:Insert a provider as fallback after a target provider for specified (model, endpoint) combinations' \
+    )
+    _describe -t commands 'llm-proxy provider help fallback commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__fallback__subcmd__add_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__fallback__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help fallback add commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__info_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help info commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__login_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__login_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help login commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__logout_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__logout_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help logout commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__refresh_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__refresh_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help refresh commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__relogin_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__relogin_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help relogin commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__reselect_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__reselect_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help reselect commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__help__subcmd__reset-usage_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__help__subcmd__reset-usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider help reset-usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__info_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider info commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__login_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__login_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider login commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__logout_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__logout_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider logout commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__refresh_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__refresh_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider refresh commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__relogin_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__relogin_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider relogin commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__remove_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider remove commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__reselect_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__reselect_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider reselect commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__provider__subcmd__reset-usage_commands] )) ||
+_llm-proxy__subcmd__provider__subcmd__reset-usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy provider reset-usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__quota_commands] )) ||
+_llm-proxy__subcmd__quota_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy quota commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__restart_commands] )) ||
+_llm-proxy__subcmd__restart_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy restart commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__serve_commands] )) ||
+_llm-proxy__subcmd__serve_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy serve commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__shutdown_commands] )) ||
+_llm-proxy__subcmd__shutdown_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy shutdown commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__status_commands] )) ||
+_llm-proxy__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy status commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token_commands] )) ||
+_llm-proxy__subcmd__token_commands() {
+    local commands; commands=(
+'create:Create a token, generate a key, write to tokens.toml' \
+'list:List all tokens with a usage summary' \
+'usage:Show detailed window usage for one token (by key or name)' \
+'delete:Delete a token (from tokens.toml + clear its quota state)' \
+'reset-usage:Reset a token'\''s usage counters' \
+'rename:Rename a token (updates tokens.toml and synchronizes cooldown entries)' \
+'set:Update an existing token'\''s model allow-list or restriction' \
+'migrate:\: Migrate tokens.toml to tokens/ directory (one file per token)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy token commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__create_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token create commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__delete_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token delete commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help_commands() {
+    local commands; commands=(
+'create:Create a token, generate a key, write to tokens.toml' \
+'list:List all tokens with a usage summary' \
+'usage:Show detailed window usage for one token (by key or name)' \
+'delete:Delete a token (from tokens.toml + clear its quota state)' \
+'reset-usage:Reset a token'\''s usage counters' \
+'rename:Rename a token (updates tokens.toml and synchronizes cooldown entries)' \
+'set:Update an existing token'\''s model allow-list or restriction' \
+'migrate:\: Migrate tokens.toml to tokens/ directory (one file per token)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'llm-proxy token help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help__subcmd__create_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token help create commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help__subcmd__delete_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token help delete commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help__subcmd__help_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token help help commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token help list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help__subcmd__migrate_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help__subcmd__migrate_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token help migrate commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help__subcmd__rename_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help__subcmd__rename_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token help rename commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help__subcmd__reset-usage_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help__subcmd__reset-usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token help reset-usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token help set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__help__subcmd__usage_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__help__subcmd__usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token help usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__list_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token list commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__migrate_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__migrate_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token migrate commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__rename_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__rename_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token rename commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__reset-usage_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__reset-usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token reset-usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__set_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token set commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__token__subcmd__usage_commands] )) ||
+_llm-proxy__subcmd__token__subcmd__usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy token usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__usage_commands] )) ||
+_llm-proxy__subcmd__usage_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy usage commands' commands "$@"
+}
+(( $+functions[_llm-proxy__subcmd__version_commands] )) ||
+_llm-proxy__subcmd__version_commands() {
+    local commands; commands=()
+    _describe -t commands 'llm-proxy version commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_llm-proxy" ]; then
+    _llm-proxy "$@"
+else
+    compdef _llm-proxy llm-proxy
+fi
+# --- llm-proxy: dynamic --provider/--model candidates (from config.toml) ---
+_llm-proxy-dynamic() {
+    local prev="${words[CURRENT-1]}"
+    case "${prev}" in
+        --provider)
+            local -a candidates
+            candidates=($(llm-proxy complete-candidates provider 2>/dev/null))
+            _describe 'provider' candidates
+            ;;
+        --model)
+            local -a candidates
+            candidates=($(llm-proxy complete-candidates model 2>/dev/null))
+            _describe 'model' candidates
+            ;;
+        *)
+            _llm-proxy "$@"
+            ;;
+    esac
+}
+compdef _llm-proxy-dynamic llm-proxy

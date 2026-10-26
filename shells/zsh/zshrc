@@ -22,3 +22,6 @@ command_not_found_handler() {
 }
 
 [[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
+
+# Go TLS 证书路径（OpenCode Go 等静态编译二进制需要）
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

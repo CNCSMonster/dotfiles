@@ -140,3 +140,6 @@ fi
 source "$SH_COMMON_DIR/fn.sh"
 source "$SH_COMMON_DIR/alias.sh"
 source "$SH_COMMON_DIR/inter.sh"
+
+# Go TLS 证书路径（OpenCode Go 等静态编译二进制需要）
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

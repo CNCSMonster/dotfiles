@@ -132,6 +132,7 @@ export EDITOR='hx'
 # 为什么拆分：
 #   - activate 依赖 prompt 触发，非交互式 shell 没有 prompt，不会立即生效
 #   - hook-env 能立即将 mise shims 注入 PATH，适合 CI、脚本等场景
-if command -v mise &>/dev/null; then
+# 仅在非交互式 shell 中执行 hook-env（交互式 shell 由 inter.sh 的 mise activate 统一接管，避免双重执行）
+if [[ $- != *i* ]] && command -v mise &>/dev/null; then
     eval "$(mise hook-env -s $SH)" 2>/dev/null || true
 fi
