@@ -1,24 +1,17 @@
 % docker
 
-# 删除所有已停止的容器 ,<force>为-f时表示强制删除,<force>为空时会询问.
-docker container prune <force>
-$ force: printf '\n-f'
+# 删除所有已停止的容器
+docker container prune -f
 
-# 删除所有已经悬空的镜像，也就是那些不再能够被引用的镜像
-docker image prune
+# 删除所有虚悬镜像 (Dangling)
+docker image prune -f
 
-# 查看容器的日志
-docker container logs <name>
+# 查看实时日志 (最后 100 行并持续跟踪)
+docker logs -f --tail 100 <container>
 
-# 实例化 image，启用交互式终端在后台运行容器
-docker run -itd --name <container> <image>
-
-# 启用交互式终端让容器运行命令
-docker exec -it <container> <command>
-
-# 显示全部容器的ID
-docker ps -a
-
-# 重启已有的容器
+# 交互式选择容器并重启
 docker restart <existed-container>
-$ existed-container: docker container ls -a --format 'json' | jaq '.Names'
+$ existed-container: docker container ls -a --format 'json' | jaq -r '.Names'
+
+# 交互式进入容器终端
+docker exec -it <container> /bin/bash

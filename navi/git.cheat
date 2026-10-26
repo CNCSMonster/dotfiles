@@ -1,70 +1,16 @@
 % git
 
-# 追踪文件之树
-git ls-tree -r main --name-only | tree -Ca --fromfile
-
-# 清理缓存，以便重新建立忽略规则
-git rm -r --cached .
-
-# 深层墓场
-git reflog
-
-# 交互式清理未跟踪文件与忽略文件
+# 交互式清理未跟踪与忽略文件
 git clean -fxi
 
-# 历次提交的文件变化
-git log --stat
-
-# 指定diff工具来查看历次提交的详细变化情况
-git log <difftool> --stat -p -W <path>
-$ difftool: printf '\n--ext-diff'
-
-# 查看某次提交的内容
-git show <opt-name-only> <commit>
-$ opt-name-only: printf '\n--name-only'
-
-# 历史树
-git log --graph --oneline --decorate --all
-
-# 清除已失效的远程分支
-git remote prune origin
-
-# 拉取远程的所有tag
-git fetch --tags
-
-# 开辟一个新的工作树
+# 开启新工作树 (Worktree 并行开发)
 git worktree add <path> <branch>
 
-# 拉取项目的git子模块
-git submodule update --init
+# 清除已在远端删除的本地引用分支
+git remote prune origin
 
-# 添加子模块,
-git submodule add <submodule_repo_url> <submodule_dir>
-$ submodule_repo_url: printf '\nhttps://github.com/cncsmonster/dotfiles'
-$ submodule_dir: printf '\n./dotfiles'
+# 递归更新所有子模块
+git submodule update --init --recursive
 
-# 初始化子模块
-git submodule init
-
-# 更新子模块到在父仓库中注册的提交
-git submodule update
-
-# 初始化并更新子模块
-git submodule update --init <recursive_flag>
-$ recursive_flag: printf '\n--recursive'
-
-
-# 在子模块上执行命令（例如git pull）
-git submodule foreach git pull origin master
-
-# 检查子模块状态
-git submodule status
-
-# 反初始化子模块
-git submodule deinit <submodule_dir>
-
-# 同步子模块URL
-git submodule sync
-
-# 使用镜像仓库来进行git clone操作
-git clone https://gitclone.com/github.com/<user>/<repo>.git
+# 清理缓存以重新应用 .gitignore
+git rm -r --cached .

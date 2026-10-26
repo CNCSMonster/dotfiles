@@ -1,18 +1,10 @@
-% codex,openai-codex
+% codex
 
-# 交互式，跳过所有确认和沙箱
-codex --dangerously-bypass-approvals-and-sandbox
+# 启动安全自治会话 (免审批从不弹窗 -a never + 限制工作区可写 -s workspace-write)
+codex -a never -s workspace-write
 
-# 非交互执行指令，跳过确认和沙箱
-codex exec --dangerously-bypass-approvals-and-sandbox "<prompt>"
-$ prompt: echo ""
+# 恢复上一次会话 (免审批从不弹窗 -a never + 限制工作区可写 -s workspace-write)
+codex -a never -s workspace-write resume --last
 
-
-# 非交互 + JSON 输出
-codex exec --json --dangerously-bypass-approvals-and-sandbox "<prompt>"
-$ prompt: echo ""
-
-# 指定工作目录
-codex exec -C <dir> --dangerously-bypass-approvals-and-sandbox "<prompt>"
-$ dir: echo "."
-$ prompt: echo ""
+# 快速恢复上一次会话 (默认策略)
+codex resume --last
