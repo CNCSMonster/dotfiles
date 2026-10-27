@@ -1170,7 +1170,10 @@ class UvToolManager(CommandManager):
 
     def install_command(self, item: PlanItem) -> List[str]:
         package = item.strategy.fields["pkg"] if _selector(item) == "latest" else f"{item.strategy.fields['pkg']}=={_selector(item)}"
-        command = ["uv", "tool", "install", package]
+        # --force: we only install when check says not satisfied; a stale
+        # binary or broken link in ~/.local/bin is what we are reconciling,
+        # so overwrite instead of erroring.
+        command = ["uv", "tool", "install", "--force", package]
         if "python" in item.strategy.fields:
             command.extend(["--python", item.strategy.fields["python"]])
         for dependency in item.strategy.fields.get("with", []):
