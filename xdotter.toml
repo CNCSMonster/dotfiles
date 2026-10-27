@@ -23,5 +23,5 @@ helix = "helix"
 "zellij" = "~/.config/zellij"
 "fontconfig" = "~/.config/fontconfig"
 
-# pi 键位：Ctrl+V/Alt+V 图片粘贴（WezTerm 需配 DisableDefaultAssignment）
+# pi 键位：Ctrl+V/Alt+V 图片粘贴
 "pi/keybindings.json" = "~/.pi/agent/keybindings.json"
