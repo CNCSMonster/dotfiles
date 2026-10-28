@@ -14,6 +14,11 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **npm / pnpm 镜像配置与安装逻辑解耦**：新增仓内声明式 `npm/npmrc`（npmmirror + 超时/重试），
+  由 xdotter 部署到 `~/.npmrc`；`setup.sh` / `scripts/mise-install.sh` 只在**没有** `~/.npmrc`
+  且未显式设置 `NPM_CONFIG_USERCONFIG` 时注入该文件（严格不覆盖用户已有配置）；
+  `ci-disable-mirrors.sh` 注释 `registry=` 即回退官方源，`setup.sh` 的「仅镜像预处理」白名单
+  同步放行 `npm/npmrc`（在干净环境复现过 `npm:cf` 拉 `miniflare` 时 `registry.npmjs.org` 超时中断 `setup.sh`）
 - **apt 策略下沉到 tool-installer（Step 1）**：新增 `tool_installer/managers/apt_policy.py`，
   与 `scripts/lib/apt.sh` 同一套「有界 / 可见 / 可归因」策略，服务稳定期（自举期必须留 shell：
   python3 引导与 Layer 1 门禁跑在工具可用之前，无法依赖工具自己）
@@ -115,6 +120,17 @@ All notable changes to this project will be documented in this file.
   - 回归测试 112 例全绿，已重建 `vendor/tool-installer`
 
 ### Fixed
+- **Helix 全语言零高亮：Layer 2 只装了 runtime 的一半**：`install_helix_runtime` 原先下载源码归档
+  （`archive/refs/tags/<ver>`）并只 `cp` `runtime/{themes,queries,tutor}`——源码树里没有
+  `grammars/`（需 `hx --grammar fetch && hx --grammar build` 才生成），而 Layer 1 的
+  github-release 又只取 `bin`，于是 `~/.config/helix/runtime` 永远缺 `grammars/*.so`。
+  Helix 只在 `-vvv` 日志里打一行 `Skipping syntax config for '<lang>' because the parser's
+  shared library does not exist` 就静默降级；`hx --health <lang>` 仍报 ✓（只校验配置声明），
+  原自检又只看 `queries/` 非空就判 ✅，于是"装完没高亮"长期隐形（2026-10-28 现场复现）
+  - 改为复用 `manifest.toml` 里已 pin 的 release 资产（与 Layer 1 同一个 `tar.xz`，含 245 个
+    预编译语法库），候选链走 `github-mirror-urls.sh`（镜像在前、直连兜底），pin 了 sha256 时逐字节校验
+  - 整包落盘 `runtime/`；成败改按 `grammars/*.so|*.dylib` 计数 + `queries/` 非空判定，不达标 `return 1`
+  - 写 `.runtime-version` 实现幂等：同版本且语法库已就位时不再重复下载 16MB
 - **apt 安装不再静默挂死，失败可归因**：`setup.sh` 的 Layer 1 运行时依赖预检与 Layer 0 系统包
   安装原先用 `apt-get update -qq` 静默执行且无超时上限；宿主指向腾讯云内网源
   （`mirrors.tencentyun.com` → `169.254.0.3`）时在 TCP 黑洞上重试 4 分钟以上才失败，只留下

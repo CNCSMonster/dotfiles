@@ -11,6 +11,12 @@ fi
 
 export MISE_YES=1
 mise trust --silent "$REPO_DIR/mise/config.toml" 2>/dev/null || true
+
+# 无 ~/.npmrc 且无显式用户配置时，将仓内 npm/npmrc 注入环境供独立执行 mise install 使用
+if [ ! -f "$HOME/.npmrc" ] && [ -z "${NPM_CONFIG_USERCONFIG:-}" ] && [ -f "$REPO_DIR/npm/npmrc" ]; then
+  export NPM_CONFIG_USERCONFIG="$REPO_DIR/npm/npmrc"
+fi
+
 mise install
 
 # mise 以“版本目录存在”判定已安装：下载中断会留下空目录并被永久跳过，

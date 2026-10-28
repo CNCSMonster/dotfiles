@@ -12,7 +12,10 @@ cd "$ROOT"
 perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml
 # crates.io 直连，不走 rsproxy（海外访问国内镜像偶发 504，曾挂 CI）
 perl -pi -e 's/^replace-with = "rsproxy-sparse"/#replace-with = "rsproxy-sparse"  # disabled for CI/' langs/rust/cargo/config.toml
+# npm / pnpm 直连，不走 npmmirror
+perl -pi -e 's/^registry=/#registry=/' npm/npmrc
 
 grep -q '^#github_mirrors' manifest.toml
 grep -q '^#replace-with = "rsproxy-sparse"' langs/rust/cargo/config.toml
-echo "✅ CI 镜像已禁用：manifest.toml github_mirrors / cargo rsproxy replace-with"
+grep -q '^#registry=' npm/npmrc
+echo "✅ CI 镜像已禁用：manifest.toml github_mirrors / cargo rsproxy / npm registry"

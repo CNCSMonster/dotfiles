@@ -11,6 +11,35 @@ if [ -z "${GITHUB_MIRRORS+x}" ]; then
 fi
 
 # ── 2a: Helix runtime（需要先安装 helix）──
+# 只落 queries/themes 而缺 grammars/*.so 时，Helix 会静默退化成"所有语言零高亮"：
+# helix_core::syntax 打印 `Skipping syntax config for '<lang>' because the parser's
+# shared library does not exist`，而 `hx --health <lang>` 依然报 ✓（它只校验配置声明，
+# 不校验 .so 是否存在）。源码归档里根本没有 grammars（需 fetch+build 才有），
+# 因此这里直接取 Layer 1 同款 release 资产，整包落盘 runtime/，成败按语法库计数判定。
+_manifest_get() {
+    # _manifest_get <section> <key>：按字面段名取值（[helix.linux] 不会误中 [helix.linux.x86_64]）
+    awk -v sec="$1" -v key="$2" '
+        /^\[/ { in_sec = ($0 == "[" sec "]"); next }
+        in_sec && index($0, "=") > 0 {
+            eq = index($0, "=")
+            k = substr($0, 1, eq - 1); gsub(/[ \t]/, "", k)
+            if (k == key) {
+                v = substr($0, eq + 1)
+                gsub(/^[ \t]+|[ \t]+$/, "", v); gsub(/"/, "", v)
+                print v; exit
+            }
+        }
+    ' "${PROJECT_DIR}/manifest.toml"
+}
+
+_sha256_of() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    else
+        shasum -a 256 "$1" | awk '{print $1}'
+    fi
+}
+
 install_helix_runtime() {
     echo "=========================================="
     echo "Layer 2: 安装 Helix runtime..."
@@ -21,66 +50,111 @@ install_helix_runtime() {
         return 0
     fi
 
-    local hx_version
+    local os arch
+    case "$(uname -s)" in
+        Linux)  os="linux" ;;
+        Darwin) os="macos" ;;
+        *) echo "⚠️  未知系统 $(uname -s)，跳过 Helix runtime"; return 0 ;;
+    esac
+    case "$(uname -m)" in
+        x86_64|amd64)  arch="x86_64" ;;
+        aarch64|arm64) arch="aarch64" ;;
+        *) echo "⚠️  未知架构 $(uname -m)，跳过 Helix runtime"; return 0 ;;
+    esac
+
+    local hx_version hx_config_dir hx_runtime_dir
     hx_version=$(hx --version | head -1 | awk '{print $2}')
-    local hx_config_dir="${HOME}/.config/helix"
-    local hx_runtime_dir="${hx_config_dir}/runtime"
+    hx_config_dir="${HOME}/.config/helix"
+    hx_runtime_dir="${hx_config_dir}/runtime"
 
-    mkdir -p "${hx_runtime_dir}"
-
-    # 下载 themes 和 queries
-    local repo_url="https://github.com/helix-editor/helix"
-    local tmp_dir
-    tmp_dir=$(mktemp -d)
-
-    echo "下载 Helix runtime (themes/queries/tutor)..."
-    local download_ok=false
-
-    # Try gh API tarball first
-    local tarball_url=""
-    if command -v gh &>/dev/null; then
-        tarball_url=$(gh api "repos/helix-editor/helix/tarball/${hx_version}" \
-            --jq '.tarball_url' 2>/dev/null) || true
-    fi
-
-    if [[ -n "${tarball_url}" ]]; then
-        if curl -fsSL --retry 3 --retry-delay 5 --connect-timeout 30 --max-time 300 \
-            "${tarball_url}" | tar xz -C "${tmp_dir}" --strip-components=1 2>/dev/null; then
-            download_ok=true
-        fi
-    fi
-
-    # Fallback: try GitHub mirror then direct
-    if [ "${download_ok}" = false ]; then
-        local direct_url="${repo_url}/archive/refs/tags/${hx_version}.tar.gz"
-        for mirror in $GITHUB_MIRRORS; do
-            if curl -fsSL --retry 3 --retry-delay 5 --connect-timeout 30 --max-time 300 \
-                "${mirror}/${direct_url}" | tar xz -C "${tmp_dir}" --strip-components=1 2>/dev/null; then
-                download_ok=true
-                break
-            fi
-        done
-    fi
-
-    if [ "${download_ok}" = false ]; then
-        curl -fsSL --retry 3 --retry-delay 5 --connect-timeout 30 --max-time 300 \
-            "${repo_url}/archive/refs/tags/${hx_version}.tar.gz" | \
-            tar xz -C "${tmp_dir}" --strip-components=1 2>/dev/null || true
-    fi
-
-    # 复制 runtime 文件
-    cp -r "${tmp_dir}/runtime/themes" "${hx_runtime_dir}/" 2>/dev/null || true
-    cp -r "${tmp_dir}/runtime/queries" "${hx_runtime_dir}/" 2>/dev/null || true
-    cp -r "${tmp_dir}/runtime/tutor" "${hx_runtime_dir}/" 2>/dev/null || true
-    rm -rf "${tmp_dir}"
-
-    # 成败只能由落盘结果判定：上面每条下载/复制路径都吞掉了自己的错误，
-    # 曾经这里无条件打印 ✅，于是"三个源全挂、什么都没复制"也报安装完成。
-    if [ -n "$(ls -A "${hx_runtime_dir}/queries" 2>/dev/null)" ]; then
-        echo "✅ Helix runtime 安装完成"
+    # 幂等：同版本且语法库已就位就不再重复下载整包
+    if [ "$(cat "${hx_runtime_dir}/.runtime-version" 2>/dev/null)" = "${hx_version}" ] \
+        && [ -n "$(find "${hx_runtime_dir}/grammars" -maxdepth 1 -type f 2>/dev/null | head -1)" ]; then
+        echo "✅ Helix runtime 已是 ${hx_version}，跳过"
         return 0
     fi
-    echo "❌ Helix runtime 未安装（themes/queries/tutor 均未落盘，检查网络或镜像）"
+
+    # 资产名与校验值以 manifest.toml 为单一事实来源（与 Layer 1 装二进制用的是同一个资产）
+    if [ ! -f "${PROJECT_DIR}/manifest.toml" ]; then
+        echo "❌ 未找到 manifest.toml（${PROJECT_DIR}/manifest.toml），无法解析 Helix 资产"
+        return 1
+    fi
+
+    local repo tpl asset sha url
+    repo="$(_manifest_get "helix.${os}" repo)"
+    tpl="$(_manifest_get "helix.${os}.${arch}" asset)"
+    [ -n "${tpl}" ] || tpl="$(_manifest_get "helix.${os}" asset)"
+    sha="$(_manifest_get "helix.${os}.${arch}" sha256)"
+
+    if [ -z "${repo}" ] || [ -z "${tpl}" ]; then
+        echo "❌ manifest.toml 缺少 helix.${os} 的 repo/asset，无法安装 Helix runtime"
+        return 1
+    fi
+
+    asset="${tpl//\{version\}/${hx_version}}"
+    asset="${asset//\{arch\}/${arch}}"
+    url="https://github.com/${repo}/releases/download/${hx_version}/${asset}"
+
+    mkdir -p "${hx_runtime_dir}"
+    local tmp_dir archive downloaded=false
+    tmp_dir=$(mktemp -d)
+    archive="${tmp_dir}/${asset}"
+
+    echo "下载 Helix runtime 资产: ${asset}"
+    # 候选顺序由 github-mirror-urls.sh 决定（镜像在前、直连最后）
+    local candidate
+    while IFS= read -r candidate; do
+        [ -n "${candidate}" ] || continue
+        echo "  ← ${candidate}"
+        if ! curl -fsSL --retry 3 --retry-delay 5 --connect-timeout 30 --max-time 300 \
+            -o "${archive}" "${candidate}"; then
+            echo "  ⚠️  下载失败，尝试下一个源"
+            continue
+        fi
+        if [ -n "${sha}" ]; then
+            local actual
+            actual="$(_sha256_of "${archive}")"
+            if [ "${actual}" != "${sha}" ]; then
+                echo "  ❌ sha256 不符（期望 ${sha:0:12}…，实际 ${actual:0:12}…），尝试下一个源"
+                rm -f "${archive}"
+                continue
+            fi
+        else
+            echo "  ⚠️  manifest 未 pin 该平台 sha256，跳过校验"
+        fi
+        if tar xJf "${archive}" -C "${tmp_dir}"; then
+            downloaded=true
+            break
+        fi
+        echo "  ⚠️  解包失败，尝试下一个源"
+    done < <(GITHUB_MIRRORS="${GITHUB_MIRRORS}" "${SCRIPT_DIR}/github-mirror-urls.sh" "${url}" 2>/dev/null || echo "${url}")
+
+    local runtime_src=""
+    if [ "${downloaded}" = true ]; then
+        runtime_src="$(find "${tmp_dir}" -maxdepth 3 -type d -name runtime -print -quit 2>/dev/null)"
+    fi
+    if [ -z "${runtime_src}" ]; then
+        rm -rf "${tmp_dir}"
+        echo "❌ Helix runtime 未安装（所有下载源均失败，检查网络或镜像）"
+        return 1
+    fi
+
+    # 整个 runtime/ 落盘：themes / queries / tutor / grammars 一个都不能少
+    cp -R "${runtime_src}/." "${hx_runtime_dir}/"
+    rm -rf "${tmp_dir}"
+
+    # 成败只能由落盘结果判定。此前只校验 queries 目录非空，于是"queries 装上了、
+    # grammars 一个都没装"被判为 ✅ —— 这正是全语言零高亮的成因。
+    local so_count
+    so_count=$(find "${hx_runtime_dir}/grammars" -maxdepth 1 -type f \
+        \( -name '*.so' -o -name '*.dylib' \) 2>/dev/null | wc -l | tr -d ' ' || true)
+    if [ -n "$(ls -A "${hx_runtime_dir}/queries" 2>/dev/null)" ] && [ "${so_count}" -gt 0 ]; then
+        printf '%s\n' "${hx_version}" > "${hx_runtime_dir}/.runtime-version"
+        echo "✅ Helix runtime 安装完成（${so_count} 个 tree-sitter 语法库）"
+        return 0
+    fi
+    echo "❌ Helix runtime 不完整（grammars: ${so_count} 个语法库）——所有语言会退化成零高亮"
+    echo "   修复参考: hx --grammar fetch && hx --grammar build（需要 cc 与 git）"
     return 1
 }
 

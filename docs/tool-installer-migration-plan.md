@@ -84,7 +84,8 @@
 **职责：** 依赖 Layer 1 已安装工具的后续配置（`scripts/layer2-post.sh`）
 
 **包含：**
-- Helix runtime（themes / queries / tutor，需 helix 已安装）
+- Helix runtime（themes / queries / tutor / **grammars**，需 helix 已安装；取自与二进制同版本的
+  release 资产——缺 `grammars/*.so` 时 Helix 会静默退化成“全语言零高亮”且 `hx --health` 仍报 ✓）
 - Yazi 插件（`ya pkg install`）
 - LLVM / clangd（`scripts/llvmup`，仅 Linux）
 - 字体缓存刷新（`fc-cache`）

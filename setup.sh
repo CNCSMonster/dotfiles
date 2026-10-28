@@ -101,13 +101,13 @@ _only_mirror_preprocessing() {
     local path
     for path in $(git -C "${SCRIPT_DIR}" diff --name-only -- . 2>/dev/null); do
         case "$path" in
-            manifest.toml|langs/rust/cargo/config.toml) ;;
+            manifest.toml|langs/rust/cargo/config.toml|npm/npmrc) ;;
             *) return 1 ;;
         esac
     done
-    ! git -C "${SCRIPT_DIR}" diff -U0 -- manifest.toml langs/rust/cargo/config.toml 2>/dev/null \
+    ! git -C "${SCRIPT_DIR}" diff -U0 -- manifest.toml langs/rust/cargo/config.toml npm/npmrc 2>/dev/null \
         | grep -E '^[+-][^+-]' \
-        | grep -qvE '^[+-][[:space:]]*#?(github_mirrors|replace-with = "rsproxy-sparse")'
+        | grep -qvE '^[+-][[:space:]]*#?(github_mirrors|replace-with = "rsproxy-sparse"|registry=)'
 }
 
 check_repo_pollution() {
@@ -296,6 +296,11 @@ do_install() {
 
     # 确保 tool-installer 是最新的（处理旧环境或跳过 bootstrap 的情况）
     _ensure_tool_installer || exit 1
+
+    # 无 ~/.npmrc 且无显式用户配置时，将仓内 npm/npmrc 注入环境供安装链使用
+    if [ ! -f "$HOME/.npmrc" ] && [ -z "${NPM_CONFIG_USERCONFIG:-}" ] && [ -f "${SCRIPT_DIR}/npm/npmrc" ]; then
+        export NPM_CONFIG_USERCONFIG="${SCRIPT_DIR}/npm/npmrc"
+    fi
 
     if ! command -v tool-installer &>/dev/null; then
         echo "❌ tool-installer 未安装"

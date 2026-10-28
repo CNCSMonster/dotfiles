@@ -1,0 +1,13 @@
+# ============================================================
+# NPM / PNPM 配置
+# ============================================================
+# 默认使用 npmmirror 国内镜像加速（与 cargo/pip 对齐）
+# CI 环境通过 scripts/ci-disable-mirrors.sh 切换回官方源
+# ============================================================
+registry=https://registry.npmmirror.com/
+
+# 网络超时与重试配置：避免大包下载中断
+fetch-retries=3
+fetch-retry-mintimeout=10000
+fetch-retry-maxtimeout=60000
+fetch-timeout=60000

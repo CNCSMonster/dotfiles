@@ -20,6 +20,7 @@ helix = "helix"
 "wezterm" = "~/.config/wezterm"
 "mise" = "~/.config/mise"
 "pip" = "~/.config/pip"
+"npm/npmrc" = "~/.npmrc"
 "zellij" = "~/.config/zellij"
 "fontconfig" = "~/.config/fontconfig"
 
