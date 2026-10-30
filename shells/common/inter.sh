@@ -183,6 +183,21 @@ y() {
 }
 
 # =============================================================================
+# AI Shell - 交互式兜底处理器初始化（必须在 mise activate 之前安装）
+# =============================================================================
+# 为什么放在 inter.sh：
+# 1. 符合分层规范：fn.sh 仅提供纯函数定义，不带启动副作用；inter.sh 负责交互式初始化
+# 2. 保护 mise 链式钩子：mise activate 会把启动时已存在的 command_not_found_handler
+#    重命名为 _command_not_found_handler 并在未命中时链式调用；先装好 AI 处理器才能被 mise 串接
+# 3. INTER_DONE 守卫避免重复 source 时反复覆盖处理器
+if command -v _ai_shell_install_handler &>/dev/null; then
+    _ai_shell_install_handler
+    if [ -f "$(_ai_shell_persist_file)" ]; then
+        _ai_shell_enable
+    fi
+fi
+
+# =============================================================================
 # mise - 交互式 shell 激活
 # =============================================================================
 # 职责：交互式 shell 中加载 [env] 环境变量并安装 prompt hook

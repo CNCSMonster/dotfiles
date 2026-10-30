@@ -11,15 +11,9 @@ source "$HOME/.config/shells/zsh/init.zsh"
 [[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
 
 
-# WSL: 命令找不到时自动补 .exe
-command_not_found_handler() {
-    if (( $+commands[${1}.exe] )); then
-        ${1}.exe "${@[2,-1]}"
-    else
-        echo "zsh: command not found: $1" >&2
-        return 127
-    fi
-}
+# WSL 命令找不到时自动补 .exe / AI Shell 兜底：
+# 处理器统一由 shells/common/fn.sh 的 _ai_shell_install_handler 安装，
+# 这里不要再定义 command_not_found_handler，否则会覆盖 AI 模式与跨会话持久设置。
 
 [[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
 

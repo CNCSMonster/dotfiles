@@ -1,21 +1,55 @@
 #!/usr/bin/env python3
 import sys, os, json, urllib.request, platform, unicodedata, shutil, re
 
+def _config_path():
+    xdg = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    path = os.path.join(xdg, "ai-shell", "config.json")
+    if os.path.exists(path):
+        return path
+    legacy = os.path.expanduser("~/.config/ai-shell/config.json")
+    return legacy if os.path.exists(legacy) else path
+
+
 def load_config():
-    config_file = os.path.expanduser("~/.config/ai-shell/config.json")
+    """优先级：环境变量 > 配置文件 > 内置默认值。
+
+    环境变量代表"本次调用"的显式覆盖（临时换 base/model、CI 与测试都用它），
+    配置文件代表长期偏好；早先的实现顺序颠倒，配置文件会把环境变量静默吃掉。
+    """
     cfg = {
-        "api_base": os.environ.get("DEEPSEEK_API_BASE", "https://api.deepseek.com/v1"),
-        "api_key": os.environ.get("DEEPSEEK_API_KEY", ""),
+        "api_base": "https://api.deepseek.com/v1",
+        "api_key": "",
         "model": "deepseek-chat",
         "timeout": 20
     }
+
+    config_file = _config_path()
     if os.path.exists(config_file):
         try:
             with open(config_file, "r", encoding="utf-8") as f:
-                cfg.update(json.load(f))
+                data = json.load(f)
+            if isinstance(data, dict):
+                cfg.update({k: v for k, v in data.items() if v not in (None, "")})
         except Exception:
             pass
+
+    for key, var in (
+        ("api_base", "DEEPSEEK_API_BASE"),
+        ("api_key", "DEEPSEEK_API_KEY"),
+        ("model", "DEEPSEEK_MODEL"),
+        ("timeout", "DEEPSEEK_TIMEOUT"),
+    ):
+        value = os.environ.get(var)
+        if value:
+            cfg[key] = value
+
+    try:
+        cfg["timeout"] = max(int(cfg["timeout"]), 1)
+    except (TypeError, ValueError):
+        cfg["timeout"] = 20
+
     return cfg
+
 
 def call_llm(messages, config):
     url = f"{config['api_base'].rstrip('/')}/chat/completions"
@@ -45,11 +79,15 @@ def detect_safe_context():
     2. 绝不泄露环境变量（杜绝提取环境变量中的 API Key/Token）
     3. 仅通过检测常见工程标记文件是否存在（os.path.isfile），识别项目语言与构建系统
     4. 仅获取脱敏工作目录名（basename），杜绝泄露完整机器路径
+
+    返回 (目录名, 生态标记, 基建标记)。生态标记才允许影响命令推导；
+    Dockerfile / compose / Makefile 这类是打包与任务编排文件，仓库"顺带提供"它们
+    并不代表项目语言，混进生态会导致任何提问都被解释成 docker/make 需求。
     """
     cwd = os.getcwd()
     dirname = os.path.basename(cwd)
 
-    markers = [
+    ecosystem_markers = [
         ("Cargo.toml", "Rust (cargo)"),
         ("go.mod", "Go"),
         ("pnpm-lock.yaml", "Node.js (pnpm)"),
@@ -61,24 +99,35 @@ def detect_safe_context():
         ("requirements.txt", "Python (pip)"),
         ("setup.py", "Python"),
         ("CMakeLists.txt", "C/C++ (CMake)"),
-        ("Makefile", "Makefile"),
-        ("Justfile", "Just task runner"),
-        ("justfile", "Just task runner"),
-        ("Dockerfile", "Docker"),
-        ("compose.yaml", "Docker Compose"),
-        ("docker-compose.yml", "Docker Compose"),
         ("pom.xml", "Java (Maven)"),
         ("build.gradle", "Java/Kotlin (Gradle)")
     ]
 
-    detected = []
-    for filename, desc in markers:
-        if os.path.isfile(filename):
-            detected.append(desc)
-        elif os.path.isfile(os.path.join("..", filename)) and len(detected) == 0:
-            detected.append(f"{desc} (父目录)")
+    infra_markers = [
+        ("Dockerfile", "Docker"),
+        ("compose.yaml", "Docker Compose"),
+        ("docker-compose.yml", "Docker Compose"),
+        ("Makefile", "Makefile"),
+        ("Justfile", "Just task runner"),
+        ("justfile", "Just task runner")
+    ]
 
-    return dirname, detected
+    ecosystem, infra = [], []
+    for filename, desc in ecosystem_markers:
+        if os.path.isfile(filename):
+            ecosystem.append(desc)
+    # 仅在当前目录没有任何生态标记时，才向上探测一层父目录
+    if not ecosystem:
+        for filename, desc in ecosystem_markers:
+            if os.path.isfile(os.path.join("..", filename)):
+                ecosystem.append(f"{desc} (父目录)")
+                break
+
+    for filename, desc in infra_markers:
+        if os.path.isfile(filename):
+            infra.append(desc)
+
+    return dirname, list(dict.fromkeys(ecosystem)), list(dict.fromkeys(infra))
 
 def parse_candidates(raw_text):
     text = raw_text.strip()
@@ -158,7 +207,7 @@ def render_box(candidates, title="💡 推荐命令", out=sys.stderr):
         desc_val = item.get("desc", "")
 
         cmd_w = str_display_width(cmd_str)
-        space_padding = " " * max(max_cmd_w - cmd_w + 3, 2) if (len(candidates) > 1 and desc_val) else ""
+        space_padding = " " * max(max_cmd_w - cmd_w + 3, 2) if desc_val else ""
         desc_str = f"{space_padding}# {desc_val}" if desc_val else ""
 
         plain_line = f"{prefix}{cmd_str}{desc_str}"
@@ -236,14 +285,27 @@ def main():
         tty_in = sys.stdin
 
     if not config["api_key"]:
-        tty_out.write("\033[31m❌ 未找到 DEEPSEEK_API_KEY，请在环境变量或 ~/.config/ai-shell/config.json 中配置。\033[0m\n")
+        tty_out.write(f"\033[31m❌ 未找到 DEEPSEEK_API_KEY，请在环境变量或 {_config_path()} 中配置。\033[0m\n")
         tty_out.flush()
         sys.exit(1)
 
     os_info = f"{platform.system()} ({platform.machine()})"
     shell_info = os.environ.get("SHELL", "zsh")
-    dirname, project_hints = detect_safe_context()
+    dirname, project_hints, infra_hints = detect_safe_context()
     proj_tag = f" ({project_hints[0]})" if project_hints else ""
+    eco_block = f"项目特征: {', '.join(project_hints)}" if project_hints else ""
+    if infra_hints:
+        eco_block = (eco_block + "\n" if eco_block else "") + (
+            f"仓库还包含: {', '.join(infra_hints)}"
+            "（打包/CI 类文件，不能据此判断项目语言或生态，仅在需求确实相关时参考）"
+        )
+    # 让模型知道这套 shell 自带的工具名，否则"ai shell 状态怎么查"会被猜到别的名字上
+    eco_block += (
+        "\n本机 shell 内置 ai-shell 命令：`ai-shell status` 查看当前会话状态，"
+        "`ai-shell on` / `ai-shell off` 开关当前会话，"
+        "`ai-shell persist on` / `ai-shell persist off` 控制是否跨会话自动开启。"
+        "用户询问该工具本身时直接使用这些命令，不要臆造其他命令名。"
+    )
 
     if fix_mode:
         err_text = ""
@@ -260,7 +322,7 @@ def main():
         title = f"💡 自动反思与修复建议{proj_tag}"
         system_prompt = f"""你是一个高级终端 CLI 与命令排错修复专家。
 当前环境: OS={os_info}, Shell={shell_info}, 项目={dirname}
-{f"项目特征: {', '.join(project_hints)}" if project_hints else ""}
+{eco_block}
 
 用户刚才执行的命令失败报错了：
 命令: `{failed_cmd}`
@@ -276,7 +338,7 @@ def main():
         title = f"💡 推荐 {scope} 命令{proj_tag}"
         system_prompt = f"""你是一个高级终端 CLI 与 {scope} 命令推导专家。
 环境: OS={os_info}, Shell={shell_info}, 项目={dirname}
-{f"项目特征: {', '.join(project_hints)}" if project_hints else ""}
+{eco_block}
 
 用户明确指定使用工具 【{scope}】 来完成需求。
 请将用户需求推导为 1 到 3 条以 `{scope}` 开头的标准、高质量命令。
@@ -290,16 +352,16 @@ def main():
         title = f"💡 推荐命令{proj_tag}"
         system_prompt = f"""你是一个高级终端 CLI 命令推导专家。
 环境信息: OS={os_info}, Shell={shell_info}, 项目目录名={dirname}
-{f"项目特征: {', '.join(project_hints)}" if project_hints else ""}
+{eco_block}
 
 请根据用户的自然语言需求，推导出 1 到 3 条最精准实用的命令。
-对于编译、运行、测试等操作，必须优先匹配当前检测到的项目生态（如 Rust 必须用 cargo，Go 用 go，Node.js 优先匹配包管理器）。
+对于编译、构建、运行、测试等与项目生态相关的需求，优先匹配已检测到的项目生态（如 Rust 用 cargo，Go 用 go，Node.js 优先匹配包管理器）；与项目无关的需求（例如查询某个命令或工具自身的状态）不要硬套项目生态。
+如果用户是在提问（含"能否/是否/怎么/为什么/有没有"等），优先给出能直接回答或验证该问题的一条命令，宁可只给 1 条，也不要用无关工具的命令凑数。
 必须输出一个纯 JSON 数组，数组项包含 "cmd" (纯命令，不含markdown反引号) 和 "desc" (5字以内简要区别说明)。严禁输出任何 Markdown 格式或解释性废话。
-示例:
+示例（只演示输出格式，内容与用户需求无关，禁止照搬）:
 [
-  {{"cmd": "cargo build", "desc": "调试构建"}},
-  {{"cmd": "cargo build --release", "desc": "优化发布构建"}},
-  {{"cmd": "cargo check", "desc": "语法检查"}}
+  {{"cmd": "<命令1>", "desc": "<说明1>"}},
+  {{"cmd": "<命令2>", "desc": "<说明2>"}}
 ]"""
 
     messages = [

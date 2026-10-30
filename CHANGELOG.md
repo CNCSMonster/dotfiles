@@ -14,6 +14,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **AI Shell 跨会话持久模式：`ai-shell persist on|off`**：会话内开关仍是 `ai-shell on/off`
+  （默认不跨会话，保持原设计）；新增独立命令把"每个新终端都自动开启"写成持久状态，
+  标记落在 `$XDG_CONFIG_HOME/ai-shell/persist`
+  - 交互式 shell 启动时由 `fn.sh` 静默恢复（不打印帮助文本，避免污染启动输出）；
+    `ai-shell status` 变成两行：当前会话状态 + 跨会话状态
+  - `persist off` 只取消"下次启动自动开启"，当前会话状态不变（要关当前会话仍用 `ai-shell off`），
+    避免"关持久顺手把当前会话也关掉"的歧义
 - **npm / pnpm 镜像配置与安装逻辑解耦**：新增仓内声明式 `npm/npmrc`（npmmirror + 超时/重试），
   由 xdotter 部署到 `~/.npmrc`；`setup.sh` / `scripts/mise-install.sh` 只在**没有** `~/.npmrc`
   且未显式设置 `NPM_CONFIG_USERCONFIG` 时注入该文件（严格不覆盖用户已有配置）；
@@ -120,6 +127,44 @@ All notable changes to this project will be documented in this file.
   - 回归测试 112 例全绿，已重建 `vendor/tool-installer`
 
 ### Fixed
+- **仓库里"顺带有个 Dockerfile"就被当成 Docker 项目**：`detect_safe_context()` 把 `Dockerfile` / compose /
+  `Makefile` 和语言标记混在同一张表里，返回的第一个命中项又被写进 prompt 的「项目特征」和候选框标题，
+  于是在 dotfiles 仓库里问一句"能查看当前 ai shell 状态是否启动了吗？"，得到的是
+  `docker ps` / `docker compose ps`（2026-10-30 现场复现：标题为「推荐命令 (Docker)」）
+  - 标记表拆成两类：**生态标记**（Cargo.toml / go.mod / package.json / pyproject.toml 等，可影响推导）
+    与**基建标记**（Dockerfile / compose / Makefile / Justfile，只作参考且明确禁止据此判断项目生态）
+  - 候选框标题里的 `(Docker)` 标签随之消失
+- **提问被强行套成"生成命令"，模型还不认识 ai-shell 自己的命令**：generic prompt 的示例是
+  `cargo build` 三连，会让无关提问也往"构建"上带；模型把 `ai-shell status` 猜成 `aish status`
+  - 示例改成纯格式占位并注明"禁止照搬"；新增一条：用户在提问（能否/是否/怎么/为什么）时，
+    优先给一条能直接回答或验证该问题的命令，宁可只给 1 条也不要用无关工具凑数
+  - 把本机 `ai-shell status/on/off/persist` 作为事实注入环境说明，避免模型臆造命令名
+- **单候选框里命令和说明粘连**：`space_padding` 只在候选数 > 1 时计算，单候选时 desc 直接贴在命令尾部
+  （`ai-shell status# 查看会话状态`）；现在只要有 desc 就保证至少留三空格
+- **ai-shell 的 command not found 处理器收敛为一份，修复持久开启后仍失效**：`~/.zshrc` 里曾单独
+  定义一份 WSL `.exe` 兜底处理器，它在 `init.zsh` 之后执行，会静默覆盖 AI 模式
+  （`source ~/.zshrc` 后模式失效即由此而来）；同时 `mise activate` 会把启动时已存在的处理器
+  重命名为 `_command_not_found_handler` 再链式调用，处理器装得比 mise 晚就会丢掉这条链
+  - 按架构规范将兜底处理器的安装移至 `inter.sh`（`mise activate` 之前），`fn.sh` 恢复为纯函数库；
+    `_ai_shell_install_handler` 增加 `_mise_cmd_not_found` 防护；
+    `ai-shell on/off` 严格只切开关变量与别名，彻底避免重载时覆盖 mise 链式钩子
+  - 修复 `_ai_shell_exec` 在用户取消/执行失败时退出码归零的问题，恢复为标准的 127 退出码
+  - bash 侧顺带对齐：`fix?` 原先被 alias 截胡，把字面量 `fix` 当需求发给模型；
+    现在与 zsh 一致，走"诊断上一条失败命令"，别名参数与取消均已加引号保护安全展开
+- **`~/.config/ai-shell/config.json` 会吃掉环境变量**：`load_config()` 先取环境变量再
+  `cfg.update(配置文件)`，于是只要配置文件存在，`DEEPSEEK_API_BASE/KEY` 等环境变量就完全失效
+  （把 base 指向本地 mock 服务时被静默改回线上，2026-10-30 现场复现）
+  - 优先级改为"环境变量 > 配置文件 > 内置默认"，空字符串环境变量视为未设置；
+    新增 `DEEPSEEK_MODEL` / `DEEPSEEK_TIMEOUT` 覆盖，`timeout` 统一转 int、非法值回落 20
+  - 配置目录改走 `$XDG_CONFIG_HOME/ai-shell`（该路径不存在时回落到 `~/.config`，老配置照旧可用）
+- **ai-shell 把两字中文需求当成打错的命令丢弃**：`ai-shell on` 后输入 `你好` 只得到
+  `zsh: command not found: 你好`，看不出 AI 模式在起作用（2026-10-30 现场复现；`帮我看看磁盘占用`
+  等三字以上的输入则正常出候选框）。根因是 `command_not_found_handler` 里的"防劫持"门槛
+  `${#query} -lt 3`——`${#}` 统计的是**字符数**而非显示宽度，"你好" 只有 2 个字符，直接走原生
+  报错分支
+  - 抽出 `_ai_shell_is_natural_language()`：含非 ASCII 字符（中文等）一律视为自然语言，
+    不再受长度限制；纯 ASCII 输入才保留 `>= 3` 的判定，`lg` 这类两字符 ASCII 仍回原生报错
+  - zsh / bash 两个分支共用同一判定，避免只修一侧
 - **Helix 全语言零高亮：Layer 2 只装了 runtime 的一半**：`install_helix_runtime` 原先下载源码归档
   （`archive/refs/tags/<ver>`）并只 `cp` `runtime/{themes,queries,tutor}`——源码树里没有
   `grammars/`（需 `hx --grammar fetch && hx --grammar build` 才生成），而 Layer 1 的
