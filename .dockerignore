@@ -17,7 +17,6 @@ build-monitor.log
 .vscode/
 .aider*
 .qwen/
-.qoder/
 .claude/
 
 # Qwen Code configuration
