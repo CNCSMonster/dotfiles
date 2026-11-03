@@ -26,6 +26,13 @@ setopt SHARE_HISTORY
 # Remove older command from the history if a duplicate is to be added.
 setopt HIST_IGNORE_ALL_DUPS
 
+# 交互式允许 # 开头的注释行。
+# zsh 的 INTERACTIVE_COMMENTS 默认关闭；本文件启用了 EXTENDED_GLOB（见文件后段），
+# 关闭时行首 # 会被当成 glob 修饰符解析，表现为 `zsh: bad pattern: #`。
+setopt INTERACTIVE_COMMENTS
+# 注释行不写入历史（与 SHARE_HISTORY / INC_APPEND_HISTORY 配合，避免跨会话累积）。
+HISTORY_IGNORE='\#*'
+
 #
 # Input/output
 #
