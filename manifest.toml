@@ -129,7 +129,7 @@ sha256 = "eeddee1009734f9071266e6b1b8a70308cb60cbcc45f5e1c1023adc471450fee"
 [neovim.macos.x86_64]
 asset = "nvim-macos-x86_64.tar.gz"
 bin = "nvim-macos-x86_64/bin/nvim"
-sha256 = "d6fb1dcb2f92543dec7dc86f2c50dc4c3aa6a801f5c67d09bba5d8d157440a9a"
+sha256 = "728321db960a9b6af6c03881892a6abfd743bf759bc62d233f52fa1be64ace3c"
 
 [neovim.linux.aarch64]
 asset = "nvim-linux-arm64.tar.gz"
@@ -207,7 +207,7 @@ asset = "zellij-x86_64-apple-darwin.tar.gz"
 sha256 = "59f803faa32cd4e5f316f0dc2d3b7a5530a72553e38ad939286471848a418eeb"
 
 [zellij.linux.aarch64]
-sha256 = "6f028bb569d29be968c961249c5f80d5336ad4ad4b3cd79af8e32afab57b0948"
+sha256 = "15e6534d42644d66973d136c590c49739dcfd6a1a2a0d3d917973f16c81b45fb"
 
 # ============================================================
 # GitHub Release Tools
@@ -357,7 +357,7 @@ sha256 = "b4ba1ecce3c47f00803f4f964de38394326c7a32eb6540616e04fb2935a0f08d"
 [yq.linux.aarch64]
 asset = "yq_linux_arm64.tar.gz"
 bin = "yq_linux_arm64"
-sha256 = "10a4a2093090363a00b55ad52e132a082f9652970cb8f1ad35a1ae048b917e6e"
+sha256 = "42600522e7455282e11c71c9fc62dc8e98b05bcdb830210fe16eb673a871e866"
 
 [marksman]
 [marksman.linux]
@@ -594,7 +594,7 @@ sha256 = "f86fbe7a3b9f262bcf34ca61e9e996243da511c5500dcd81a1e4daa542869276"
 
 [starship.linux.aarch64]
 asset = "starship-aarch64-unknown-linux-musl.tar.gz"
-sha256 = "56b9ff412bbf374d29b99e5ac09a849124cb37a0a13121e8470df32de53c1ea6"
+sha256 = "01517aab398959ea9ea73bdb4f032ea4dbb51dff5c8e5eb05b4a1b9b7ab872b8"
 
 [zoxide]
 [zoxide.linux]

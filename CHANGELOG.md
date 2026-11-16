@@ -127,6 +127,9 @@ All notable changes to this project will be documented in this file.
   - 回归测试 112 例全绿，已重建 `vendor/tool-installer`
 
 ### Fixed
+- **4 条 sha256 钉版与上游发布物不符**：neovim 的 macos.x86_64，以及 starship / yq / zellij 的
+  linux.aarch64。在这些平台安装必然 Checksum mismatch 失败——不是安全事件（校验是 fail-closed），
+  但 linux/aarch64 与 macos/x86_64 实际长期不可装。四个发布物已重新下载、逐个核对上游 release asset 的 sha256
 - **仓库里"顺带有个 Dockerfile"就被当成 Docker 项目**：`detect_safe_context()` 把 `Dockerfile` / compose /
   `Makefile` 和语言标记混在同一张表里，返回的第一个命中项又被写进 prompt 的「项目特征」和候选框标题，
   于是在 dotfiles 仓库里问一句"能查看当前 ai shell 状态是否启动了吗？"，得到的是
