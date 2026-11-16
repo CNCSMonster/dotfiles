@@ -84,6 +84,26 @@ case_unparseable_plan_aborts() {
   grep -q 'user-data' "$home/.config/x/a.toml" || fail "既有文件内容被改动"
 }
 
+# ── 用例 3：真实 xdotter（存在时）同样先备份；其 dry-run 在冲突时返回非零 ──
+case_real_xd() {
+  if ! command -v xd >/dev/null 2>&1; then
+    echo "SKIP: 未安装 xd，跳过真实 xdotter 集成用例"
+    return 0
+  fi
+  local home="$TMP/c3/home" repo="$TMP/c3/repo"
+  mkdir -p "$home/.config/x" "$repo"
+  printf 'user-data\n' > "$home/.config/x/a.toml"
+  printf 'repo-data\n' > "$repo/a.toml"
+  printf '[links]\n"a.toml" = "~/.config/x/a.toml"\n' > "$repo/xdotter.toml"
+
+  ( cd "$repo"; HOME="$home" xd deploy --dry-run >/dev/null 2>&1 ) && fail "真实 xd 冲突时 dry-run 应非零退出"
+
+  # shellcheck disable=SC1090
+  ( cd "$repo"; HOME="$home"; source "$ROOT/setup.sh"; _backup_deploy_targets >/dev/null )
+  grep -rl 'user-data' "$home/.local/state" >/dev/null 2>&1 || fail "真实 xd 场景没有备份"
+}
+
 case_backup_on_conflict
 case_unparseable_plan_aborts
-echo "PASS: 部署前备份 / fail-closed"
+case_real_xd
+echo "PASS: 部署前备份 / fail-closed / 真实 xd 集成"

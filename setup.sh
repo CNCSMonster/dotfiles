@@ -259,6 +259,49 @@ ensure_xdotter() {
     return 1
 }
 
+# ── 部署前备份：--force 会直接替换目标处的普通文件 ──
+# xdotter 在不带 --force 时会拒绝替换已有普通文件；带 --force 则直接覆盖，无提示无备份。
+# 这里先按 xd deploy --dry-run 的计划找出"目标已存在且是普通文件"的条目，原样备份到
+# ~/.local/state/dotfiles/deploy-backup/<时间戳>/<目标的绝对路径>，再执行覆盖。
+# 非空真实目录即使 --force 也不会被替换（xdotter 报冲突），无需备份。
+# 备份失败即中止覆盖式部署，宁可本次不部署也不丢用户文件。
+_backup_deploy_targets() {
+    local dry line target backup_root count=0
+    # 有冲突时 dry-run 以非零退出，但计划行仍会输出（"<标记> <目标> -> <源> [原因]"）。
+    # 因此不能用退出码判断成败；拿不到任何计划行才说明无法判断覆盖范围，此时中止覆盖。
+    dry="$(xd deploy --dry-run 2>&1)" || true
+    if ! printf '%s\n' "$dry" | grep -qE '^[+!] '; then
+        echo "❌ 无法解析 xd deploy --dry-run 的部署计划，已中止覆盖式部署"
+        return 1
+    fi
+    backup_root="$HOME/.local/state/dotfiles/deploy-backup/$(date +%Y%m%d-%H%M%S)"
+    while IFS= read -r line; do
+        case "$line" in
+            "+ "*) target="${line#+ }" ;;
+            "! "*) target="${line#! }" ;;
+            *) continue ;;
+        esac
+        target="${target%% -> *}"
+        case "$target" in
+            /*) ;;
+            *) continue ;;
+        esac
+        # 只备份真实普通文件：目录不在 --force 的覆盖范围内，符号链接没有内容可丢
+        [ -f "$target" ] || continue
+        [ -L "$target" ] && continue
+        mkdir -p "${backup_root}$(dirname "$target")"
+        if ! cp -a "$target" "${backup_root}${target}"; then
+            echo "❌ 备份失败，已中止覆盖式部署: $target"
+            return 1
+        fi
+        count=$((count + 1))
+    done <<< "$dry"
+    if [ "$count" -gt 0 ]; then
+        echo "🗂️  已备份 ${count} 个将被覆盖的既有文件到: ${backup_root}"
+    fi
+    return 0
+}
+
 do_deploy() {
     echo "=========================================="
     echo "部署配置文件（xdotter deploy）..."
@@ -267,7 +310,10 @@ do_deploy() {
     export PATH="$HOME/.local/bin:$PATH"
     if command -v xd &>/dev/null; then
         cd "${SCRIPT_DIR}"
-        if xd deploy --force; then
+        if ! _backup_deploy_targets; then
+            DEPLOY_CONFLICT=true
+            echo "⚠️  部署前备份失败，未执行覆盖式部署（请检查目标文件权限后重跑）"
+        elif xd deploy --force; then
             echo "✅ 配置部署完成"
         else
             DEPLOY_CONFLICT=true
@@ -412,4 +458,7 @@ main() {
     esac
 }
 
-main "$@"
+# 仅在作为脚本执行时进入主流程；source 时只暴露函数（供离线测试复用）
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
