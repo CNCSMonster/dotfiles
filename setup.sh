@@ -353,48 +353,26 @@ do_install() {
         exit 1
     fi
 
-    # xdotter 在 deploy 阶段就把 ~/.cargo/config.toml 建好了软链，但其中的
-    # sccache wrapper 要到 Layer 1 才装上；在此之前任何 cargo 调用都会因为找不到
-    # sccache 而失败，所以整行禁用让 rustc 用默认 wrapper，装完后自动恢复。
+    # xdotter 在 deploy 阶段就把 ~/.cargo/config.toml 链进了仓库，其中 rustc-wrapper
+    # 指向 sccache，而 sccache 要到本层才安装。sccache 不存在时任何 cargo 调用都会失败，
+    # 因此安装期间用环境变量覆盖该配置；**不修改** symlink 指向的仓库源文件
+    # （就地改写会穿透污染仓库，且进程被 SIGKILL 后无法恢复）。已装 sccache 则保持启用。
     # 链接器不在这里处理：用户级配置不设 linker/rustflags 强制（见 config.toml 注释）。
-    local cargo_config="$HOME/.cargo/config.toml"
-    local patched=false
-    local cargo_config_link_target=""
-    if [ -f "$cargo_config" ] && grep -q '^rustc-wrapper = "sccache"' "$cargo_config" 2>/dev/null; then
-        echo "🔧 临时禁用 sccache wrapper（工具尚未安装）..."
-        cp "$cargo_config" "$cargo_config.bak"
-        # ~/.cargo/config.toml 是 xdotter 部署的 symlink；直接写会污染 dotfiles 源文件。
-        # 替换为真实文件再写入，安装结束后恢复 symlink。
-        if [ -L "$cargo_config" ]; then
-            cargo_config_link_target="$(readlink -f "$cargo_config")"
-            rm "$cargo_config"
-        fi
-        sed -e 's/^rustc-wrapper = "sccache"/#rustc-wrapper = "sccache"  # temporarily disabled during install/' \
-            "$cargo_config.bak" > "$cargo_config"
-        patched=true
+    if ! command -v sccache &>/dev/null && [ -f "$HOME/.cargo/config.toml" ]; then
+        echo "🔧 安装期间临时禁用 sccache wrapper（sccache 尚未安装）..."
+        export CARGO_BUILD_RUSTC_WRAPPER=""
     fi
 
-    # tool-installer 失败、甚至 Ctrl-C 中断时，都必须恢复 symlink 与原始配置，
-    # 否则 ~/.cargo/config.toml 会以"临时禁用"状态的真实文件遗留下来，与仓库脱钩。
+    # 仅清理 cargo 安装的临时目录；配置不再被改写，无需恢复动作。
     _install_cleanup() {
         rm -rf /tmp/cargo-install* 2>/dev/null || true
-        if [ "$patched" = true ]; then
-            patched=false
-            if [ -n "$cargo_config_link_target" ]; then
-                rm -f "$cargo_config"
-                ln -s "$cargo_config_link_target" "$cargo_config"
-                rm -f "$cargo_config.bak"
-            elif [ -f "$cargo_config.bak" ]; then
-                mv "$cargo_config.bak" "$cargo_config"
-            fi
-        fi
         trap - EXIT INT TERM
     }
     trap '_install_cleanup' EXIT
     trap '_install_cleanup; exit 130' INT
     trap '_install_cleanup; exit 143' TERM
 
-    # set -e：安装失败时退出码自然传播，EXIT trap 负责恢复
+    # set -e：安装失败时退出码自然传播
     tool-installer install dev
     _install_cleanup
 }
