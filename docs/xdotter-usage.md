@@ -56,10 +56,14 @@ xd undeploy
 xd status
 ```
 
+`setup.sh` 调用 `xd deploy --force` 前，会把**将被覆盖的既有普通文件**备份到
+`~/.local/state/dotfiles/deploy-backup/<时间戳>/<原绝对路径>`；备份失败则中止覆盖式部署。
+非空真实目录即使带 `--force` 也不会被替换（xdotter 报冲突），需手动处理后重跑。
+
 `xd status` 输出一行总览加七类异常计数，全为 0 才算部署无漂移：
 
 ```
-Status: 31/31 deployed
+Status: N/N deployed   # N 随 xdotter.toml 的链接数变化，两数相等即全部部署
 Not deployed / Wrong links / Broken links / Source missing
 Source type invalid / Non-symlink paths / Permission issues
 ```

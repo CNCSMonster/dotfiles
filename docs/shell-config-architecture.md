@@ -33,7 +33,7 @@ shells/common/
 - 语言环境（LANG, LC_*）
 - 编辑器配置（EDITOR, VISUAL）
 - XDG 基础目录（XDG_CONFIG_HOME 等）
-- **mise 环境激活**（提供 npm/node/go 等命令）
+- **mise 环境**：非交互式用 `mise hook-env` 立即把 shims 注入 PATH；交互式激活在 `inter.sh`
 - 镜像源配置（Rust, Go 等）
 
 **示例：**
@@ -43,8 +43,10 @@ export PATH="/usr/local/bin:$PATH"
 export EDITOR='hx'
 export RUSTUP_DIST_SERVER='https://rsproxy.cn'
 
-# mise 提供 npm/node/go 等命令
-eval "$(mise activate $SH)"
+# 非交互式：hook-env 立即注入 shims（activate 依赖 prompt 钩子，在脚本里不生效）
+if [[ $- != *i* ]] && command -v mise &>/dev/null; then
+    eval "$(mise hook-env -s $SH)" 2>/dev/null || true
+fi
 ```
 
 **设计原则：**
@@ -66,6 +68,7 @@ eval "$(mise activate $SH)"
 - 命令增强（zoxide cd 增强）
 - 历史搜索增强（fzf Ctrl+R 目录感知）
 - 第三方命令补全（xd、llm-proxy、codex、opencode）
+- mise 交互式激活（`mise activate`）
 
 **示例：**
 ```bash
@@ -73,6 +76,7 @@ eval "$(mise activate $SH)"
 eval "$(starship init $SH)"     # prompt
 eval "$(navi widget $SH)"       # Ctrl+N 快捷键
 eval "$(zoxide init $SH)"       # cd 命令增强
+eval "$(mise activate $SH)"     # mise 版本切换与 shims（交互式）
 
 # ✅ 第三方命令补全统一放在这里
 if command -v xd >/dev/null 2>&1; then
@@ -87,7 +91,7 @@ fi
 
 # ❌ 不应该放在 inter.sh
 export PATH="..."               # 应该在 env.sh
-eval "$(mise activate $SH)"     # 应该在 env.sh
+eval "$(mise hook-env -s $SH)"  # 非交互式初始化应该在 env.sh
 ```
 
 **非交互式检测：**
@@ -108,7 +112,7 @@ eval "$(mise activate $SH)"     # 应该在 env.sh
 
 **职责：** 提供通用功能函数
 
-**加载时机：** 需要时手动 source
+**加载时机：** 每次交互式 shell 初始化（`init.zsh` / `bashrc` 都会 source）
 
 **包含内容：**
 - 工具函数（fzf 跳转）
@@ -147,17 +151,19 @@ alias gs='git status'
 
 ## 关键设计决策
 
-### 决策 1：mise activate 放在 env.sh
+### 决策 1：mise 按 shell 类型分别初始化
 
-**原因：**
-1. mise 提供的是**基础命令可用性**（npm/node/go）
-2. 不是交互式特性，Docker/CI 同样需要
-3. 与 PATH 环境变量性质相同
+`mise activate` 依赖 shell prompt 钩子：非交互式进程没有 prompt，调用 activate 后
+shims 不会立即进入 PATH，脚本里的 node/npm 仍然找不到。因此拆成两条路径：
+
+1. **env.sh**：仅非交互式执行 `mise hook-env -s $SH`，立即注入 shims（Docker/CI/安装器）
+2. **inter.sh**：交互式执行 `mise activate $SH`，负责版本切换钩子与 prompt 集成
 
 **对比：**
 | 配置 | 位置 | 原因 |
 |------|------|------|
-| `mise activate` | env.sh | 提供命令可用性 |
+| `mise hook-env` | env.sh（非交互式分支） | 脚本/CI 需要立即可用的命令 |
+| `mise activate` | inter.sh | 依赖 prompt 钩子，仅交互式有意义 |
 | `starship init` | inter.sh | 仅交互式 prompt |
 | `zoxide init` | inter.sh | 交互式 cd 增强 |
 
@@ -176,8 +182,8 @@ alias gs='git status'
 ```
 
 **检测时机：**
-- 在 `mise activate` **之后**（env.sh 已加载）
-- 在其他交互式工具**之前**
+- 在 env.sh 载入**之后**（非交互式的 mise hook-env 已完成）
+- 在交互式工具（starship/zoxide/navi/mise activate）**之前**
 
 ---
 
@@ -186,13 +192,13 @@ alias gs='git status'
 **原因：**
 1. 安装脚本常在非交互式环境运行（Docker、CI），需要稳定的执行入口
 2. 安装逻辑（版本锁定、下载、fallback）属于声明式配置，不应散落在 sourced shell 函数里
-3. mise 环境仍由 `env.sh` 提供，供安装器在需要 node/npm 时调用
+3. 非交互式 mise 环境仍由 `env.sh` 的 `hook-env` 提供，供安装器在需要 node/npm 时调用
 
 **安装入口：**
 ```
 setup.sh
   ↓
-source env.sh            # ✅ mise 环境已激活
+source env.sh            # ✅ hook-env 已把 mise shims 注入 PATH
 tool-installer install dev   # ✅ 读取 tools.toml + manifest.toml
 ```
 
@@ -205,10 +211,11 @@ tool-installer install dev   # ✅ 读取 tools.toml + manifest.toml
 ```bash
 ~/.bashrc 或 ~/.zshrc
   ↓
-source shells/common/env.sh      # 1. 基础环境（包括 mise）
-source shells/common/fn.sh       # 2. 工具函数
-source shells/common/alias.sh    # 3. 命令别名
-source shells/common/inter.sh    # 4. 交互式配置
+source shells/common/env.sh      # 1. 基础环境（含非交互式 mise hook-env）
+source shells/zsh/config.zsh     # 2. zsh 专属交互配置（仅 zsh；bash 无此层）
+source shells/common/fn.sh       # 3. 工具函数
+source shells/common/alias.sh    # 4. 命令别名
+source shells/common/inter.sh    # 5. 交互式配置（含 mise activate）
 ```
 
 ### 非交互式 Shell（如 Docker RUN）
@@ -216,7 +223,7 @@ source shells/common/inter.sh    # 4. 交互式配置
 ```bash
 setup.sh
   ↓
-source shells/common/env.sh      # 1. 基础环境（包括 mise）
+source shells/common/env.sh      # 1. 基础环境（hook-env 注入 mise shims）
 python3 vendor/tool-installer install dev  # 2. 工具安装（非 shell 配置层）
 # 不加载 inter.sh（交互式特性不需要）
 ```

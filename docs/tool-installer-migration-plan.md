@@ -76,7 +76,7 @@
 
 **关键设计：**
 - `binstall_first = true` 时，优先尝试 `cargo-binstall` 下载预编译二进制，失败自动 fallback 到 `cargo install`
-- 所有版本必须 pin，禁止 `latest`
+- 工具版本必须 pin；`latest` / `stable` 只用于显式例外（`system-packages@latest`、`rust@stable`、脚本任务条目），例外清单见 `docs/security-practices.md`「固定版本号」
 - 跨平台差异在 `manifest.toml` 中用 `[tool.linux]` / `[tool.macos]` 声明，不写死逻辑
 
 ### 2.3 Layer 2: 后置配置
