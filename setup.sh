@@ -396,14 +396,18 @@ main() {
             ;;
         --install)
             do_install
-            # 单跑 --install 同样会临时改写 ~/.cargo/config.toml（symlink），
-            # 是穿透污染最可能发生的路径，因此与完整安装一样做检测。
+            # 安装器写穿 symlink 仍是仓库污染的主要来源，因此与完整安装一样做检测。
             check_repo_pollution
             ;;
         --post)      do_post ;;
         --dry-run)
-            _ensure_tool_installer || exit 1
-            tool-installer install dev --dry-run
+            # dry-run 只读：直接用仓库内 zipapp，不经 _ensure_tool_installer
+            # （后者会写 ~/.local/bin，必要时还会 apt 装 python3，与"预览"语义不符）。
+            if ! command -v python3 &>/dev/null; then
+                echo "❌ --dry-run 需要 python3（tool-installer 是 python zipapp）" >&2
+                exit 1
+            fi
+            python3 "${SCRIPT_DIR}/vendor/tool-installer" install dev --dry-run
             ;;
         --help|-h) usage; exit 0 ;;
         "")
