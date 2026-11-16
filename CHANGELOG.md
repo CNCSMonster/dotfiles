@@ -130,6 +130,15 @@ All notable changes to this project will be documented in this file.
 - **4 条 sha256 钉版与上游发布物不符**：neovim 的 macos.x86_64，以及 starship / yq / zellij 的
   linux.aarch64。在这些平台安装必然 Checksum mismatch 失败——不是安全事件（校验是 fail-closed），
   但 linux/aarch64 与 macos/x86_64 实际长期不可装。四个发布物已重新下载、逐个核对上游 release asset 的 sha256
+- **三个工具钉版落后于已公开的安全公告**：mise 2026.4.5 → 2026.7.14（5 条公告，其中 3 条 high：
+  本地配置绕过信任检查、任务文件任意命令执行、默认 shell 参数可被覆盖）、
+  cargo-nextest 0.9.146 → 0.9.150（回放测试录像可执行任意代码）、
+  cargo-binstall v1.19.1 → v1.25.3（解压路径穿越 / 符号链接写出——安装器自身正是被投毒包利用的入口）。
+  cargo-binstall 走 github-release，四个平台摘要同步更新并逐个下载核对
+- **中低危公告一并清掉**：gh v2.97.0 → v2.102.0（8 条：attestation 校验语义与退出码、文件写入越界、
+  Codespace 命令执行、终端转义注入等）、starship v1.25.1 → v1.27.0（2 条 medium：exec_git 跳过仓库
+  归属检查、metadata 软链内存放大）、yq v4.53.3 → v4.54.3（--inplace 跟随软链，另含 4.54.1 的 -o=shell 注入）
+  - gh 的 asset / bin 名内嵌版本号，四个平台条目同步改写；12 个发布物全部下载核对 sha256
 - **仓库里"顺带有个 Dockerfile"就被当成 Docker 项目**：`detect_safe_context()` 把 `Dockerfile` / compose /
   `Makefile` 和语言标记混在同一张表里，返回的第一个命中项又被写进 prompt 的「项目特征」和候选框标题，
   于是在 dotfiles 仓库里问一句"能查看当前 ai shell 状态是否启动了吗？"，得到的是

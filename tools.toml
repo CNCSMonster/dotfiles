@@ -21,7 +21,7 @@ rustup-install = "安装 rustup（vendor 脚本）"
 # ── Layer 1b: Cargo 预编译安装器（独立，不需要 Rust）──
 # 必须在 cargo-tools 之前安装，因为 cargo-tools 中的工具使用 binstall_first
 [cargo-binstall]
-"cargo-binstall@v1.19.1" = { desc = "Cargo 预编译安装器", allow_fail = true }
+"cargo-binstall@v1.25.3" = { desc = "Cargo 预编译安装器", allow_fail = true }
 
 # ── Layer 1c: Cargo 工具（依赖 Rust + cargo-binstall）──
 [cargo-tools]
@@ -30,10 +30,10 @@ depends = ["build-base", "cargo-binstall"]
 # cargo 调用失败，所以它不能 allow_fail——那条错误在构建时才出现，离原因太远。
 "sccache@0.15.0" = "编译缓存"
 "wild-linker@0.9.0" = { desc = "快速链接器", allow_fail = true }
-"mise@2026.4.5" = "版本管理器"
+"mise@2026.7.14" = "版本管理器"
 "uv@0.11.18" = "Python 包管理器"
 "cargo-audit@0.22.1" = "依赖审计"
-"cargo-nextest@0.9.146" = "并行测试运行器"
+"cargo-nextest@0.9.150" = "并行测试运行器"
 "bat@0.26.1" = "Cat 替代品"
 "eza@0.23.4" = "ls 替代品"
 "fd-find@10.4.2" = "find 替代品"
@@ -69,12 +69,12 @@ depends = ["build-base", "cargo-binstall"]
 
 # ── Layer 1c: Shell 工具（独立，不需要 Rust）──
 [shell-tools]
-"starship@v1.25.1" = "Shell prompt"
+"starship@v1.27.0" = "Shell prompt"
 "just@1.53.0" = "命令运行器"
 
 # ── Layer 1c: 用户工具（精确锁定，跨平台一致）──
 [user-tools]
-"gh@v2.97.0" = "GitHub CLI"
+"gh@v2.102.0" = "GitHub CLI"
 "ripgrep@15.2.0" = "快速 grep"
 "codanna@v0.17.1" = "Tree-sitter AST 代码语义搜索"
 
@@ -83,7 +83,7 @@ depends = ["build-base", "cargo-binstall"]
 "neovim@v0.12.2" = "Neovim 编辑器"
 "helix@25.07.1" = "Helix 编辑器"
 "zellij@v0.44.3" = "终端复用器"
-"yq@v4.53.3" = "YAML/JSON 处理器"
+"yq@v4.54.3" = "YAML/JSON 处理器"
 
 # ── Layer 1d: 语言运行时（由 mise 管理，通过 script job 安装）──
 [languages]

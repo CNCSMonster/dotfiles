@@ -217,37 +217,37 @@ sha256 = "15e6534d42644d66973d136c590c49739dcfd6a1a2a0d3d917973f16c81b45fb"
 [gh.linux]
 manager = "github-release"
 repo = "cli/cli"
-asset = "gh_2.97.0_linux_amd64.tar.gz"
-bin = "gh_2.97.0_linux_amd64/bin/gh"
+asset = "gh_2.102.0_linux_amd64.tar.gz"
+bin = "gh_2.102.0_linux_amd64/bin/gh"
 [gh.linux.version_probe]
 command = ["{bin}", "--version"]
 regex = "gh version (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 [gh.linux.x86_64]
-sha256 = "a2c9b8497e1f85b1ad0dfcb78b5a622e098801b8e461e459e88e1ee12f018112"
+sha256 = "bb766f710eef8ede859c18578c72c327597cd4c8a85b06001b1f3843c6019386"
 
 [gh.macos]
 manager = "github-release"
 repo = "cli/cli"
-asset = "gh_2.97.0_macOS_arm64.zip"
-bin = "gh_2.97.0_macOS_arm64/bin/gh"
+asset = "gh_2.102.0_macOS_arm64.zip"
+bin = "gh_2.102.0_macOS_arm64/bin/gh"
 [gh.macos.version_probe]
 command = ["{bin}", "--version"]
 regex = "gh version (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 [gh.macos.aarch64]
-sha256 = "a58b8fd77b417a38f47a0b54d1370c59b0fcdb324ccc9ca002b0998f7c4c999e"
+sha256 = "da922c20d1792e5b2cbf375593d7a658acf034c12c84e007e71c76ef959c337e"
 
 [gh.macos.x86_64]
-# asset/bin 不用 {version}：gh 的 tag 是 v2.97.0，而 asset 名是 gh_2.97.0_…（无 v），
-# {version} 会渲染成 gh_v2.97.0_… 这个不存在的名字。与上面 [gh.macos] / [gh.linux]
+# asset/bin 不用 {version}：gh 的 tag 是 v2.102.0，而 asset 名是 gh_2.102.0_…（无 v），
+# {version} 会渲染成 gh_v2.102.0_… 这个不存在的名字。与上面 [gh.macos] / [gh.linux]
 # 的写法保持一致（同样硬编码版本）。
-asset = "gh_2.97.0_macOS_amd64.zip"
-bin = "gh_2.97.0_macOS_amd64/bin/gh"
-sha256 = "63298c998cc2a924c9e254c6af6a1caad6ece281122687a91f079bc0a462700e"
+asset = "gh_2.102.0_macOS_amd64.zip"
+bin = "gh_2.102.0_macOS_amd64/bin/gh"
+sha256 = "b245f24eb2bf5f75b426b4c26da3651a107f8d5b6f4fddfbfccc5679041378b3"
 
 [gh.linux.aarch64]
-asset = "gh_2.97.0_linux_arm64.tar.gz"
-bin = "gh_2.97.0_linux_arm64/bin/gh"
-sha256 = "73ea440ecad9c9e284429997ee6f93577bc6f7bc6fba357ef62c53ad8fb641a5"
+asset = "gh_2.102.0_linux_arm64.tar.gz"
+bin = "gh_2.102.0_linux_arm64/bin/gh"
+sha256 = "7862c86c72f43df3a2d93ddde6f473285b4e2af61b494849846827e513ef6484"
 
 [ripgrep]
 [ripgrep.linux]
@@ -333,7 +333,7 @@ command = ["{bin}", "--version"]
 regex = "version v?(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [yq.linux.x86_64]
-sha256 = "b4077cab0f9ee5ce8381e602d090daa69a0afb7e57eb9a5b20e9cb416d7f6794"
+sha256 = "09a25baa0e136b8633949e03117fc82cb9e50d10910f988ef17a1305539ebce4"
 
 
 [yq.macos]
@@ -347,17 +347,17 @@ command = ["{bin}", "--version"]
 regex = "version v?(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [yq.macos.aarch64]
-sha256 = "877de31753a4dd2401aa048937aa9a7fc4d5f6ce858cf31508c5802954297213"
+sha256 = "a2aebb93b5bdcb61bb76f630e42a0ef6a3ee10842a6516cd7b9e4080786ec593"
 
 [yq.macos.x86_64]
 asset = "yq_darwin_amd64"
 bin = "yq_darwin_amd64"
-sha256 = "b4ba1ecce3c47f00803f4f964de38394326c7a32eb6540616e04fb2935a0f08d"
+sha256 = "96d5105ffd693d6845c54fbd825b2d1bbdb8619e0a2ce6af95e5654e841e0984"
 
 [yq.linux.aarch64]
 asset = "yq_linux_arm64.tar.gz"
 bin = "yq_linux_arm64"
-sha256 = "42600522e7455282e11c71c9fc62dc8e98b05bcdb830210fe16eb673a871e866"
+sha256 = "980de87c439acb5172707560dd137e9fe4a1628af5aaf6f33b293f04c71d4e9d"
 
 [marksman]
 [marksman.linux]
@@ -493,7 +493,7 @@ command = ["{bin}", "-V"]
 regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [cargo-binstall.linux.x86_64]
-sha256 = "4a50fcf01418862e2fa8e4076cb6cb80ff4061b0c0b1464e71a63ce01ee29bde"
+sha256 = "1f72931713e9091478538c6c78c3f11f205b4f6f394f35e61835036b23929d2a"
 
 
 [cargo-binstall.macos]
@@ -507,15 +507,15 @@ command = ["{bin}", "-V"]
 regex = "(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [cargo-binstall.macos.aarch64]
-sha256 = "bf9da6a27e432784f361cfbc70a6d04e548abc548470ae9a7587c3cffb8fb0a7"
+sha256 = "b027e09e54431e56a75ce63858a798e1bfd9cd5fa62894186d46808d50b31335"
 
 [cargo-binstall.macos.x86_64]
 asset = "cargo-binstall-x86_64-apple-darwin.zip"
-sha256 = "39257851fe4fd8cc9dd81fb318f15d589b7178b74165879eddeda8062bd9fcf2"
+sha256 = "8f194ca2bf4bfe42fa70763e2f1227e7fd617d814fd12bf81dd2e09e380b0134"
 
 [cargo-binstall.linux.aarch64]
 asset = "cargo-binstall-aarch64-unknown-linux-musl.tgz"
-sha256 = "2001eee8da26705ad9627e57a25c23eb4639647521205f3e4a7b4e09d067d199"
+sha256 = "19ef7a058397f83d6b2cc83727fb8d38babd8ad657210c921b7771a9e8b3a6fb"
 
 # ============================================================
 # CLI Tools (cargo-install, locked)
@@ -573,7 +573,7 @@ command = ["{bin}", "--version"]
 regex = "^starship (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [starship.linux.x86_64]
-sha256 = "4488c11ca632327d1f1f16fb2f102c0646094c35479cd5435991385da43c61ac"
+sha256 = "3b94758850901717eb36aa1b53f8492c1322506ec6d41273bc6151e79ed8e4a1"
 
 
 [starship.macos]
@@ -586,15 +586,15 @@ command = ["{bin}", "--version"]
 regex = "^starship (?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
 
 [starship.macos.aarch64]
-sha256 = "1062a2363489b9335529b83204472f02633c08fc3609f1b325be5eba36feb631"
+sha256 = "5362da8cb2928f98f3ce0ffda697cf0f8de70081db000dae316d6d3a404f6cf0"
 
 [starship.macos.x86_64]
 asset = "starship-x86_64-apple-darwin.tar.gz"
-sha256 = "f86fbe7a3b9f262bcf34ca61e9e996243da511c5500dcd81a1e4daa542869276"
+sha256 = "344e4d38787e0aa86dd522ae5462e6fb6da1227691f81a79ffed480a4563ccb3"
 
 [starship.linux.aarch64]
 asset = "starship-aarch64-unknown-linux-musl.tar.gz"
-sha256 = "01517aab398959ea9ea73bdb4f032ea4dbb51dff5c8e5eb05b4a1b9b7ab872b8"
+sha256 = "341f5cbf24699fa0b27ec88965ad25f862ea09e15d35a543fd6ffdff1d2aa00d"
 
 [zoxide]
 [zoxide.linux]
