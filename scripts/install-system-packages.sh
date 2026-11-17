@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # System packages installation script for tool-installer (script manager)
-# Always exits 0; prints warnings on failure instead of failing.
+# Installation failures exit non-zero so tool-installer can report them.
 #
 # 本脚本现只剩 macOS 分支（Homebrew 引导 + 基础包）。
 # Linux 清单已迁到 manifest.toml 的声明式 [system-packages.linux]
@@ -16,14 +16,21 @@ OS="$(uname -s)"
 if [[ "$OS" == "Darwin" ]]; then
     if ! command -v brew &>/dev/null; then
         echo "安装 Homebrew..."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || {
-            echo "⚠️  Homebrew 安装失败"
-            exit 0
+        installer=$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh) || {
+            echo "⚠️  Homebrew 安装脚本下载失败" >&2
+            exit 1
+        }
+        /bin/bash -c "$installer" || {
+            echo "⚠️  Homebrew 安装失败" >&2
+            exit 1
         }
     fi
     echo "通过 Homebrew 安装系统基础包与构建工具链..."
     # gh、ripgrep → user-tools 模块 (github-release 精确锁定)
-    brew install python3 fzf tree git || echo "⚠️  部分包安装失败"
+    brew install python3 fzf tree git || {
+        echo "⚠️  Homebrew 基础包安装失败" >&2
+        exit 1
+    }
     exit 0
 fi
 

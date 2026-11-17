@@ -218,45 +218,51 @@ do_bootstrap() {
     echo "   下一步: tool-installer install dev"
 }
 
-# 确保 xdotter 已安装（bootstrap 后 tool-installer 可用，用其安装 extras 组）
-# 回退策略：tool-installer → 直接下载（仅 Linux x86_64）
-# 故意不 vendor 二进制：xdotter 有标准分发渠道，可由 tool-installer 自行获取。
-# 政策与清单的唯一来源见 docs/tool-installer-migration-plan.md §3。
+# 使用安装器的单项计划能力，只检查/安装清单钉定的 xdotter。
+# CLI 仅接受模块；临时配置选择原 tools 中的一项，仍复用原 manifest 的校验和。
 ensure_xdotter() {
-    if command -v xd &>/dev/null; then
-        return 0
+    if ! command -v python3 &>/dev/null; then
+        echo "❌ xdotter 校验需要 python3；请先安装 Python 3 后重跑（不使用无校验下载）"
+        return 1
     fi
-    echo "安装 xdotter..."
+    python3 - "$SCRIPT_DIR" <<'PY'
+import json
+import sys
+import tempfile
+from pathlib import Path
 
-    # 方案 1: tool-installer（最优，使用 GitHub API，可能被限流）
-    if command -v tool-installer &>/dev/null; then
-        if tool-installer install extras 2>/dev/null; then
-            command -v xd &>/dev/null && return 0
-        fi
-        echo "⚠️  tool-installer 安装 xdotter 失败，尝试直接下载..."
-    fi
+root = Path(sys.argv[1])
+sys.path.insert(0, str(root / "vendor/tool-installer"))
+from tool_installer.parser import parse_tools_file
+from tool_installer.cli import main
+from tool_installer.parser import parse_manifest_file
+from tool_installer.strategy import build_install_plan
+from tool_installer.environment import detect_environment
+from tool_installer.managers.github_release import GithubReleaseManager
+from tool_installer.managers.base import CheckResult
 
-    # 方案 2: 直接 curl 下载 musl 静态二进制（仅 Linux x86_64）
-    if [[ "$(uname -s)" == "Linux" && "$(uname -m)" == "x86_64" ]]; then
-        mkdir -p ~/.local/bin
-        local xd_url="https://github.com/CNCSMonster/xdotter/releases/latest/download/xd-x86_64-unknown-linux-musl"
-        if curl -fsSL --retry 3 --connect-timeout 15 "$xd_url" -o ~/.local/bin/xd 2>/dev/null; then
-            chmod +x ~/.local/bin/xd
-            echo "✅ xdotter 已通过直接下载安装"
-            return 0
-        fi
-    fi
-
-    # 不设 vendor 兜底：vendored 二进制的版本会与 tools.toml 的钉版静默漂移，
-    # 且会掩盖 github-release manager 自身下载路径的 bug（见 migration-plan §3.2）。
-    # macOS 没有直连兜底，按非致命处理，交给 do_deploy 决定是否跳过部署。
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-        echo "⚠️  macOS 上 xdotter 安装失败，将跳过 xd deploy"
-        return 0
-    fi
-
-    echo "❌ 所有安装方式均失败，无法继续"
-    return 1
+config = parse_tools_file(root / "tools.toml", "extras")
+tools = [t for t in config.modules["extras"].tools if t.reference.name == "xdotter"]
+if len(tools) != 1 or tools[0].reference.version == "latest" or tools[0].allow_fail:
+    sys.exit("❌ tools.toml 必须唯一钉定 xdotter 版本")
+manifest, gh_config = parse_manifest_file(config.manifest_path)
+plan = build_install_plan([("xdotter-bootstrap", tools[0])], manifest,
+                          detect_environment(), config.manifest_path.parent)
+item = plan.items[0]
+if not item.strategy.fields.get("sha256"):
+    sys.exit("❌ xdotter 缺少 sha256，拒绝安装")
+# release manager 不为既有未知二进制发问；此处安全报错，不擅自覆盖用户工具。
+manager = GithubReleaseManager(gh_config)
+target = Path.home() / ".local/bin/xd"
+if (target.exists() or target.is_symlink()) and manager.check(item) != CheckResult.SATISFIED:
+    sys.exit("❌ ~/.local/bin/xd 与清单不符；请自行确认并移走旧文件后重跑")
+with tempfile.TemporaryDirectory(prefix="dotfiles-xdotter-") as tmp:
+    path = Path(tmp) / "tools.toml"
+    path.write_text('[tool-installer]\nmanifest = ' + json.dumps(str(config.manifest_path))
+                    + '\n[xdotter-bootstrap]\n' + json.dumps(tools[0].reference.raw)
+                    + ' = "xdotter"\n', encoding="utf-8")
+    sys.exit(main(["install", "xdotter-bootstrap", "--config", str(path)]))
+PY
 }
 
 # ── 部署前备份：--force 会直接替换目标处的普通文件 ──
@@ -267,6 +273,7 @@ ensure_xdotter() {
 # 备份失败即中止覆盖式部署，宁可本次不部署也不丢用户文件。
 _backup_deploy_targets() {
     local dry line target backup_root count=0
+    local targets=()
     # 有冲突时 dry-run 以非零退出，但计划行仍会输出（"<标记> <目标> -> <源> [原因]"）。
     # 因此不能用退出码判断成败；拿不到任何计划行才说明无法判断覆盖范围，此时中止覆盖。
     dry="$(xd deploy --dry-run 2>&1)" || true
@@ -289,30 +296,54 @@ _backup_deploy_targets() {
         # 只备份真实普通文件：目录不在 --force 的覆盖范围内，符号链接没有内容可丢
         [ -f "$target" ] || continue
         [ -L "$target" ] && continue
-        mkdir -p "${backup_root}$(dirname "$target")"
+        targets+=("$target")
+    done <<< "$dry"
+    if [ "${#targets[@]}" -gt 0 ]; then
+        printf '将备份并替换以下普通文件:\n'
+        printf '  %s\n' "${targets[@]}"
+        _confirm_deploy_overwrite || return 1
+    fi
+    for target in "${targets[@]}"; do
+        if ! mkdir -p "${backup_root}$(dirname "$target")"; then
+            echo "❌ 无法创建备份目录，已中止覆盖式部署"
+            return 1
+        fi
         if ! cp -a "$target" "${backup_root}${target}"; then
             echo "❌ 备份失败，已中止覆盖式部署: $target"
             return 1
         fi
         count=$((count + 1))
-    done <<< "$dry"
+    done
     if [ "$count" -gt 0 ]; then
         echo "🗂️  已备份 ${count} 个将被覆盖的既有文件到: ${backup_root}"
     fi
     return 0
 }
 
+_confirm_deploy_overwrite() {
+    local answer
+    if [ ! -t 0 ] || [ ! -t 1 ]; then
+        echo "⚠️  无 TTY，未获得覆盖确认；配置未部署。请在终端重跑 ./setup.sh --deploy"
+        return 1
+    fi
+    read -r -p "确认备份并覆盖这些普通文件？[y/N] " answer || return 1
+    case "$answer" in
+        y|Y|yes|YES) return 0 ;;
+        *) echo "⚠️  未确认覆盖，配置未部署"; return 1 ;;
+    esac
+}
+
 do_deploy() {
     echo "=========================================="
     echo "部署配置文件（xdotter deploy）..."
     echo "=========================================="
-    ensure_xdotter
+    ensure_xdotter || return 1
     export PATH="$HOME/.local/bin:$PATH"
     if command -v xd &>/dev/null; then
         cd "${SCRIPT_DIR}"
         if ! _backup_deploy_targets; then
             DEPLOY_CONFLICT=true
-            echo "⚠️  部署前备份失败，未执行覆盖式部署（请检查目标文件权限后重跑）"
+            echo "⚠️  未获得覆盖确认或备份失败，未执行覆盖式部署"
         elif xd deploy --force; then
             echo "✅ 配置部署完成"
         else
@@ -391,7 +422,7 @@ main() {
     case "${1:-}" in
         --bootstrap) do_bootstrap ;;
         --deploy)
-            do_deploy
+            do_deploy || return 1
             if [ "$DEPLOY_CONFLICT" = true ]; then exit 1; fi
             ;;
         --install)
@@ -416,20 +447,20 @@ main() {
             echo "=========================================="
             preflight_sudo
             do_bootstrap
-            do_deploy
+            do_deploy || return 1
             do_install
             do_post
             check_repo_pollution
             echo ""
             if [ "$DEPLOY_CONFLICT" = true ]; then
                 echo "=========================================="
-                echo "⚠️  工具安装完成，但有配置因冲突未部署"
+                echo "⚠️  安装流程已结束，但有配置未部署；工具结果请检查上方汇总"
                 echo "   处理冲突后请重跑: ./setup.sh --deploy"
                 echo "=========================================="
                 exit 1
             fi
             echo "=========================================="
-            echo "✅ 全部安装完成"
+            echo "✅ 安装流程已结束；请检查上方失败、跳过及可选工具汇总（不代表全部工具安装成功）"
             echo "=========================================="
             ;;
         *)

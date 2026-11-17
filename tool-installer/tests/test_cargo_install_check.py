@@ -245,5 +245,201 @@ class BinstallFallback(unittest.TestCase):
         )
 
 
+class NoAutoDownload(unittest.TestCase):
+    """离线回归：_ensure_binstall 不得再隐式从 GitHub releases/latest 下载未钉版、
+    无摘要的 cargo-binstall。
+
+    约束（最小修复，不破坏既有功能）：
+    - 不再自动 latest 下载；删除下载 helper 与 URL/latest 命令；
+    - 已有 cargo-binstall（PATH 或旧 ~/.cargo/bin）须 -V 验证通过后照常使用；
+    - 缺失/验证不过时静默回退 cargo install（binstall_first 既定语义）；
+    - binstall 命令生成与执行路径保持正常。
+
+    全部离线：runner 为 Mock，urllib.request.urlopen 被拦截，绝不联网/下载/安装。
+    """
+
+    @staticmethod
+    def item() -> PlanItem:
+        item = make_item("taplo-cli", "0.10.0")
+        item.strategy.fields["binstall_first"] = True
+        return item
+
+    def setUp(self) -> None:
+        self._dt = tempfile.TemporaryDirectory()
+        self.addCleanup(self._dt.cleanup)
+        self.home_bin = Path(self._dt.name) / "bin"
+        self.home_bin.mkdir()
+
+    def _no_network(self, stack: contextlib.ExitStack) -> list:
+        """拦截一切 urllib 下载入口，返回被尝试调用的记录（应始终为空）。"""
+        attempted: list = []
+
+        def blocked(*args, **kwargs):  # noqa: ANN002, ANN003
+            attempted.append(("urlopen", args, kwargs))
+            raise AssertionError("不应发生任何网络下载 (urllib.request.urlopen)")
+
+        stack.enter_context(mock.patch("urllib.request.urlopen", side_effect=blocked))
+        return attempted
+
+    def _write_binstall(self) -> Path:
+        binary = self.home_bin / "cargo-binstall"
+        binary.write_text("#!/bin/sh\necho 'cargo-binstall 1.0.0'\n")
+        binary.chmod(binary.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        return binary
+
+    def test_source_has_no_download_url_latest_command_or_helpers(self) -> None:
+        """源码级断言：latest 下载 URL / gh release latest 命令 / 下载 helper 全部消失。"""
+        import tool_installer.managers.commands as cmdmod
+
+        source = Path(cmdmod.__file__).read_text(encoding="utf-8")
+        for forbidden in (
+            "releases/latest/download",
+            '"release", "download"',
+            '"gh", "release", "download"',
+            "urlopen(url",
+            "_BINSTALL_RELEASE_BASE",
+            "_BINSTALL_TARGETS",
+            "_download_binstall",
+            "_extract_binstall",
+        ):
+            self.assertNotIn(forbidden, source, f"残留下载/自举代码: {forbidden}")
+
+        for attr in ("_download_binstall", "_extract_binstall", "_BINSTALL_RELEASE_BASE", "_BINSTALL_TARGETS"):
+            self.assertFalse(hasattr(CargoInstallManager, attr), f"下载 helper 仍存在: {attr}")
+
+    def test_existing_path_binstall_is_verified_then_used(self) -> None:
+        """PATH 上已有 cargo-binstall：验证通过后返回 cargo binstall 调用，且绝不触网。"""
+        runner = mock.Mock()
+        mgr = CargoInstallManager(runner=runner)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch("tool_installer.managers.commands.shutil.which", return_value="/usr/bin/cargo-binstall")
+            )
+            verify = stack.enter_context(mock.patch.object(CargoInstallManager, "_verified_binstall", return_value=True))
+            attempted = self._no_network(stack)
+            out = mgr._ensure_binstall(self.item())
+
+        self.assertEqual(out, ["cargo", "binstall"])
+        verify.assert_called_once_with("cargo-binstall")
+        self.assertEqual(attempted, [], "不得触发任何下载")
+
+    def test_old_home_binary_still_usable(self) -> None:
+        """旧 ~/.cargo/bin/cargo-binstall（无 PATH 命中）验证通过后仍可直接使用。"""
+        binary = self._write_binstall()
+        runner = mock.Mock()
+        mgr = CargoInstallManager(runner=runner)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch("tool_installer.managers.commands.shutil.which", return_value=None))
+            stack.enter_context(mock.patch.object(CargoInstallManager, "_cargo_home_bin", return_value=self.home_bin))
+            verify = stack.enter_context(mock.patch.object(CargoInstallManager, "_verified_binstall", return_value=True))
+            attempted = self._no_network(stack)
+            out = mgr._ensure_binstall(self.item())
+
+        self.assertEqual(out, [str(binary)])
+        verify.assert_called_once_with(str(binary))
+        self.assertEqual(attempted, [], "不得触发任何下载")
+
+    def test_missing_binstall_never_downloads_and_falls_back(self) -> None:
+        """缺失时：不下载、不执行 latest/gh/urlopen，直接回退一次 cargo install。"""
+        calls: list = []
+        runner = mock.Mock()
+
+        def run(args, **kwargs):  # noqa: ANN001, ANN003
+            calls.append(list(args))
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        runner.run.side_effect = run
+        mgr = CargoInstallManager(runner=runner)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch("tool_installer.managers.commands.shutil.which", return_value=None))
+            stack.enter_context(mock.patch.object(CargoInstallManager, "_cargo_home_bin", return_value=self.home_bin))
+            stack.enter_context(
+                mock.patch("tool_installer.managers.commands.detect_github_token", return_value=(None, None))
+            )
+            attempted = self._no_network(stack)
+            self.assertIsNone(mgr._ensure_binstall(self.item()), "缺失时应返回 None 而非下载")
+            mgr.install(self.item())
+
+        self.assertEqual(attempted, [], "缺失时不得触网下载")
+        self.assertEqual(len(calls), 1, "缺失时应直接回退一次 cargo install，不跑 binstall/下载")
+        joined = " ".join(calls[0])
+        self.assertIn("cargo", joined)
+        self.assertIn("install", joined)
+        self.assertIn("taplo-cli", joined)
+        for forbidden in ("gh", "release", "download", "latest", "binstall", "urlopen"):
+            self.assertNotIn(forbidden, joined, f"不得出现下载/自举命令: {forbidden}")
+
+    def test_unverifiable_existing_binstall_still_falls_back(self) -> None:
+        """已有但 -V 验证失败的 bin 不得被使用，仍回退 cargo install。"""
+        calls: list = []
+        runner = mock.Mock()
+
+        def run(args, **kwargs):  # noqa: ANN001, ANN003
+            calls.append(list(args))
+            if "-V" in args:
+                return subprocess.CompletedProcess(args, 1, "", "")
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        runner.run.side_effect = run
+        mgr = CargoInstallManager(runner=runner)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch("tool_installer.managers.commands.shutil.which", return_value="/usr/bin/cargo-binstall")
+            )
+            stack.enter_context(mock.patch.object(CargoInstallManager, "_cargo_home_bin", return_value=self.home_bin))
+            stack.enter_context(
+                mock.patch("tool_installer.managers.commands.detect_github_token", return_value=(None, None))
+            )
+            attempted = self._no_network(stack)
+            self.assertIsNone(mgr._ensure_binstall(self.item()), "验证不过不应返回可用调用")
+            calls.clear()
+            mgr.install(self.item())
+
+        self.assertEqual(attempted, [])
+        # install() 内部会再次调一次 _ensure_binstall，故 -V 验证会出现两次；
+        # 真正要断言的是：没有任何 binstall 安装命令，且恰好回退一次 cargo install。
+        install_calls = [c for c in calls if "--force" in c]
+        self.assertEqual(len(install_calls), 1, "应回退一次 cargo install")
+        joined_install = " ".join(install_calls[0])
+        self.assertIn("cargo", joined_install)
+        self.assertIn("install", joined_install)
+        self.assertIn("taplo-cli", joined_install)
+        for c in calls:
+            joined = " ".join(c)
+            self.assertNotIn("--disable-strategies", joined, "不得执行 binstall 安装命令")
+            for forbidden in ("gh", "release", "download", "latest", "urlopen"):
+                self.assertNotIn(forbidden, joined, f"不得出现下载/自举命令: {forbidden}")
+
+    def test_binstall_command_runs_normally_when_verified(self) -> None:
+        """已验证的 home bin 走正常 binstall 命令（rc=0 即返回），不回退源码编译。"""
+        binary = self._write_binstall()
+        calls: list = []
+        runner = mock.Mock()
+
+        def run(args, **kwargs):  # noqa: ANN001, ANN003
+            calls.append(list(args))
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        runner.run.side_effect = run
+        mgr = CargoInstallManager(runner=runner)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch("tool_installer.managers.commands.shutil.which", return_value=None))
+            stack.enter_context(mock.patch.object(CargoInstallManager, "_cargo_home_bin", return_value=self.home_bin))
+            stack.enter_context(mock.patch.object(CargoInstallManager, "_verified_binstall", return_value=True))
+            stack.enter_context(
+                mock.patch("tool_installer.managers.commands.detect_github_token", return_value=(None, None))
+            )
+            attempted = self._no_network(stack)
+            mgr.install(self.item())
+
+        self.assertEqual(attempted, [])
+        self.assertEqual(len(calls), 1, "binstall 成功即返回，不应回退 cargo install")
+        joined = " ".join(calls[0])
+        self.assertIn(str(binary), joined)
+        self.assertIn("taplo-cli", joined)
+        self.assertIn("--disable-strategies", joined)
+        self.assertNotIn("--force", joined, "不应落入 cargo install 回退")
+
+
 if __name__ == "__main__":
     unittest.main()

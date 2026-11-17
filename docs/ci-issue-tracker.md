@@ -1,7 +1,7 @@
 # CI 问题追踪记录
 
 > 本文档记录 `feat/tool-installer-migration` 分支在 CI 和本地测试中发现的问题及修复措施。
-> 目标：**保证所有工具的安装都能完成**，不因可预见的错误中断。
+> 目标：记录 CI 与本地安装问题；遇到已有程序无法确认身份或版本时，安全中止优先于继续覆盖。
 
 ---
 
@@ -15,7 +15,7 @@
 | **根因** | `zls --version` 输出是 `0.15.1`（纯版本号），但 manifest 正则是 `zls (?P<version>...)`，期望带 `zls ` 前缀，永远匹配不上 |
 | **为什么 CI 没发现** | CI runner 是全新环境，`~/.local/bin/zls` 不存在 → version_probe 不被调用 → 直接安装，跳过检查 |
 | **修复** | `aca1be9` → manifest 中 `[zls.*.version_probe].regex` 改为 `(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)` |
-| **防护措施** | `full-install` job 的 "Re-install is idempotent" 步骤：在同一 runner 上第二次执行 `install dev`，强制触发所有 version_probe / check，并断言除 `manager=script` 的工具外全部 Skip。曾长期独立成 `re-install` job，但独立 job 跑在全新 runner 的空 `$HOME` 上、等于又装了一遍，验证不到幂等，故合并 |
+| **防护措施** | `full-install` job 的 "Re-install is idempotent" 步骤：在同一 runner 上第二次执行 `install dev`，强制触发所有 version_probe / check，并断言除 `manager=script` 的工具外全部 Skip。曾长期独立成 `re-install` job，但独立 job 跑在全新 runner 的空 `$HOME` 上、等于又装了一遍，验证不到幂等，故合并。当前探测无法确认已有程序身份时按设计返回 `CHECK_ERROR`，不会自动覆盖；CI 如遇到这类已安装状态，应先核实程序来源，而不是放宽探测或强制覆盖 |
 
 ---
 
@@ -40,10 +40,9 @@
 | **发现场景** | 本地安装 zls（走 mirror 下载） |
 | **错误信息** | `❌ Error: Check failed for zls with manager github-release` |
 | **根因** | mirror 返回的内容可能与官方不同 → SHA256 不匹配 → `_verify_checksum` 抛 `InstallationError` → **不会** fallback 到官方源 |
-| **当前状态** | **已设计方案，代码未实现** |
-| **设计方案** | 见 `project_tool_installer_mirror_fallback` memory：`sources` 配置、SHA256 失败触发 fallback |
-| **临时措施** | 安装前手动禁用 mirrors：`perl -pi -e 's/^github_mirrors/#github_mirrors/' manifest.toml`，装完恢复 |
-| **TODO** | 实现 `_download_asset` 内嵌 SHA256 校验逻辑，不匹配则继续下一个 URL |
+| **当前状态** | **已实现并有离线回归测试**（2026-11-17 复核） |
+| **实现** | `GithubReleaseManager._download_asset` 对每个候选源分别下载并校验 SHA256，传输或摘要失败后继续下一个源，直连 GitHub 最后尝试 |
+| **验证** | `tool-installer/tests/test_github_release_download.py` 覆盖错误摘要回退及全部来源失败；无需临时改写 manifest |
 
 ---
 

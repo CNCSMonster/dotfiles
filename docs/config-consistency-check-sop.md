@@ -11,8 +11,8 @@
 - 二进制下载 — helix、wezterm 等
 
 当前 **shell 补全来源** 包括：
-- `zsh-completions` 插件（静态补全脚本，`@0.36.0`）
-- `nix-zsh-completions` 插件（静态补全脚本，`@0.5.1`）
+- `zsh-completions` 插件（静态补全脚本，来源 tag `0.36.0`，固定完整 commit）
+- `nix-zsh-completions` 插件（静态补全脚本，来源 tag `0.5.1`，固定完整 commit）
 - `mise activate` 动态注册（仅限 mise 管理的工具）
 - `shells/common/inter.sh` 中主动加载的工具自带补全（如 `xd`、`llm-proxy`、`codex`、`opencode`）
 
@@ -31,7 +31,7 @@
 
 | 文件 | 内容 |
 |------|------|
-| `shells/zsh/config.zsh` | `compinit` + `zcomet fpath zsh-users/zsh-completions@0.36.0 src` + `nix-community/nix-zsh-completions@0.5.1` |
+| `shells/zsh/config.zsh` | `compinit` + `_dotfiles_zcomet_plugin fpath zsh-users/zsh-completions@28c5bdcaf81bb89e56d0df8267d822c3b8aed9e0 src` + `nix-community/nix-zsh-completions@6e782b97091b07eb849b58953eb200ccc56ef833` |
 | `shells/bash/bashrc` | `/usr/share/bash-completion/bash_completion` |
 | `shells/common/inter.sh` | 交互式 shell 中主动加载工具自带补全：`xd`、`llm-proxy`、`codex`、`opencode` |
 
@@ -159,10 +159,10 @@ fi
 
 ```bash
 # 检查 zsh-completions 是否已包含该工具的补全
-ls ~/.zcomet/repos/zsh-users/zsh-completions/src/_<工具名>
+ls ${ZDOTDIR:-$HOME}/.zcomet/repos/zsh-users/zsh-completions/src/_<工具名>
 ```
 
-如果有，说明已被正确加载（通过 `zcomet fpath`），无需额外操作。
+文件存在不代表已加载：还须确认 checkout HEAD 匹配完整 pin、tracked 文件清洁且 origin 匹配，启动无跳过警告，并核验目录位于实际 `$fpath`。
 
 #### 方案 C：手写简单补全
 
@@ -226,6 +226,10 @@ compaudit  # 应提示 "There are insecure directories" 或 "no problems found"
 - zsh 补全配置: `shells/zsh/config.zsh`
 - bash 补全配置: `shells/bash/bashrc`
 - 工具自带补全加载: `shells/common/inter.sh`
-- zsh-completions 版本: 通过 `zcomet fpath zsh-users/zsh-completions@0.36.0 src` 固定
-- nix-zsh-completions 版本: 通过 `zcomet fpath nix-community/nix-zsh-completions@0.5.1` 固定
+- zsh-completions 版本: 通过 `_dotfiles_zcomet_plugin fpath zsh-users/zsh-completions@28c5bdcaf81bb89e56d0df8267d822c3b8aed9e0 src` 固定
+- nix-zsh-completions 版本: 通过 `zcomet fpath nix-community/nix-zsh-completions@6e782b97091b07eb849b58953eb200ccc56ef833` 固定
 - 相关 SOP: `docs/zsh-plugins-update-sop.md`（更新 zsh-completions 后验证补全）
+
+## zcomet 固定版本检查
+
+启动不联网安装或更新；manager 与插件缺失、HEAD、tracked 文件或 origin 漂移时保留原目录并告警跳过。manager 根目录为 `$ZSH_CONFIG_HOME/.zcomet`，插件根目录为 `${ZDOTDIR:-$HOME}/.zcomet/repos`。完整 pin 与人工处理步骤见 [插件更新 SOP](zsh-plugins-update-sop.md)。先运行 `bash scripts/test-zcomet-pins.sh` 与 `zsh -n shells/zsh/config.zsh`，不要通过 source 用户配置开展自动审计。

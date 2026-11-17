@@ -6,27 +6,17 @@
 
 ```
 main  ──────────────────────────→  通用配置（Linux + macOS）
-  └─ macos       ── 仅用于 macOS CI 验证，不承载平台专属配置
+  └─ CI matrix   ── Linux / macOS 安装验证
 ```
 
 > **已删除的分支**: `wsl2-ubuntu-24`、`exp-main`、`exp-wsl-ubuntu-24`、`ci-runner-direct`
 > 原因：项目中无 WSL 专属代码，分支落后导致维护成本过高
 
-## 现状核对（2026-09-25 实测）
+## 平台验证与历史分支
 
-上面的"macos = main + 一个 CI workflow"是**设计意图**；分支的实际状态需要用 git 核对，
-不能假定它与 main 同步。以下为实测结果：
+所有平台使用 `main`，macOS 验证由 `.github/workflows/runner-verify.yml` 的矩阵作业承担，不需要独立平台分支。
 
-| 分支 | 实测状态 | 结论 |
-|------|---------|------|
-| `main` | 代码分支，macOS 由 `.github/workflows/runner-verify.yml` 的 `macos-latest` 矩阵真实安装验证 | 唯一需要在意的分支 |
-| `origin/macos` | 落后 main **177** 个提交、领先 **2** 个，最后一次提交 `a86cbee`（2026-04-20）；缺少 `tools.toml`、`tool-installer/`、`vendor/` 等 **94 个文件**的变更；workflows 只有 `docker-build.yml` + `runner-verify.yml` | **不是** "main + macOS workflow"，而是 tool-installer 迁移前的旧快照，属待处理技术债 |
-
-> 历史说明：早期文档提到的 `.github/workflows/macos-setup.yml` 已不存在，其职责由
-> `runner-verify.yml` 的 macOS 矩阵作业承担。
->
-> `origin/macos` 的处置（快进到 main，或直接删除）尚未决定——因为删除远端分支不可逆，
-> 需要仓库所有者确认。在决定之前，**不要把 `macos` 当作 main 的等价替代**。
+2026-09-25 曾观察到 `origin/macos` 是迁移前旧快照；这是历史取证，不是当前分支状态。2026-11-17 本地已无该远程跟踪引用，未据此推断远端已删除。需要检查远端时使用只读 `git ls-remote --heads origin macos`，不要把旧分支处置列为持续待办。
 
 ## 使用方法
 
@@ -35,15 +25,9 @@ main  ────────────────────────�
 git checkout main
 ```
 
-### 创建新环境
+### 新增平台支持
 
-```bash
-# 基于 main 创建新环境
-git checkout -b new-environment-name
-
-# 仅当该平台有「配置层」差异（非安装层）时才需要
-# 示例：WSL 需要不同的 systemd 集成、macOS 需要完全不同的 Neovim 插件
-```
+在 main 中通过平台检测与声明式安装策略处理差异，配置差异通过条件配置处理，不创建长期分叉的平台配置分支。
 
 ## 平台差异处理
 
@@ -59,28 +43,14 @@ else
 fi
 ```
 
-不同分支可以有：
-- 独立的 CI workflow 文件
-- 真正平台专属的配置（如 WSL `.wslconfig`、macOS `~/.hushlogin`）
-
-## 分支命名规范
-
-```
-<环境类型>-<系统>-<版本>
-```
-
-示例：
-- `macos` — macOS CI 验证（当前落后，见上）
-- ~~`wsl2-ubuntu-24`~~ — 已删除，无 WSL 专属代码
-
 ## 查看当前配置
 
 ```bash
 # 查看当前分支
 git branch --show-current
 
-# 查看分支与 main 的实际差距（别凭印象）
-git rev-list --left-right --count main...origin/macos
+# 只读检查历史平台分支是否仍存在于远端
+git ls-remote --heads origin macos
 
 # 查看 xdotter 部署的链接
 xd status

@@ -6,7 +6,7 @@
 # 用法: ./scripts/check-tool-updates.sh          # 人类可读表格
 #       ./scripts/check-tool-updates.sh --stale   # 仅列出有更新可用的条目
 #
-# 依赖: python3；GitHub release 查询优先用已登录的 gh（无限流），无 gh 时匿名 API（60/小时）。
+# 依赖: python3；GitHub release 查询必须使用已认证的 gh，失败明确报告，不回退匿名 API。
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -36,19 +36,23 @@ def http_json(url):
         return json.load(r)
 
 def gh_repo_latest(repo):
-    # 优先 gh（带认证 token），失败再匿名 API
+    # GitHub 只走 gh；不回退匿名 API，也不回显可能含凭据的 stderr/异常全文。
     try:
         out = subprocess.run(["gh", "api", f"repos/{repo}/releases/latest",
                               "--jq", ".tag_name"],
                              capture_output=True, text=True, timeout=60)
-        if out.returncode == 0 and out.stdout.strip():
-            return out.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-    try:
-        return http_json(f"https://api.github.com/repos/{repo}/releases/latest").get("tag_name", "?")
-    except Exception as e:
-        return f"err:{e}"
+    except FileNotFoundError:
+        return "err:gh executable not found"
+    except subprocess.TimeoutExpired:
+        return "err:gh api timed out after 60s"
+    except OSError as e:
+        return f"err:gh api could not start (errno {e.errno})"
+    if out.returncode != 0:
+        return f"err:gh api failed (exit {out.returncode}); check gh authentication/access"
+    tag = out.stdout.strip()
+    if not tag:
+        return "err:gh api returned empty tag_name"
+    return tag
 
 def crate_latest(name):
     try:

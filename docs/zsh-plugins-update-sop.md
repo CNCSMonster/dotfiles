@@ -1,176 +1,53 @@
 # Zsh 插件版本更新 SOP
 
-本文档描述如何安全地更新通过 zcomet 管理的 zsh 插件版本。
+## 信任边界
 
-## 背景
+启动仅校验并加载本地 checkout，不 clone、fetch、checkout、删除目录或执行 self-update/update。manager 固定为完整 commit；插件声明为完整 40 位 commit，tag 仅用于解释来源。缺失、HEAD 不符、tracked 文件变动或 origin 不符 时告警跳过；manager 不通过时跳过整个插件系统。已有用户 checkout 一律保留，由用户人工确认后处理。
 
-所有 zsh 插件在 `shells/zsh/config.zsh` 中通过 `zcomet load` 加载，并使用 `@<version>` 固定版本号。例如：
+manager 位于 `$ZSH_CONFIG_HOME/.zcomet`，插件位于 `${ZDOTDIR:-$HOME}/.zcomet/repos/<owner>/<repo>`。两者不是同一根目录。忽略自定义 zcomet repos-dir，配置仅向 manager 传已校验的本地绝对路径。
 
-```zsh
-zcomet load Aloxaf/fzf-tab@v1.3.0
-zcomet load romkatv/powerlevel10k@v1.20.0
-```
+固定 manager [3dfe6f837479c6731e74400a233739500ec6d648](https://github.com/agkozak/zcomet/blob/3dfe6f837479c6731e74400a233739500ec6d648/zcomet.zsh) 的实现支持 @commit，但 _zcomet_clone_repo 对已有目录直接返回，不校验 HEAD，不能单靠 @SHA 保证实际加载版本。本项目在调用前校验。manager 通过普通 source 加载，不修改其函数和编译语义。上游可生成正常 .zwc 缓存，未跟踪缓存不作为版本漂移；不删除用户缓存。该检查信任本机既有缓存，不保证未跟踪 .zwc 的来源，若缓存来源不明应由用户人工备份核验，不能把 HEAD 校验等同于所有执行字节均来自该 commit。
 
-固定版本可防止自动更新带来的供应链攻击和破坏性变更风险，但需要定期人工检查并升级到新版本。
+## 人工更新流程
 
-## 更新流程
-
-### 1. 查看当前已固定的版本
+1. 先记录当前 HEAD、工作树状态和完整 pin；不要清理或覆盖已有用户目录。
+2. 在登录交互 shell 使用只读 gh api 查询上游 tag 解析出的 commit（包括 annotated tag 的最终 commit），验证 SHA 严格为 40 位十六进制；不得输出 token。为避免启动旧配置的自动更新，审计时用 zsh -d -f -lic，继承已有认证环境但不读取用户 rc。若认证缺失，停止并由用户在现有终端查询，禁止 source 配置来取得凭据。
 
 ```bash
-grep 'zcomet load\|zcomet fpath' shells/zsh/config.zsh
+zsh -d -f -lic 'gh api repos/zsh-users/zsh-completions/commits/0.36.0 --jq .sha'
 ```
 
-### 2. 检查各插件最新稳定版本
+3. 审查 upstream diff、依赖、联网和 hook 行为；在用户确认后于新的隔离目录准备候选 checkout，显式 checkout --detach 到完整 SHA。不要对现有目录执行 reset --hard、clean 或自动更新。
+4. 更新配置 pin 和本表；经用户确认迁移前，备份原目录及用户改动。缺失 checkout 也由用户在启动之外显式准备。
+5. 自动验证只运行隔离 mock，不 source 真实用户交互配置：
 
 ```bash
-for repo in "tj/git-extras" "QuarticCat/zsh-smartcache" "chisui/zsh-nix-shell" \
-            "romkatv/zsh-no-ps2" "hlissner/zsh-autopair" "Aloxaf/fzf-tab" \
-            "zsh-users/zsh-autosuggestions" "zdharma-continuum/fast-syntax-highlighting" \
-            "romkatv/powerlevel10k" "zsh-users/zsh-completions" \
-            "nix-community/nix-zsh-completions"; do
-    echo "=== $repo ==="
-    git ls-remote --tags --refs "https://github.com/$repo.git" 2>/dev/null \
-        | grep -o 'refs/tags/[^{}]*' | sed 's|refs/tags/||' | sort -V | tail -5
-    echo
-done
+bash scripts/test-zcomet-pins.sh
+zsh -n shells/zsh/config.zsh
+bash -n scripts/test-zcomet-pins.sh
+git diff --check
 ```
 
-> 对于没有 tag 的仓库（如 QuarticCat/zsh-smartcache），使用 `git ls-remote <repo> HEAD` 获取最新 commit hash。
+6. 用户在确认 checkout 与缓存后自行开新终端检查补全功能。回滚时恢复已审查旧 pin 及其对应备份，不用 git checkout HEAD 覆盖尚未提交的用户配置。
 
-### 3. 检查破坏性变更（Breaking Changes）
+## 固定清单与核验记录
 
-对每个有新版的插件，检查其变更日志和发布说明：
+2026-11-17：只读 gh api repos/<repo>/commits/<tag> 返回以下完整 SHA；本机已有 checkout HEAD 全部吻合。前会话九个 tag→SHA 均确实为 40 位，原值未改；smartcache 从短 SHA 补全。powerlevel10k 未在当前配置加载，不列入有效依赖。
 
-```bash
-# 方法 A: 查看仓库的 Releases / CHANGELOG
-# https://github.com/<owner>/<repo>/releases
+| 仓库 | 来源 | 完整 commit |
+|---|---|---|
+| agkozak/zcomet | 既有 checkout / 上游 HEAD | 3dfe6f837479c6731e74400a233739500ec6d648 |
+| zsh-users/zsh-completions | 0.36.0 | 28c5bdcaf81bb89e56d0df8267d822c3b8aed9e0 |
+| nix-community/nix-zsh-completions | 0.5.1 | 6e782b97091b07eb849b58953eb200ccc56ef833 |
+| tj/git-extras | 7.4.0 | 13cbdfc51e22e635939d07af86b33fca78c45411 |
+| QuarticCat/zsh-smartcache | 54aba13 (既有commit补全) | 54aba13a6824e212992fd754c598c9e9acd259a3 |
+| chisui/zsh-nix-shell | v0.8.0 | 8b86281cf9e9ef9f207433dd8b36d157dd48d50a |
+| romkatv/zsh-no-ps2 | v1.0.0 | 4b23567dc503170672386660706e55ce0201770c |
+| hlissner/zsh-autopair | v1.0 | 34a8bca0c18fcf3ab1561caef9790abffc1d3d49 |
+| Aloxaf/fzf-tab | v1.3.0 | d7e0234614dbe5369fdd760907d12c0e05a4dccc |
+| zsh-users/zsh-autosuggestions | v0.7.1 | e52ee8ca55bcc56a17c828767a3f98f22a68d4eb |
+| zdharma-continuum/fast-syntax-highlighting | v1.56 | 5ecd353c81214f82bdeca5483fab6ccc5a2d5494 |
 
-# 方法 B: 查看两个版本之间的 diff
-git -C ~/.zcomet/repos/<owner>/<repo> diff <old-tag>..<new-tag> --stat
-```
+## 漂移排查
 
-**重点检查：**
-- 配置项名称/格式是否变更（如 `zstyle` 参数）
-- 插件加载方式是否变更（如文件名、入口点）
-- 依赖是否变更（是否需要新增外部工具）
-- 是否有明确的 Breaking Changes 标注
-
-### 4. 检查安全隐患
-
-对每个待更新的插件，执行以下安全检查：
-
-#### 4.1 仓库健康度
-- 仓库是否仍然活跃（近期有提交、Issue 有人回复）
-- 维护者是否有变更（警惕账号交接/被盗）
-- 是否有已知的安全问题（搜索 `"<repo>" security vulnerability`）
-
-#### 4.2 代码变更审查
-```bash
-# 查看新版本的关键变更
-git -C ~/.zcomet/repos/<owner>/<repo> diff <old-tag>..<new-tag> -- '*.zsh' '*.sh'
-```
-
-**警惕以下行为：**
-- 新增网络请求（`curl`、`wget`、`nc`、`/dev/tcp/`）
-- 新增对敏感目录的读取（`~/.ssh/`、`~/.aws/`、`~/.gnupg/`）
-- 新增环境变量外传（将数据 POST 到外部 URL）
-- 新增 `precmd`/`preexec`/`zshaddhistory` hook 中的隐蔽逻辑
-- 新增 `eval`、`source` 动态内容
-- 新增对 `$PATH` 的修改
-
-#### 4.3 依赖链审查
-- 检查是否新增对第三方仓库的引用（submodule、其他插件）
-- 检查是否新增从外部 URL 下载并执行脚本的逻辑
-
-### 5. 更新配置
-
-所有检查通过后，更新 `shells/zsh/config.zsh` 中的版本号：
-
-```diff
--zcomet load Aloxaf/fzf-tab@v1.3.0
-+zcomet load Aloxaf/fzf-tab@v1.4.0
-```
-
-### 6. 本地验证
-
-```bash
-# 清理旧版本缓存
-rm -rf ~/.zcomet/repos/<owner>/<repo>
-rm -f ~/.zcomet/repos/.zwc/*
-
-# 重启 zsh 触发新版本的 clone
-zsh
-
-# 验证插件功能正常
-# - 补全是否正常工作
-# - 提示符是否显示正常
-# - 有无报错信息
-```
-
-#### 6.1 更新 zsh-completions 后的补全覆盖验证
-
-当 `zsh-users/zsh-completions` 或 `nix-community/nix-zsh-completions` 更新后，需要验证新版本是否覆盖了更多已安装工具：
-
-```bash
-# 列出 zsh-completions 提供的所有补全函数
-ls ~/.zcomet/repos/zsh-users/zsh-completions/src/_* | sed 's/.*\///' | sed 's/^_//' | sort > /tmp/zsh-completions.txt
-
-# 对比已安装工具清单
-# (详见 docs/config-consistency-check-sop.md 中的完整检查流程)
-comm -12 /tmp/zsh-completions.txt /tmp/installed-tools.txt
-```
-
-**如果新版本的 zsh-completions 增加了对已安装工具的补全支持**，确认其在 zsh 中正常生效：
-
-```zsh
-# 在 zsh 中测试补全
-compaudit  # 检查补全目录权限是否安全
-# 对新增补全的工具，按 Tab 验证子命令/参数是否出现
-```
-
-### 7. 更新 CHANGELOG
-
-在 `CHANGELOG.md` 的 `[Unreleased]` 部分记录：
-
-```markdown
-### Changed
-- **zsh-plugins**: Update fzf-tab v1.3.0 → v1.4.0
-```
-
-## 版本固定清单
-
-| 插件 | 当前版本 | 仓库 |
-|------|---------|------|
-| zsh-users/zsh-completions | `0.36.0` | https://github.com/zsh-users/zsh-completions |
-| nix-community/nix-zsh-completions | `0.5.1` | https://github.com/nix-community/nix-zsh-completions |
-| tj/git-extras | `7.4.0` | https://github.com/tj/git-extras |
-| QuarticCat/zsh-smartcache | `54aba13` (commit) | https://github.com/QuarticCat/zsh-smartcache |
-| chisui/zsh-nix-shell | `v0.8.0` | https://github.com/chisui/zsh-nix-shell |
-| romkatv/zsh-no-ps2 | `v1.0.0` | https://github.com/romkatv/zsh-no-ps2 |
-| hlissner/zsh-autopair | `v1.0` | https://github.com/hlissner/zsh-autopair |
-| Aloxaf/fzf-tab | `v1.3.0` | https://github.com/Aloxaf/fzf-tab |
-| zsh-users/zsh-autosuggestions | `v0.7.1` | https://github.com/zsh-users/zsh-autosuggestions |
-| zdharma-continuum/fast-syntax-highlighting | `v1.56` | https://github.com/zdharma-continuum/fast-syntax-highlighting |
-| romkatv/powerlevel10k | `v1.20.0` | https://github.com/romkatv/powerlevel10k |
-
-## 更新频率建议
-
-- **常规更新**：每 1-3 个月检查一次
-- **安全紧急更新**：发现漏洞后 24 小时内完成评估和升级
-- **核心插件**（powerlevel10k、fzf-tab）：优先测试，确认兼容性后再更新
-
-## 回滚
-
-如果新版本导致 zsh 启动异常：
-
-```bash
-# 恢复旧版本
-git checkout HEAD -- shells/zsh/config.zsh
-zsh
-```
-
-## 相关文件
-
-- 插件配置: `shells/zsh/config.zsh`
-- 本文档: `docs/zsh-plugins-update-sop.md`
+只读检查 git -C <目录> rev-parse HEAD、git -C <目录> status --porcelain；确认字节码与忽略文件来源，勿显示凭据文件或把全部 diff 原样输出。任何 Git 读取失败也拒绝加载。完整 commit 固定不能防御本机账户或 Git 配置已经被攻陷；这是可审计版本约束，不是沙箱。

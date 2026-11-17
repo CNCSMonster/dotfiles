@@ -68,6 +68,8 @@ class MergedStrategy:
     manager: str
     fields: Dict[str, Any]
     force: bool = False
+    lock_root: Optional[Path] = None
+    lock_digest: Optional[str] = None
 
 
 @dataclass(frozen=True)

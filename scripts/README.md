@@ -25,6 +25,32 @@ No-cache rebuild:
 ./scripts/docker-build-test.sh --retry 3
 ```
 
+## Offline safety regressions
+
+Run these without installing project tools or modifying deployed configuration:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tool-installer/tests -t tool-installer
+PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s .tmp/supply-chain-watch -p test_audit.py
+python3 -B scripts/test-check-tool-updates.py
+python3 -B scripts/test-check-manifest-platforms.py
+bash scripts/test-setup-xdotter.sh
+bash scripts/test-setup-deploy-safety.sh
+bash scripts/test-setup-summary.sh
+bash scripts/test-zcomet-pins.sh
+bash scripts/test-shell-regressions.sh
+bash scripts/test-github-mirror-urls.sh
+bash scripts/test-github-mirror-callers.sh
+./scripts/check-tool-installer-sync.sh
+./scripts/check-manifest-platforms.sh
+```
+
+The installer suite includes local, self-created npm/wheel fixtures. They use isolated temporary directories and offline caches, do not execute installed entry points, and explicitly skip when the required existing runtime is unavailable. Python wheel tests validate the uv installation component, not the complete Python manager.
+
+For an explicitly declared locked tool, `python3 scripts/update-tool-locks.py --module <module> --tool <tool> --check` validates its existing lock without network access. `--generate` resolves registry metadata only for the host platform; existing output additionally requires `--force`. See the security practices document for migration limits.
+
+## Full Docker verification
+
 Pass condition:
 - Image `dotfiles:test` is built successfully
 - Verify script exits with code `0` and shows `失败: 0`

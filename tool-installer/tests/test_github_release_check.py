@@ -1,14 +1,14 @@
-"""github-release 的 version_probe check 语义测试。
+"""github-release 的 version_probe check 语义测试（fail-closed）。
 
-关注点：目标路径已存在文件、但它不是本安装器放的那个工具时，check 应当收敛到
-NOT_SATISFIED（触发覆盖安装），而不是 CHECK_ERROR（executor 会抛 InstallationError
-并中断整个安装流程）。
+关注点：目标路径已存在文件、但探测无法确认它的身份时，check 必须收敛到 CHECK_ERROR
+并保留原文件，绝不自动覆盖用户文件。只有缺失文件才是 NOT_SATISFIED（安装会新建它）；
+探测能给出版本、只是与期望不一致时，仍走既有升级语义 NOT_SATISFIED。
 
 分三类：
   - ProbeOutputContract：桩掉 subprocess.run，只锁「探测输出/退出码 → CheckResult」的映射，
     以及真·环境错误仍保持 CHECK_ERROR。
   - RealProbe：不落桩，真实执行临时 HOME 下的假二进制，覆盖 is_file / 坏软链 / 不可执行 /
-    非零退出码这条真实文件系统路径。
+    非零退出码这条真实文件系统路径，并断言已有文件内容原样保留。
   - Executor*：锁住 executor 对 NOT_SATISFIED / CHECK_ERROR 的既有分工。
 """
 
@@ -53,6 +53,7 @@ def make_item(
     install_name="yq",
     name="yq",
     repo="mikefarah/yq",
+    force=False,
 ) -> PlanItem:
     fields = {"repo": repo, "asset": "yq_linux_amd64.tar.gz", "bin": "yq_linux_amd64"}
     if install_name:
@@ -62,7 +63,7 @@ def make_item(
     return PlanItem(
         module_name="editors",
         tool=ToolSpec(reference=ToolReference(raw=f"{name}@{version}", name=name, version=version)),
-        strategy=MergedStrategy(tool_name=name, manager="github-release", fields=fields),
+        strategy=MergedStrategy(tool_name=name, manager="github-release", fields=fields, force=force),
         environment=Environment(os="linux", arch="x86_64"),
     )
 
@@ -144,8 +145,10 @@ class ProbeOutputContract(unittest.TestCase):
         self.assertIs(outcome, CheckResult.SATISFIED)
 
     def test_different_pinned_version_is_not_satisfied(self):
-        outcome, _ = self.run_check(make_item(version="4.53.3"), result=completed("yq version v4.40.1\n"))
+        """身份可确认（正则匹配到版本号）、只是版本不对 → 既有升级语义，照常重装。"""
+        outcome, text = self.run_check(make_item(version="4.53.3"), result=completed("yq version v4.40.1\n"))
         self.assertIs(outcome, CheckResult.NOT_SATISFIED)
+        self.assertNotIn("不会自动覆盖", text)
 
     def test_latest_matching_release_tag_is_satisfied(self):
         outcome, _ = self.run_check(make_item(version="latest"), result=completed(GO_YQ_OUTPUT), latest="v4.53.3")
@@ -174,52 +177,61 @@ class ProbeOutputContract(unittest.TestCase):
         outcome, _ = self.run_check(make_item(probe=bad), result=completed(GO_YQ_OUTPUT))
         self.assertIs(outcome, CheckResult.CHECK_ERROR)
 
-    # ── 本次修复：探测失败要收敛，不要中断整份计划 ──
+    # ── fail-closed：已有文件 + 探测无法确认身份 → CHECK_ERROR，不覆盖 ──
 
-    def test_heterogeneous_tool_output_triggers_overwrite(self):
-        """同名异构工具（Python 版 yq 输出 "yq 3.4.3"）→ 覆盖安装并告警。"""
+    def test_heterogeneous_tool_output_is_check_error(self):
+        """同名异构工具（Python 版 yq 输出 "yq 3.4.3"）→ 身份无法确认，保留原文件。"""
         outcome, text = self.run_check(make_item(), result=completed(PY_YQ_OUTPUT))
-        self.assertIs(outcome, CheckResult.NOT_SATISFIED)
-        self.assertIn("覆盖", text)
+        self.assertIs(outcome, CheckResult.CHECK_ERROR)
+        self.assertIn("不会自动覆盖", text)
 
     def test_warning_stays_one_bounded_line(self):
         """多行 / 超长输出不能把告警撑成一段日志噪声。"""
         spam = ("booom\n" + "x" * 500 + "\ntraceback line\n")
         outcome, text = self.run_check(make_item(), result=completed(spam))
-        self.assertIs(outcome, CheckResult.NOT_SATISFIED)
+        self.assertIs(outcome, CheckResult.CHECK_ERROR)
         self.assertEqual(len(text.strip().splitlines()), 1)
         self.assertLess(len(text.strip()), 200)
 
-    def test_nonzero_exit_triggers_overwrite(self):
-        """旧二进制退出码非 0（如动态库缺失 127）→ 覆盖安装。"""
-        outcome, _ = self.run_check(make_item(), result=completed("error: not found", returncode=127))
-        self.assertIs(outcome, CheckResult.NOT_SATISFIED)
+    def test_nonzero_exit_is_check_error(self):
+        """旧二进制退出码非 0（如动态库缺失 127）→ 身份无法确认，保留原文件。"""
+        outcome, text = self.run_check(make_item(), result=completed("error: not found", returncode=127))
+        self.assertIs(outcome, CheckResult.CHECK_ERROR)
+        self.assertIn("不会自动覆盖", text)
 
-    def test_unrunnable_binary_triggers_overwrite(self):
-        """文件存在但不可执行（OSError）→ 覆盖安装。"""
+    def test_unrunnable_binary_is_check_error(self):
+        """文件存在但不可执行（OSError）→ 身份无法确认，保留原文件。"""
         outcome, _ = self.run_check(make_item(), raises=OSError("Exec format error"))
-        self.assertIs(outcome, CheckResult.NOT_SATISFIED)
+        self.assertIs(outcome, CheckResult.CHECK_ERROR)
 
-    def test_timeout_triggers_overwrite(self):
+    def test_timeout_is_check_error(self):
         outcome, _ = self.run_check(
             make_item(), raises=subprocess.TimeoutExpired(cmd=["yq", "--version"], timeout=30)
         )
-        self.assertIs(outcome, CheckResult.NOT_SATISFIED)
+        self.assertIs(outcome, CheckResult.CHECK_ERROR)
 
-    def test_empty_captured_version_triggers_overwrite(self):
+    def test_empty_captured_version_is_check_error(self):
         probe = {"command": ["{bin}", "-V"], "regex": r"V(?P<version>.*)"}
         outcome, _ = self.run_check(make_item(probe=probe), result=completed("xV\n"))
-        self.assertIs(outcome, CheckResult.NOT_SATISFIED)
+        self.assertIs(outcome, CheckResult.CHECK_ERROR)
 
-    def test_warning_is_printed_before_returning_not_satisfied(self):
+    def test_warning_is_printed_before_returning_check_error(self):
         _, text = self.run_check(make_item(), result=completed(PY_YQ_OUTPUT))
         self.assertIn("⚠️", text)
+        self.assertIn("已保留现有文件", text)
 
     def test_warning_names_the_binary_when_it_differs_from_tool(self):
         """install_name 与 tool name 不同（如按插件名落盘）时告警要指到真身。"""
         item = make_item(name="kubectl", install_name="kubectl-aws")
-        _, text = self.run_check(item, result=completed("some plugin\n"))
+        outcome, text = self.run_check(item, result=completed("some plugin\n"))
+        self.assertIs(outcome, CheckResult.CHECK_ERROR)
         self.assertIn("kubectl-aws", text)
+
+    def test_warning_points_to_explicit_force_recovery(self):
+        """提示要给出人工处置路径，且不得含自动覆盖措辞。"""
+        _, text = self.run_check(make_item(), result=completed(PY_YQ_OUTPUT))
+        self.assertIn("force = true", text)
+        self.assertIn("人工确认", text)
 
 
 class ExecutorHandlesProbeResults(unittest.TestCase):
@@ -256,6 +268,15 @@ class ExecutorHandlesProbeResults(unittest.TestCase):
                 executor._execute_item(item, manager, token_reported=False)
         manager.install.assert_not_called()
 
+    def test_force_skips_check_and_installs(self):
+        """人工显式 force = true 是覆盖已有文件的唯一路径：跳过 check 直接装。"""
+        item = make_item(force=True)
+        manager = github_manager_mock()
+        with mock.patch.object(env_module, "refresh_path", mock.Mock(return_value=False)):
+            executor._execute_item(item, manager, token_reported=False)
+        manager.check.assert_not_called()
+        manager.install.assert_called_once_with(item)
+
     def test_check_error_retries_after_refresh_path_then_installs(self):
         item = make_item()
         manager = github_manager_mock()
@@ -270,7 +291,8 @@ class ExecutorHandlesProbeResults(unittest.TestCase):
 class ExecutePlanPublicApi(unittest.TestCase):
     """走公开入口 execute_plan，不依赖 _execute_item 这个私有名字。
 
-    只锁本次关心的两条契约：NOT_SATISFIED 触发覆盖安装、持续 CHECK_ERROR 仍然抛。
+    核心契约：真实 manager 上探测无法确认身份时，execute_plan 抛错且绝不调用 install；
+    缺失目标文件时照常安装。
     """
 
     def setUp(self) -> None:
@@ -281,21 +303,45 @@ class ExecutePlanPublicApi(unittest.TestCase):
         patcher2 = mock.patch.object(env_module, "refresh_path", self.refresh)
         patcher2.start()
         self.addCleanup(patcher2.stop)
+        self._dt = tempfile.TemporaryDirectory()
+        self.addCleanup(self._dt.cleanup)
+        self.fake_home = Path(self._dt.name) / "home"
+        (self.fake_home / ".local" / "bin").mkdir(parents=True)
+        env_patcher = mock.patch.object(gr.os, "environ", {"HOME": str(self.fake_home)})
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
 
-    def execute(self, check_result):
-        item = make_item()
-        manager = github_manager_mock()
-        manager.check.return_value = check_result
+    def execute(self, manager, item=None):
+        item = item or make_item()
         executor.execute_plan(InstallPlan(items=[item]), {"github-release": manager})
-        return item, manager
+        return item
 
-    def test_probe_inconclusive_overwrites_via_public_api(self):
-        item, manager = self.execute(CheckResult.NOT_SATISFIED)
+    def test_inconclusive_probe_never_installs_via_public_api(self):
+        """已有同名文件 + 探测输出不匹配 → CHECK_ERROR → 抛错，install 一次都不许调。"""
+        (self.fake_home / ".local" / "bin" / "yq").write_text("#!/bin/sh\necho 'yq 3.4.3'\n")
+        manager = gr.GithubReleaseManager()
+        manager.install = mock.Mock()
+        manager.get_token_report = mock.Mock(return_value="env:GITHUB_TOKEN")
+        with mock.patch.object(
+            gr.subprocess, "run", mock.Mock(return_value=completed(PY_YQ_OUTPUT))
+        ):
+            with self.assertRaises(InstallationError):
+                self.execute(manager)
+        manager.install.assert_not_called()
+
+    def test_missing_file_still_installs_via_public_api(self):
+        """目标文件不存在 → NOT_SATISFIED → 新建安装（不覆盖任何已有文件）。"""
+        manager = gr.GithubReleaseManager()
+        manager.install = mock.Mock()
+        manager.get_token_report = mock.Mock(return_value="env:GITHUB_TOKEN")
+        item = self.execute(manager, make_item(install_name="absent-tool"))
         manager.install.assert_called_once_with(item)
 
     def test_persistent_check_error_still_raises_via_public_api(self):
+        manager = github_manager_mock()
+        manager.check.return_value = CheckResult.CHECK_ERROR
         with self.assertRaises(InstallationError):
-            self.execute(CheckResult.CHECK_ERROR)
+            self.execute(manager)
 
 
 class RealProbe(unittest.TestCase):
@@ -328,26 +374,36 @@ class RealProbe(unittest.TestCase):
         self.write_binary(f"echo '{GO_YQ_OUTPUT.strip()}'")
         self.assertIs(self.check(), CheckResult.SATISFIED)
 
-    def test_real_foreign_binary_is_overwritten(self):
+    def test_real_foreign_binary_is_check_error(self):
         self.write_binary(f"echo '{PY_YQ_OUTPUT.strip()}'")
-        self.assertIs(self.check(), CheckResult.NOT_SATISFIED)
+        self.assertIs(self.check(), CheckResult.CHECK_ERROR)
         self.assertIn("同名异构工具", self.warning)
+        self.assertIn("不会自动覆盖", self.warning)
+
+    def test_existing_file_is_left_untouched_after_check_error(self):
+        """CHECK_ERROR 之后文件内容必须原样保留——没有确认就不能覆盖。"""
+        path = self.write_binary("echo 'this is a user script, not yq'")
+        before = path.read_bytes()
+        self.assertIs(self.check(), CheckResult.CHECK_ERROR)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertTrue(path.is_file())
 
     def test_broken_symlink_is_not_satisfied(self):
+        """坏软链 is_file() 为假 → 视作缺失文件，安装会新建，不破坏已有普通文件。"""
         (self.bin_dir / "yq").symlink_to(self.bin_dir / "does-not-exist")
         self.assertIs(self.check(), CheckResult.NOT_SATISFIED)
 
-    def test_non_executable_file_is_not_satisfied(self):
+    def test_non_executable_file_is_check_error(self):
         self.write_binary(f"echo '{GO_YQ_OUTPUT.strip()}'", executable=False)
-        self.assertIs(self.check(), CheckResult.NOT_SATISFIED)
+        self.assertIs(self.check(), CheckResult.CHECK_ERROR)
 
-    def test_nonzero_exit_code_is_not_satisfied(self):
+    def test_nonzero_exit_code_is_check_error(self):
         self.write_binary("echo 'fatal: missing shared library' >&2; exit 127")
-        self.assertIs(self.check(), CheckResult.NOT_SATISFIED)
+        self.assertIs(self.check(), CheckResult.CHECK_ERROR)
 
-    def test_empty_stdout_is_not_satisfied(self):
+    def test_empty_stdout_is_check_error(self):
         self.write_binary("true")
-        self.assertIs(self.check(), CheckResult.NOT_SATISFIED)
+        self.assertIs(self.check(), CheckResult.CHECK_ERROR)
 
     def test_probe_runs_the_target_path_not_a_same_named_command_on_path(self):
         """probe 必须打到家目录那个二进制，不能被 PATH 上的同名工具顶替。"""
@@ -360,7 +416,7 @@ class RealProbe(unittest.TestCase):
     def test_probe_passes_timeout_to_subprocess(self):
         """真跑一次，只旁听参数：证明 30s 上限确实传给了 subprocess.run。
 
-        真超时路径的收敛由 ProbeOutputContract.test_timeout_triggers_overwrite 覆盖
+        真超时路径的 fail-closed 由 ProbeOutputContract.test_timeout_is_check_error 覆盖
         （那里抛 TimeoutExpired），不在这里等 30 秒。
         """
         self.write_binary(f"echo '{GO_YQ_OUTPUT.strip()}'")

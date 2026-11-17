@@ -6,14 +6,35 @@
 #   github-mirror-urls.sh <direct-url> 输出下载候选 URL，逐行：镜像在前、直连最后
 # 显式设置 GITHUB_MIRRORS 环境变量可覆盖（含设为空以禁用）。
 set -uo pipefail
+set -f  # Prefixes are words, never filesystem glob patterns.
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 if [ -n "${GITHUB_MIRRORS+x}" ]; then
     mirrors="$GITHUB_MIRRORS"
 else
-    mirrors="$(sed -n 's/^github_mirrors = \(.*\)/\1/p' "$PROJECT_DIR/manifest.toml" \
-        | head -1 | tr -d '[]"' | tr ',' ' ')"
+    # Reuse the bootstrap parser (including vendored tomli on Python < 3.11).
+    mirrors="$(python3 - "$PROJECT_DIR" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+sys.path.insert(0, str(root / "vendor/tool-installer"))
+from tool_installer.errors import ConfigError
+from tool_installer.parser import parse_manifest_file
+
+try:
+    _, config = parse_manifest_file(root / "manifest.toml")
+    # The shell interface is whitespace-delimited; reject unrepresentable entries
+    # before emitting anything rather than turning one prefix into broken URLs.
+    for mirror in config.github_mirrors:
+        if not mirror or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in mirror):
+            raise ConfigError("[_github-release].github_mirrors must contain non-empty prefixes without whitespace/control characters")
+except ConfigError as exc:
+    sys.exit("github-mirror-urls: " + str(exc))
+print(" ".join(config.github_mirrors))
+PY
+)" || exit "$?"
 fi
 
 if [ "$#" -eq 0 ]; then

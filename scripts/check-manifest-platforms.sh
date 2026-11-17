@@ -28,6 +28,7 @@ python3 - "$ROOT" <<'PY'
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -58,6 +59,39 @@ OPPOSITE_ARCH = {
 }
 
 HEX64 = re.compile(r"^[0-9a-fA-F]{64}$")
+LOCKED_MANAGERS = {"npm-locked", "python-locked"}
+
+
+def lock_provenance(strategy, env):
+    """Read generator OS/arch from the exact locked strategy path on this platform."""
+    if strategy.lock_root is None or not strategy.lock_digest:
+        return f"{env.os}/{env.arch}: 缺少已校验的 lock 摘要"
+    raw = strategy.fields.get("lock")
+    if not isinstance(raw, str) or Path(raw).is_absolute() or "\\" in raw:
+        return f"{env.os}/{env.arch}: lock 路径不安全"
+    if any(part in {"", ".", ".."} for part in raw.split("/")):
+        return f"{env.os}/{env.arch}: lock 路径不安全"
+    path = (strategy.lock_root / raw).resolve(strict=True)
+    try:
+        path.relative_to(strategy.lock_root)
+        text = path.read_text(encoding="utf-8")
+        if path.stat().st_size > 8 * 1024 * 1024:
+            return f"{env.os}/{env.arch}: lock 超过 8 MiB"
+    except (OSError, ValueError) as exc:
+        return f"{env.os}/{env.arch}: 无法读取 {path}: {exc}"
+    try:
+        if strategy.manager == "npm-locked":
+            data = json.loads(text)
+            provenance = data.get("x-tool-lock-generator") or {}
+        else:
+            line = next((x for x in text.splitlines() if x.startswith("# generator: ")), "")
+            provenance = json.loads(line.removeprefix("# generator: ")) if line else {}
+    except (ValueError, TypeError) as exc:
+        return f"{env.os}/{env.arch}: lock 生成平台元数据无法解析: {exc}"
+    if provenance.get("os") != env.os or provenance.get("arch") != env.arch:
+        return (f"{env.os}/{env.arch}: lock 由 {provenance.get('os')!r}/{provenance.get('arch')!r} 生成，"
+                "不能用于该平台")
+    return None
 
 
 def main() -> int:
@@ -66,6 +100,7 @@ def main() -> int:
     tools = collect_ordered_tools(resolve_modules(config, "dev"))
 
     failures: list[str] = []
+    locked_coverage: dict[tuple[str, str], set[str]] = {}
     for env in PLATFORMS:
         platform = f"{env.os}/{env.arch}"
         try:
@@ -76,6 +111,14 @@ def main() -> int:
             continue
 
         for item in plan.items:
+            if item.strategy.manager in LOCKED_MANAGERS:
+                locked_coverage.setdefault(
+                    (item.tool.reference.name, str(item.tool.reference.version)), set()
+                ).add(platform)
+                error = lock_provenance(item.strategy, env)
+                if error:
+                    failures.append(f"{platform}: {item.tool.reference.name} 的 lock: {error}")
+                continue
             if item.strategy.manager != "github-release":
                 continue
             name = item.tool.reference.name
@@ -114,6 +157,12 @@ def main() -> int:
 
         print(f"  {platform:15s} ✅ {len(plan.items)} items")
 
+    required_platforms = {f"{env.os}/{env.arch}" for env in PLATFORMS}
+    for (name, version), present in sorted(locked_coverage.items()):
+        missing = sorted(required_platforms - present)
+        if missing:
+            failures.append(f"{name}@{version} 的 locked 策略缺少平台: {', '.join(missing)}")
+
     if failures:
         print(
             f"\n❌ manifest 平台矩阵检查失败（{len(failures)} 项）：", file=sys.stderr
@@ -125,7 +174,7 @@ def main() -> int:
     print(
         f"\n✅ manifest 平台矩阵检查通过"
         f"（{len(PLATFORMS)}/{len(PLATFORMS)} 平台；github-release 条目均带 SHA256，"
-        f"asset/bin 与目标架构一致）"
+        f"asset/bin 与目标架构一致；locked 条目逐平台校验生成环境）"
     )
     return 0
 

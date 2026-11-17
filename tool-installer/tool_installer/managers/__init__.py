@@ -20,6 +20,7 @@ from .commands import (
 )
 from .github_release import GithubReleaseManager
 from .script import ScriptManager
+from .locked import NpmLockedManager, PythonLockedManager
 
 
 def default_registry(
@@ -34,6 +35,8 @@ def default_registry(
         "cargo-install": CargoInstallManager(runner),
         "rustup": RustupManager(runner),
         "mise": MiseManager(runner),
+        "npm-locked": NpmLockedManager(runner),
+        "python-locked": PythonLockedManager(runner),
         "npm-global": NpmGlobalManager(runner),
         "pnpm-global": PnpmGlobalManager(runner),
         "uv-tool": UvToolManager(runner),

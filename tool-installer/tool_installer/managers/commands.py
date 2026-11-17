@@ -6,14 +6,9 @@ import json
 import re
 import os
 import shutil
-import stat
 import subprocess
 import sys
-import tarfile
-import tempfile
 import time
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -30,6 +25,7 @@ from .apt_policy import (
     preflight_source_warnings,
 )
 from .base import CheckResult, CommandManager, CommandRunner, _run_with_sudo
+from .upgrade_backup import UpgradeBackup
 
 
 def _noninteractive(cmd: List[str]) -> List[str]:
@@ -82,6 +78,39 @@ def _cargo_v1_eq(installed: str, requested: str) -> bool:
     if core == installed:
         return False
     return _v1_eq(core, requested)
+
+
+def _env_home() -> Optional[Path]:
+    """环境变量里**显式且绝对**的 HOME；否则 None。
+
+    刻意不调用 Path.home()：后者在 HOME 缺失时会改查 passwd、在 HOME 为相对
+    路径时会落到 CWD，备份落点就不可审计了。这里只认调用方明确给出的绝对路径。
+    """
+    home = os.environ.get("HOME")
+    if not home:
+        return None
+    path = Path(home)
+    return path if path.is_absolute() else None
+
+
+def _cargo_backup_home() -> Optional[Path]:
+    """cargo-install 备份根目录的确定性来源，按优先级：
+
+    1. HOME（绝对路径）——常规落点 ~/.local/state/dotfiles/tool-upgrade-backup；
+    2. CARGO_HOME（绝对路径）的父目录——HOME 缺失时 CARGO_HOME/bin 仍然是候选
+       bin 目录，用 <CARGO_HOME>/.. 当 home 替身，落点同样可定位、可回滚；
+    3. 都不可用 → None，调用方必须 fail-closed，绝不退回 CWD 或 Path.home()。
+    """
+    home = _env_home()
+    if home is not None:
+        return home
+    cargo_home = os.environ.get("CARGO_HOME")
+    if cargo_home:
+        cargo_path = Path(cargo_home)
+        parent = cargo_path.parent
+        if cargo_path.is_absolute() and parent != cargo_path and parent != Path("."):
+            return parent
+    return None
 
 
 class AptManager(CommandManager):
@@ -473,18 +502,8 @@ class CargoInstallManager(CommandManager):
     When the opt-in ``binstall_first`` strategy field is true for a
     registry install, installation first tries cargo-binstall without its
     compile strategy and falls back to the normal cargo install command on
-    any binstall/bootstrap failure.
+    any binstall failure (including cargo-binstall being absent).
     """
-
-    _BINSTALL_RELEASE_BASE = (
-        "https://github.com/cargo-bins/cargo-binstall/releases/latest/download"
-    )
-    _BINSTALL_TARGETS = {
-        ("linux", "x86_64"): "x86_64-unknown-linux-musl",
-        ("linux", "aarch64"): "aarch64-unknown-linux-musl",
-        ("macos", "x86_64"): "x86_64-apple-darwin",
-        ("macos", "aarch64"): "aarch64-apple-darwin",
-    }
 
     def check(self, item: PlanItem) -> CheckResult:
         """Check if the tool is installed by verifying binary existence and version.
@@ -682,48 +701,87 @@ class CargoInstallManager(CommandManager):
 
     def install(self, item: PlanItem) -> None:
         fields = item.strategy.fields
-        if fields.get("binstall_first") is True and "git" not in fields:
-            binstall_retry = int(fields.get("binstall_retry", 0) or 0)
-            binstall = self._ensure_binstall(item, retry=binstall_retry)
-            if binstall is not None:
-                try:
-                    # Inject GITHUB_TOKEN from gh auth if not already set,
-                    # so cargo-binstall can use authenticated API requests
-                    token, _source = detect_github_token()
-                    env = None
-                    if token is not None and not os.environ.get("GITHUB_TOKEN"):
-                        env = {**os.environ, "GITHUB_TOKEN": token}
-                    command = self._binstall_command(item, binstall, fields)
-                    result = self.runner.run(
-                        command,
-                        check=False,
-                        timeout=30,
-                        env=env,
-                    )
-                    if result.returncode == 0:
-                        return
-                except (subprocess.TimeoutExpired, InstallationError):
-                    # binstall 阶段的超时/失败都只是"没走捷径"，回退源码编译是本条目
-                    # 的既定路径（binstall_first）。SubprocessRunner 在 Step 1 把
-                    # TimeoutExpired 转成了 InstallationError，只 catch 前者会让超时
-                    # 冒泡成整工具失败——CI 里表现为 taplo/tree-sitter 直接 fatal，
-                    # 而 30 秒本来就是"binstall 没下完就回退"的正常节奏。
-                    pass
+        pkg = fields["pkg"]
 
-        # Retry cargo install on transient failures (network, registry, etc.)
-        max_retries = 2
-        for attempt in range(1 + max_retries):
-            result = self.runner.run(self._cargo_install_command(item), check=False)
-            if result.returncode == 0:
-                return
-            if attempt < max_retries:
-                delay = 2 ** attempt  # exponential backoff: 1s, 2s
-                time.sleep(delay)
-
-        raise InstallationError(
-            f"Install failed for {item.tool.reference.name} with manager {item.strategy.manager} "
-            f"after {1 + max_retries} attempts"
+        # --force 的覆盖发生在 cargo 内部，因此备份必须在任何 runner.run 之前完成；
+        # binstall 捷径同样会覆盖 ~/.cargo/bin，必须一并纳入。失败/重试耗尽时还原。
+        # HOME 缺失但 CARGO_HOME 可用时退到 <CARGO_HOME>/.. 作备份根；两者都
+        # 不可用时**拒绝安装**：不允许无备份覆盖，绝不把备份写进 CWD。
+        backup_home = _cargo_backup_home()
+        if backup_home is None:
+            raise InstallationError(
+                f"cargo-install 无法确定升级备份根目录，拒绝无备份覆盖 "
+                f"{item.tool.reference.name}：HOME 未设置或不是绝对路径，CARGO_HOME="
+                f"{os.environ.get('CARGO_HOME')!r} 也无法定位候选 bin。"
+                "未执行任何安装命令（fail-closed）。请设置绝对路径的 HOME，"
+                "或设置绝对路径的 CARGO_HOME 以用 <CARGO_HOME>/.. 作为备份根。"
+            )
+        backup = UpgradeBackup(
+            backup_home,
+            label=item.tool.reference.name,
+            tool=item.tool.reference.name,
+            version=_selector(item),
         )
+        for binary_name in self._cargo_binary_names(pkg, fields):
+            for bin_dir in self._cargo_bin_dirs():
+                backup.backup(bin_dir / binary_name)
+
+        succeeded = False
+        try:
+            if fields.get("binstall_first") is True and "git" not in fields:
+                binstall = self._ensure_binstall(item)
+                if binstall is not None:
+                    try:
+                        # Inject GITHUB_TOKEN from gh auth if not already set,
+                        # so cargo-binstall can use authenticated API requests
+                        token, _source = detect_github_token()
+                        env = None
+                        if token is not None and not os.environ.get("GITHUB_TOKEN"):
+                            env = {**os.environ, "GITHUB_TOKEN": token}
+                        command = self._binstall_command(item, binstall, fields)
+                        result = self.runner.run(
+                            command,
+                            check=False,
+                            timeout=30,
+                            env=env,
+                        )
+                        if result.returncode == 0:
+                            succeeded = True
+                            return
+                    except (subprocess.TimeoutExpired, InstallationError):
+                        # binstall 阶段的超时/失败都只是"没走捷径"，回退源码编译是本条目
+                        # 的既定路径（binstall_first）。SubprocessRunner 在 Step 1 把
+                        # TimeoutExpired 转成了 InstallationError，只 catch 前者会让超时
+                        # 冒泡成整工具失败——CI 里表现为 taplo/tree-sitter 直接 fatal，
+                        # 而 30 秒本来就是"binstall 没下完就回退"的正常节奏。
+                        pass
+
+            # Retry cargo install on transient failures (network, registry, etc.)
+            max_retries = 2
+            for attempt in range(1 + max_retries):
+                result = self.runner.run(self._cargo_install_command(item), check=False)
+                if result.returncode == 0:
+                    succeeded = True
+                    return
+                if attempt < max_retries:
+                    delay = 2 ** attempt  # exponential backoff: 1s, 2s
+                    time.sleep(delay)
+
+            raise InstallationError(
+                f"Install failed for {item.tool.reference.name} with manager {item.strategy.manager} "
+                f"after {1 + max_retries} attempts"
+            )
+        finally:
+            # run 失败 / 重试耗尽 / 意外异常：还原被覆盖的 bin 候选与旧字节。
+            # 成功路径什么都不做——备份默认保留，不自动删除。
+            if backup is not None and not succeeded:
+                try:
+                    backup.rollback()
+                except Exception as rollback_exc:
+                    raise InstallationError(
+                        f"安装失败且自动回滚也失败（{rollback_exc}）；"
+                        f"备份仍在 {backup.slot}，请凭 manifest.json 手动还原"
+                    ) from rollback_exc
 
     @staticmethod
     def _cargo_binary_names(pkg: str, fields: dict) -> List[str]:
@@ -742,16 +800,19 @@ class CargoInstallManager(CommandManager):
         return list(dict.fromkeys(names))
 
     def _cargo_bin_dirs(self) -> List[Path]:
-        """Return common cargo binary directories."""
+        """Return common cargo binary directories, all env-derived."""
         dirs: List[Path] = []
         cargo_home = os.environ.get("CARGO_HOME")
         if cargo_home:
-            dirs.append(Path(cargo_home) / "bin")
-        home = os.environ.get("HOME")
-        if home:
-            dirs.append(Path(home) / ".cargo" / "bin")
-            dirs.append(Path(home) / ".local" / "bin")
-        dirs.append(Path.home() / ".cargo" / "bin")
+            cargo_path = Path(cargo_home)
+            if cargo_path.is_absolute():
+                dirs.append(cargo_path / "bin")
+        home = _env_home()
+        if home is not None:
+            dirs.append(home / ".cargo" / "bin")
+            dirs.append(home / ".local" / "bin")
+        # 不再用 Path.home() 兜底：HOME/CARGO_HOME 都缺失时没有可信候选目录，
+        # check 判 NOT_SATISFIED，install 在备份根判定处 fail-closed；绝不探测 CWD。
         return dirs
 
     def _cargo_install_command(self, item: PlanItem) -> List[str]:
@@ -782,11 +843,13 @@ class CargoInstallManager(CommandManager):
         command.append(fields["pkg"])
         return command
 
-    def _ensure_binstall(self, item: PlanItem, retry: int = 0) -> Optional[List[str]]:
-        """Return a cargo-binstall invocation, or None when unavailable.
+    def _ensure_binstall(self, item: PlanItem) -> Optional[List[str]]:
+        """Return an invocation for an *already-installed* cargo-binstall, or None.
 
-        All bootstrap failures are intentionally non-fatal so
-        ``binstall_first`` remains an optimization over the normal
+        Never downloads cargo-binstall: the previous bootstrap pulled an
+        unpinned ``releases/latest`` asset with no digest verification.  A
+        missing or unverifiable binary is intentionally non-fatal so
+        ``binstall_first`` stays an optimization over the normal
         ``cargo install`` path rather than a new hard dependency.
         """
         if shutil.which("cargo-binstall") and self._verified_binstall("cargo-binstall"):
@@ -796,12 +859,6 @@ class CargoInstallManager(CommandManager):
         if home_binary.is_file() and os.access(home_binary, os.X_OK):
             if self._verified_binstall(str(home_binary)):
                 return [str(home_binary)]
-            return None
-
-        for attempt in range(1 + retry):
-            if self._download_binstall(item, home_binary):
-                if self._verified_binstall(str(home_binary)):
-                    return [str(home_binary)]
         return None
 
     def _verified_binstall(self, binary: str) -> bool:
@@ -814,79 +871,14 @@ class CargoInstallManager(CommandManager):
     def _cargo_home_bin(self) -> Path:
         cargo_home = os.environ.get("CARGO_HOME")
         if cargo_home:
-            return Path(cargo_home) / "bin"
-        home = os.environ.get("HOME")
-        if home:
-            return Path(home) / ".cargo" / "bin"
-        return Path.home() / ".cargo" / "bin"
-
-    def _download_binstall(self, item: PlanItem, destination: Path) -> bool:
-        target = self._BINSTALL_TARGETS.get((item.environment.os, item.environment.arch))
-        if target is None:
-            return False
-        asset = f"cargo-binstall-{target}.tgz"
-
-        try:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.TemporaryDirectory() as temp:
-                archive = Path(temp) / asset
-
-                # Try gh CLI first (has GITHUB_TOKEN auth, avoids rate limits in CI)
-                if shutil.which("gh"):
-                    try:
-                        self.runner.run(
-                            [
-                                "gh", "release", "download",
-                                "latest",
-                                "--repo", "cargo-bins/cargo-binstall",
-                                "--pattern", asset,
-                                "--dir", str(temp),
-                            ],
-                            check=True,
-                            capture_output=True,
-                            timeout=60,
-                        )
-                    except (subprocess.TimeoutExpired, OSError):
-                        # gh failed, fall through to urllib
-                        pass
-
-                # If gh didn't produce the file, try urllib
-                if not archive.is_file():
-                    url = f"{self._BINSTALL_RELEASE_BASE}/{asset}"
-                    with urllib.request.urlopen(url, timeout=30) as response:
-                        archive.write_bytes(response.read())
-
-                if not archive.is_file():
-                    return False
-
-                executable = self._extract_binstall(archive, Path(temp))
-                temp_dest = destination.parent / f".{destination.name}.installing"
-                shutil.copy2(executable, temp_dest)
-                temp_dest.chmod(temp_dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-                os.replace(str(temp_dest), str(destination))
-            return True
-        except (OSError, tarfile.TarError, urllib.error.URLError, TimeoutError):
-            try:
-                temp_dest = destination.parent / f".{destination.name}.installing"
-                temp_dest.unlink()
-            except OSError:
-                pass
-            return False
-
-    def _extract_binstall(self, archive: Path, temp_dir: Path) -> Path:
-        with tarfile.open(archive, "r:gz") as tar:
-            for member in tar.getmembers():
-                name = Path(member.name).name
-                if name == "cargo-binstall" and member.isfile():
-                    extracted = temp_dir / "cargo-binstall.extracted"
-                    source = tar.extractfile(member)
-                    if source is None:
-                        break
-                    with source, extracted.open("wb") as dest:
-                        shutil.copyfileobj(source, dest)
-                    extracted.chmod(extracted.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-                    return extracted
-        raise tarfile.TarError("cargo-binstall executable not found in archive")
+            cargo_path = Path(cargo_home)
+            if cargo_path.is_absolute():
+                return cargo_path / "bin"
+        home = _env_home() or _cargo_backup_home()
+        if home is None:
+            # install() 已在此之前 fail-closed；这里不给 Path.home()/CWD 留机会。
+            raise InstallationError("无法确定 cargo 二进制目录：HOME 与 CARGO_HOME 均不可用")
+        return home / ".cargo" / "bin"
 
 
 class MiseManager(CommandManager):

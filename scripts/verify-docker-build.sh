@@ -32,41 +32,29 @@ check_cmd() {
 check_version() {
     local cmd=$1
     local desc=${2:-$1}
-    if command -v "$cmd" &> /dev/null; then
-        local version=$("$cmd" --version 2>&1 | head -n1 || echo "版本未知")
-        echo -e "${GREEN}[PASS]${NC} $desc: $version"
-        ((PASS++))
-        return 0
-    else
-        echo -e "${RED}[FAIL]${NC} $desc: 未找到"
-        ((FAIL++))
-        return 0  # 返回 0 避免脚本提前退出
-    fi
-}
-
-# 与 check_version 的区别：要求 --version 退出码为 0。
-# 能抓住"二进制在 PATH 但运行即崩"的工具（如 .NET 缺 ICU 的 marksman、
-# bindgen 缺 libclang 编译出的 tree-sitter），check_version 会把崩溃输出当版本号 PASS 掉
-check_runs() {
-    local cmd=$1
-    local desc=${2:-$1}
+    local version_flag=${3:---version}
     if ! command -v "$cmd" &> /dev/null; then
         echo -e "${RED}[FAIL]${NC} $desc: 未找到"
         ((FAIL++))
         return 0
     fi
     local output rc
-    output=$("$cmd" --version 2>&1)
+    output=$("$cmd" "$version_flag" 2>&1)
     rc=$?
-    output=$(printf '%s\n' "$output" | head -n1)
+    output=${output%%$'\n'*}
     if [ "$rc" -eq 0 ]; then
         echo -e "${GREEN}[PASS]${NC} $desc: $output"
         ((PASS++))
     else
-        echo -e "${RED}[FAIL]${NC} $desc: 运行失败 (exit $rc): $output"
+        echo -e "${RED}[FAIL]${NC} $desc: $cmd $version_flag 运行失败 (exit $rc): $output"
         ((FAIL++))
     fi
-    return 0
+    return 0  # 继续其余检查，由汇总决定脚本退出码
+}
+
+# 保留原调用入口，版本检查同样要求命令成功运行。
+check_runs() {
+    check_version "$@"
 }
 
 check_symlink() {
@@ -185,10 +173,10 @@ echo "=== 6. mise 运行时 ==="
 if command -v mise &> /dev/null; then
     eval "$(mise hook-env -s bash 2>/dev/null)" || true
 fi
-check_version go
+check_version go "go" version
 check_version node
 check_version pnpm
-check_version zig || echo -e "${YELLOW}[INFO]${NC} zig 可能是 latest 版本，需要网络下载"
+check_version zig "zig" version || echo -e "${YELLOW}[INFO]${NC} zig 可能是 latest 版本，需要网络下载"
 echo
 
 echo "=== 7. 符号链接验证 ==="

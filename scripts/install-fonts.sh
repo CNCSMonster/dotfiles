@@ -3,7 +3,7 @@
 # Installs system fonts + IBM Plex + FiraCode Nerd Font
 # IBM Plex Serif/Mono 是简历工作流（Typst 模板）的正文字体，缺失会导致西文回退到
 # Noto Sans CJK，排版走样。
-# Always exits 0; prints warnings on failure instead of failing.
+# Download/install failures remain warnings; invalid mirror configuration exits non-zero.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -99,7 +99,8 @@ install_fira_code() {
 
     local downloaded=false
     local fira_url="https://github.com/${fira_repo}/releases/download/${fira_version}/${fira_asset}"
-    local cand
+    local cand candidates
+    candidates="$("$SCRIPT_DIR/github-mirror-urls.sh" "$fira_url")" || return "$?"
     while IFS= read -r cand; do
         echo "尝试下载: $cand"
         if wget --tries=2 --timeout=180 --connect-timeout=15 "$cand" -O "$fira_tmp" 2>/dev/null; then
@@ -107,7 +108,7 @@ install_fira_code() {
             break
         fi
         echo "⚠️  该镜像失败，尝试下一个..."
-    done < <("$SCRIPT_DIR/github-mirror-urls.sh" "$fira_url")
+    done <<< "$candidates"
 
     if [ "$downloaded" != true ]; then
         echo "⚠️  FiraCode Nerd Font 下载失败，跳过"
@@ -139,6 +140,6 @@ install_fira_code() {
 }
 
 install_system_fonts
-install_fira_code
+install_fira_code || exit "$?"
 
 exit 0

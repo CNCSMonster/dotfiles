@@ -21,18 +21,20 @@ _SUPPORTED: Dict[str, Dict[str, Any]] = {
     "brew": {"required": {"pkg"}, "optional": set(), "latest_only": True},
     "brew-cask": {"required": {"pkg"}, "optional": set(), "latest_only": True},
     "cargo-binstall": {"required": {"pkg"}, "optional": {"bin"}},
-    "cargo-install": {"required": {"pkg"}, "optional": {"bin", "locked", "binstall_first", "binstall_retry", "binstall_fallback_compile", "git", "tag", "branch", "rev"}},
+    "cargo-install": {"required": {"pkg"}, "optional": {"bin", "locked", "binstall_first", "binstall_fallback_compile", "git", "tag", "branch", "rev"}},
     "rustup": {"required": set(), "optional": {"components", "targets", "profile", "set_default"}},
     "mise": {"required": {"plugin"}, "optional": set()},
+    "npm-locked": {"required": {"pkg", "lock"}, "optional": {"bin"}},
+    "python-locked": {"required": {"pkg", "lock"}, "optional": {"bin"}},
     "npm-global": {"required": {"pkg"}, "optional": {"bin", "registry"}},
     "pnpm-global": {"required": {"pkg"}, "optional": {"bin", "registry"}},
     "uv-tool": {"required": {"pkg"}, "optional": {"bin", "python", "with"}},
     "github-release": {"required": {"repo", "asset", "bin"}, "optional": {"sha256", "install_name", "version_probe", "extract_dir"}},
     "script": {"required": {"path"}, "optional": set()},
 }
-_STRING_FIELDS = {"manager", "pkg", "bin", "registry", "plugin", "python", "git", "tag", "branch", "rev", "profile", "repo", "asset", "sha256", "install_name", "path", "extract_dir"}
+_STRING_FIELDS = {"lock", "manager", "pkg", "bin", "registry", "plugin", "python", "git", "tag", "branch", "rev", "profile", "repo", "asset", "sha256", "install_name", "path", "extract_dir"}
 _BOOL_FIELDS = {"force", "locked", "binstall_first", "set_default", "binstall_fallback_compile"}
-_INT_FIELDS = {"binstall_retry"}
+_INT_FIELDS: set[str] = set()
 _ARRAY_FIELDS = {"with", "components", "targets"}
 _NESTED_TABLE_FIELDS = {"version_probe"}
 _VERSION_PROBE_FIELDS = {"command", "regex"}
@@ -103,7 +105,18 @@ def resolve_tool_strategy(
         merged["bin"] = name
 
     _validate_strategy(name, tool.reference.version, merged, manifest_dir)
-    return MergedStrategy(tool_name=name, manager=merged["manager"], fields=merged, force=merged.get("force", False))
+    lock_root = None
+    lock_digest = None
+    if manager in {"npm-locked", "python-locked"}:
+        from .managers.locked import read_lock
+        lock_root = manifest_dir.resolve()
+        # Unknown table-valued configuration must not silently bypass this schema.
+        for source in (table, os_table, arch_table or {}):
+            unexpected = set(source) - _OS_TABLES - _ARCH_TABLES - (_COMMON | contract["required"] | contract["optional"])
+            if unexpected:
+                raise StrategyError("Unknown locked strategy fields: " + ", ".join(sorted(unexpected)))
+        _, lock_digest = read_lock(lock_root, merged, tool.reference.version, manager)
+    return MergedStrategy(tool_name=name, manager=merged["manager"], fields=merged, force=merged.get("force", False), lock_root=lock_root, lock_digest=lock_digest)
 
 
 def _strategy_fields(table: Mapping[str, Any]) -> Dict[str, Any]:

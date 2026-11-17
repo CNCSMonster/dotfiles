@@ -23,6 +23,7 @@ from ..errors import InstallationError
 from ..github_token import detect_github_token
 from ..models import GithubReleaseConfig, PlanItem
 from .base import CheckResult, Manager
+from .upgrade_backup import UpgradeBackup
 
 
 def _first_line(text: str, limit: int = 120) -> str:
@@ -59,10 +60,12 @@ class GithubReleaseManager:
     Check-capable only when version_probe is defined in the strategy.
     Without version_probe, always returns NOT_SATISFIED (non-check-capable).
 
-    A probe that cannot confirm the expected tool (foreign binary, bad exit code,
-    unparseable output) yields NOT_SATISFIED plus a warning, so the plan overwrites
-    it instead of aborting. Only genuine environment errors — no HOME, an invalid
-    regex, an unresolvable "latest" tag — stay CHECK_ERROR.
+    When the target file exists but a probe cannot confirm its identity (foreign
+    binary, bad exit code, unparseable output), check fails closed: CHECK_ERROR with
+    a clear message, and the existing file is left untouched — never overwritten
+    without user confirmation. A missing file still yields NOT_SATISFIED (install
+    creates it). A probe that does yield a version but differs from the requested
+    version keeps NOT_SATISFIED, i.e. the existing upgrade semantics.
 
     Supports mirror fallback and retry/timeout via GithubReleaseConfig. A fallback
     candidate must pass the strategy's ``sha256`` as well as transfer, so mirrors
@@ -169,14 +172,19 @@ class GithubReleaseManager:
 
     @staticmethod
     def _probe_inconclusive(bin_path: Path, reason: str) -> CheckResult:
-        """Treat an unusable version probe as "not installed".
+        """Fail closed when a probe cannot confirm an existing file's identity.
 
-        ~/.local/bin/<name> may hold a foreign binary (e.g. the Python `yq` wrapper
-        installed by uv). Reporting that as CHECK_ERROR would abort the whole plan;
-        the useful outcome is "overwrite it", so return NOT_SATISFIED with a warning.
+        ~/.local/bin/<name> may be a foreign binary (e.g. the Python `yq` wrapper
+        installed by uv) or any user file. Without a usable version string we cannot
+        tell, so CHECK_ERROR aborts the plan instead of silently replacing it. The
+        message names the file and the reason; recovery is an explicit human action
+        (inspect/remove the file, or set ``force = true`` for this tool).
         """
-        print(f"⚠️  {bin_path}: 版本探测无法确认（{reason}），按未安装处理并覆盖安装")
-        return CheckResult.NOT_SATISFIED
+        print(
+            f"⚠️  {bin_path}: 版本探测无法确认该文件身份（{reason}）；"
+            "已保留现有文件，不会自动覆盖。请人工确认后处理，或为该工具设置 force = true 强制安装"
+        )
+        return CheckResult.CHECK_ERROR
 
     @staticmethod
     def _compare_versions(installed: str, requested: str) -> CheckResult:
@@ -202,7 +210,18 @@ class GithubReleaseManager:
     def install(self, item: PlanItem) -> None:
         home = os.environ.get("HOME")
         if not home:
-            raise InstallationError("HOME is required for github-release installs")
+            raise InstallationError(
+                "github-release 安装需要 HOME 才能确定 ~/.local/bin 安装目标与升级备份根目录；"
+                "HOME 未设置 → 无法备份（覆盖前无法留存旧物、安装失败也无法回滚），"
+                "因此拒绝无备份覆盖（fail-closed），未执行任何下载/安装。"
+                "请设置绝对路径的 HOME 后重试。"
+            )
+        home_path = Path(home)
+        if not home_path.is_absolute():
+            raise InstallationError(
+                f"github-release 的 HOME 必须是绝对路径（收到 {home!r}）；"
+                "拒绝把安装目标或升级备份写入当前工作目录（无法保证可回滚）。"
+            )
 
         version = item.tool.reference.version
         if version == "latest":
@@ -218,53 +237,82 @@ class GithubReleaseManager:
             self._download_asset(item, repo, download_path, downloaded)
             executable = self._locate_executable(item, downloaded, temp_dir, version)
 
-            install_dir = Path(home) / ".local" / "bin"
+            install_dir = home_path / ".local" / "bin"
             install_dir.mkdir(parents=True, exist_ok=True)
             destination = install_dir / item.strategy.fields.get("install_name", item.tool.reference.name)
 
             extract_dir_name = item.strategy.fields.get("extract_dir")
-            if extract_dir_name:
-                share_dir = Path(home) / ".local" / "share" / extract_dir_name
-                extracted_root = temp_dir / "extract"
-                if share_dir.exists():
-                    shutil.rmtree(share_dir)
-                share_dir.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copytree(extracted_root, share_dir, symlinks=True)
+            share_dir = (
+                home_path / ".local" / "share" / extract_dir_name
+                if extract_dir_name
+                else None
+            )
 
-                bin_rel_path = executable.relative_to(extracted_root)
-                target_exec = share_dir / bin_rel_path
-                target_exec.chmod(target_exec.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            # 覆盖前留存旧物：入口脚本/二进制 + extract_dir 旧共享目录。
+            # 首次安装（两者都不存在）时不会创建任何 state 目录。成功后备份默认保留。
+            backup = UpgradeBackup(
+                home_path,
+                label=item.tool.reference.name,
+                tool=item.tool.reference.name,
+                version=version,
+            )
+            backup.backup(destination)
+            if share_dir is not None:
+                backup.backup(share_dir)
 
-                wrapper_script = (
-                    f"#!/usr/bin/env bash\n"
-                    f'exec "{target_exec}" "$@"\n'
-                )
-                tmp_dest = install_dir / f".installing_{item.tool.reference.name}.tmp"
-                try:
-                    tmp_dest.write_text(wrapper_script, encoding="utf-8")
-                    tmp_dest.chmod(0o755)
-                    os.replace(str(tmp_dest), str(destination))
-                except OSError:
+            try:
+                if extract_dir_name:
+                    extracted_root = temp_dir / "extract"
+                    if share_dir.exists():
+                        shutil.rmtree(share_dir)
+                    share_dir.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copytree(extracted_root, share_dir, symlinks=True)
+
+                    bin_rel_path = executable.relative_to(extracted_root)
+                    target_exec = share_dir / bin_rel_path
+                    target_exec.chmod(target_exec.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+                    wrapper_script = (
+                        f"#!/usr/bin/env bash\n"
+                        f'exec "{target_exec}" "$@"\n'
+                    )
+                    tmp_dest = install_dir / f".installing_{item.tool.reference.name}.tmp"
                     try:
-                        tmp_dest.unlink()
+                        tmp_dest.write_text(wrapper_script, encoding="utf-8")
+                        tmp_dest.chmod(0o755)
+                        os.replace(str(tmp_dest), str(destination))
                     except OSError:
-                        pass
-                    raise
-            else:
-                # Atomic install: create temp file in the same directory as destination
-                # then use os.replace for atomic rename on same filesystem
-                tmp_dest = install_dir / f".installing_{item.tool.reference.name}.tmp"
-                try:
-                    shutil.copy2(executable, tmp_dest)
-                    tmp_dest.chmod(tmp_dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-                    os.replace(str(tmp_dest), str(destination))
-                except OSError:
-                    # Clean up temp file if rename failed
+                        try:
+                            tmp_dest.unlink()
+                        except OSError:
+                            pass
+                        raise
+                else:
+                    # Atomic install: create temp file in the same directory as destination
+                    # then use os.replace for atomic rename on same filesystem
+                    tmp_dest = install_dir / f".installing_{item.tool.reference.name}.tmp"
                     try:
-                        tmp_dest.unlink()
+                        shutil.copy2(executable, tmp_dest)
+                        tmp_dest.chmod(tmp_dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+                        os.replace(str(tmp_dest), str(destination))
                     except OSError:
-                        pass
-                    raise
+                        # Clean up temp file if rename failed
+                        try:
+                            tmp_dest.unlink()
+                        except OSError:
+                            pass
+                        raise
+            except Exception as install_exc:
+                # os.replace / rmtree / copytree / 安装任一步失败：还原原有目标与旧字节。
+                # 回滚本身失败时不能吞掉安装错误，也不能把备份位置藏起来。
+                try:
+                    backup.rollback()
+                except Exception as rollback_exc:
+                    raise InstallationError(
+                        f"安装失败且自动回滚也失败（{rollback_exc}）；"
+                        f"备份仍在 {backup.slot}，请凭 manifest.json 手动还原"
+                    ) from install_exc
+                raise
 
     def _build_download_urls(self, repo: str, path: str) -> List[str]:
         """Build a list of URLs to try: mirrors first, then direct GitHub."""

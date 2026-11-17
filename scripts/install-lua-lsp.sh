@@ -63,6 +63,7 @@ echo "下载 lua-language-server ${VERSION} (${ASSET})..."
 
 downloaded=false
 lua_url="https://github.com/LuaLS/lua-language-server/releases/download/${VERSION}/${ASSET}"
+candidates="$("$SCRIPT_DIR/github-mirror-urls.sh" "$lua_url")" || exit "$?"
 while IFS= read -r cand; do
     echo "尝试下载: $cand"
     if wget --tries=2 --timeout=180 --connect-timeout=15 "$cand" -O "$TMP_DIR/$ASSET" 2>/dev/null; then
@@ -70,7 +71,7 @@ while IFS= read -r cand; do
         break
     fi
     echo "⚠️  该镜像失败，尝试下一个..."
-done < <("$SCRIPT_DIR/github-mirror-urls.sh" "$lua_url")
+done <<< "$candidates"
 
 if [ "$downloaded" != true ]; then
     echo "⚠️  lua-language-server 下载失败，跳过"

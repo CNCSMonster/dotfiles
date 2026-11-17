@@ -156,7 +156,7 @@ Vendor 目录只存放满足以下条件**之一**的资源；三条之外一律
   - tool-installer 的 `github-release` manager 已支持镜像回退，且回退**以 SHA256
     校验为准**：候选源必须同时"传得下来"和"校验通过"才算成功，镜像返回错误内容
     会继续尝试下一个源（官方直连在候选列表末位）
-  - `_download_binstall` 已实现 cargo-binstall 的自举下载
+  - cargo-binstall 不再由安装器从 `releases/latest` 无摘要自举下载；缺失时 `binstall_first` 回退到 Cargo 源码安装，钉版安装仍由清单中的 `github-release` 条目负责
   - 预装这些工具会掩盖 tool-installer 自身路径的 bug
 
 - ❌ **临时 workaround**

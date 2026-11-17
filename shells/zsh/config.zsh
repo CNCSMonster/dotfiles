@@ -85,118 +85,69 @@ _source-existent() {
 # Plugins (Part 1) #
 #==================#
 
-# zcomet - zsh 插件管理器
-# 优先使用 submodule 版本，fallback 到运行时 clone
-# 支持后台安装模式（通过环境变量控制）
-
-_zcomet_load() {
-    local ZCOMET_DIR="$ZSH_CONFIG_HOME/.zcomet"
-    local LOCK_DIR="$ZSH_CONFIG_HOME/.zcomet.lock"
-    local LOG_FILE="$ZSH_CONFIG_HOME/.zcomet-install.log"
-    
-    # 1. 如果已存在且有效，直接加载
-    if [[ -f $ZCOMET_DIR/zcomet.zsh ]]; then
-        source $ZCOMET_DIR/zcomet.zsh
-        return 0
+# zcomet trust boundary: startup is offline and never repairs user checkouts.
+# BEGIN ZCOMET PIN GUARD
+_dotfiles_zcomet_checkout_ok() {
+    local dir="$1" pin="$2" repo="$3" actual dirty origin
+    if [[ ! $pin =~ '^[0-9a-f]{40}$' || ! -d "$dir/.git" ]]; then
+        print -u2 -- "[zsh] 警告：跳过 $dir：缺失独立 Git checkout 或 pin 非完整 SHA；请按插件 SOP 人工处理（未修改目录）"
+        return 1
     fi
-    
-    # 2. 检查是否有 git
-    if ! command -v git &>/dev/null; then
-        echo "[zsh] 警告：git 未安装，zcomet 插件系统不可用" >&2
-        return 0
+    if ! actual=$(command git -C "$dir" rev-parse --verify HEAD 2>/dev/null) ||
+       ! dirty=$(command git -C "$dir" status --porcelain --untracked-files=no 2>/dev/null); then
+        print -u2 -- "[zsh] 警告：跳过 $dir：Git 校验失败；未修改目录，请按插件 SOP 人工检查"
+        return 1
     fi
-    
-    # 3. 检查是否已有后台进程在安装
-    if [[ -d $LOCK_DIR ]]; then
-        echo "[zsh] zcomet 正在后台安装中，安装完成后重启 shell 即可使用" >&2
-        return 0
-    fi
-    
-    # 4. 清理无效目录（可能是之前失败留下的）
-    if [[ -d $ZCOMET_DIR ]] && [[ ! -f $ZCOMET_DIR/zcomet.zsh ]]; then
-        echo "[zsh] 检测到无效的 .zcomet 目录，正在清理..." >&2
-        rm -rf "$ZCOMET_DIR" 2>/dev/null
-    fi
-    
-    # 5. 根据环境变量决定安装模式
-    # ZCOMET_BG_INSTALL=0 → 前台安装（等待完成，阻塞）
-    # 未设置或=1 → 后台安装（立即返回，不阻塞）【默认】
-    if [[ "${ZCOMET_BG_INSTALL:-1}" != "0" ]]; then
-        # === 后台模式（默认）===
-        
-        # 获取锁，防止重复启动
-        if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-            echo "[zsh] zcomet 正在后台安装中" >&2
-            return 0
-        fi
-        
-        # 后台执行 clone
-        {
-            {
-                echo "[zsh] 开始安装 zcomet..."
-                # 确保目录不存在
-                rm -rf "$ZCOMET_DIR" 2>/dev/null
-                if git clone --depth 1 https://github.com/agkozak/zcomet "$ZCOMET_DIR" 2>&1; then
-                    echo "[zsh] zcomet 安装完成！重启 shell 后生效"
-                    rmdir "$LOCK_DIR" 2>/dev/null || true
-                else
-                    echo "[zsh] zcomet 安装失败，请检查网络连接"
-                    rmdir "$LOCK_DIR" 2>/dev/null
-                fi
-            } > "$LOG_FILE" 2>&1
-        } &!
-        
-        # 提示用户
-        echo "[zsh] zcomet 正在后台安装中，当前会话部分功能不可用" >&2
-        echo "[zsh] 安装日志：$LOG_FILE" >&2
-        echo "[zsh] 安装完成后重启 shell 即可使用完整功能" >&2
-    else
-        # === 前台模式（可选，阻塞等待）===
-        echo "[zsh] 首次启动，正在下载 zcomet（等待约 10-30 秒）..." >&2
-        # 确保目录不存在
-        rm -rf "$ZCOMET_DIR" 2>/dev/null
-        if git clone --depth 1 https://github.com/agkozak/zcomet "$ZCOMET_DIR" 2>&1; then
-            source "$ZCOMET_DIR/zcomet.zsh"
-            echo "[zsh] zcomet 加载完成" >&2
-        else
-            echo "[zsh] 警告：zcomet 下载失败，插件功能不可用" >&2
-        fi
+    origin=$(command git -C "$dir" config --get remote.origin.url 2>/dev/null)
+    if [[ "$actual" != "$pin" || -n "$dirty" ||
+          ( "$origin" != "https://github.com/$repo" &&
+            "$origin" != "https://github.com/$repo.git" &&
+            "$origin" != "git@github.com:$repo.git" ) ]]; then
+        print -u2 -- "[zsh] 警告：跳过 $dir：期望 $pin，实际 $actual，或 tracked 文件/origin 不符；未删除、覆盖或更新，请按插件 SOP 人工检查"
+        return 1
     fi
 }
 
-_zcomet_load
+_dotfiles_zcomet_load_manager() {
+    local dir="$ZSH_CONFIG_HOME/.zcomet"
+    local pin=3dfe6f837479c6731e74400a233739500ec6d648
+    _dotfiles_zcomet_checkout_ok "$dir" "$pin" agkozak/zcomet || return 1
+    [[ -f "$dir/zcomet.zsh" ]] || return 1
+    source "$dir/zcomet.zsh" || return 1
+    (( $+functions[zcomet] ))
+}
 
-# 检查 zcomet 是否成功加载，失败则跳过后续插件配置
-if ! (( $+functions[zcomet] )); then
-    echo "[zsh-config] 警告：zcomet 未加载，跳过插件系统" >&2
+_dotfiles_zcomet_plugin() {
+    local action="$1" repo="${2%@*}" pin="${2##*@}" dir
+    shift 2
+    dir="${ZDOTDIR:-$HOME}/.zcomet/repos/$repo"
+    _dotfiles_zcomet_checkout_ok "$dir" "$pin" "$repo" || return 1
+    # Absolute local paths cannot trigger clone/fetch or a checkout switch.
+    zcomet "$action" "$dir" "$@"
+}
+
+if ! _dotfiles_zcomet_load_manager; then
+    print -u2 -- "[zsh-config] 警告：zcomet 未通过固定版本校验，跳过插件系统；启动不会安装或更新"
     return 0
 fi
-
-# Update every 7 days.
-_qc_last_update=($ZSH_CONFIG_HOME/.zcomet/update(Nm-7))
-if [[ -z $_qc_last_update ]] {
-    touch $ZSH_CONFIG_HOME/.zcomet/update
-    zcomet self-update
-    zcomet update
-    zcomet compile $ZSH_CONFIG_HOME/*.zsh  # NOTE: https://github.com/romkatv/zsh-bench#cutting-corners
-}
+# END ZCOMET PIN GUARD
 
 # 自定义补全目录优先加载（启动 0 开销，按需 Tab 补全）
 [[ -d "$ZSH_CONFIG_HOME/completions" ]] && fpath=("$ZSH_CONFIG_HOME/completions" $fpath)
 [[ -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/completions" ]] && fpath=("${XDG_CACHE_HOME:-$HOME/.cache}/zsh/completions" $fpath)
 
-zcomet fpath zsh-users/zsh-completions@0.36.0 src
-zcomet fpath nix-community/nix-zsh-completions@0.5.1
+_dotfiles_zcomet_plugin fpath zsh-users/zsh-completions@28c5bdcaf81bb89e56d0df8267d822c3b8aed9e0 src
+_dotfiles_zcomet_plugin fpath nix-community/nix-zsh-completions@6e782b97091b07eb849b58953eb200ccc56ef833
 
-zcomet load tj/git-extras@7.4.0 etc/git-extras-completion.zsh
-zcomet load QuarticCat/zsh-smartcache@54aba13
-zcomet load chisui/zsh-nix-shell@v0.8.0
-zcomet load romkatv/zsh-no-ps2@v1.0.0
+_dotfiles_zcomet_plugin load tj/git-extras@13cbdfc51e22e635939d07af86b33fca78c45411 etc/git-extras-completion.zsh
+_dotfiles_zcomet_plugin load QuarticCat/zsh-smartcache@54aba13a6824e212992fd754c598c9e9acd259a3
+_dotfiles_zcomet_plugin load chisui/zsh-nix-shell@8b86281cf9e9ef9f207433dd8b36d157dd48d50a
+_dotfiles_zcomet_plugin load romkatv/zsh-no-ps2@4b23567dc503170672386660706e55ce0201770c
 
 AUTOPAIR_SPC_WIDGET=magic-space
 AUTOPAIR_BKSPC_WIDGET=backward-delete-char
 AUTOPAIR_DELWORD_WIDGET=backward-delete-word
-zcomet load hlissner/zsh-autopair@v1.0
+_dotfiles_zcomet_plugin load hlissner/zsh-autopair@34a8bca0c18fcf3ab1561caef9790abffc1d3d49
 
 #==================#
 # Plugins (Part 2) #
@@ -211,7 +162,7 @@ if [[ -f "$_comp_dump" && -n "$_comp_dump"(#qN.mh-24) ]]; then
 fi
 zcomet compinit
 
-zcomet load Aloxaf/fzf-tab@v1.3.0  # NOTE: after updating this plugin, run `build-fzf-tab-module` in its directory to compile the optional C module for better performance
+_dotfiles_zcomet_plugin load Aloxaf/fzf-tab@d7e0234614dbe5369fdd760907d12c0e05a4dccc  # NOTE: after updating this plugin, run `build-fzf-tab-module` in its directory to compile the optional C module for better performance
 
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
@@ -227,11 +178,11 @@ for cmd in "${(@kv)cmds}"; do
     zstyle ":fzf-tab:complete:${cmd}:*" fzf-preview 'eza -a1 --color=auto -s=type $realpath'
 done
 
-zcomet load zsh-users/zsh-autosuggestions@v0.7.1
+_dotfiles_zcomet_plugin load zsh-users/zsh-autosuggestions@e52ee8ca55bcc56a17c828767a3f98f22a68d4eb
 ZSH_AUTOSUGGEST_MANUAL_REBIND=true
 ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS+=(qc-{sub,shell}-r)
 
-zcomet load zdharma-continuum/fast-syntax-highlighting@v1.56
+_dotfiles_zcomet_plugin load zdharma-continuum/fast-syntax-highlighting@5ecd353c81214f82bdeca5483fab6ccc5a2d5494
 unset 'FAST_HIGHLIGHT[chroma-man]'  # chroma-man will stick history browsing
 unset 'FAST_HIGHLIGHT[chroma-ssh]'  # old ssh highlighting has false positives with args
 

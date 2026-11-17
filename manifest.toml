@@ -722,7 +722,6 @@ pkg = "tree-sitter-cli"
 bin = "tree-sitter"
 locked = true
 binstall_first = true
-binstall_retry = 2
 # false：只让 binstall 负责"下载预编译资产"，编译一律回退到我们自己的
 # cargo install --locked。binstall 的 compile 策略不带 --locked，自由解析会
 # 拉进不兼容的依赖组合（tree-sitter-grep 实测：elm 5.7.0 → tree-sitter
@@ -736,7 +735,6 @@ pkg = "tree-sitter-cli"
 bin = "tree-sitter"
 locked = true
 binstall_first = true
-binstall_retry = 2
 binstall_fallback_compile = false
 
 [tree-sitter-grep]
@@ -745,7 +743,6 @@ manager = "cargo-install"
 pkg = "tree-sitter-grep"
 locked = true
 binstall_first = true
-binstall_retry = 2
 binstall_fallback_compile = false
 
 [tree-sitter-grep.macos]
@@ -753,7 +750,6 @@ manager = "cargo-install"
 pkg = "tree-sitter-grep"
 locked = true
 binstall_first = true
-binstall_retry = 2
 binstall_fallback_compile = false
 
 [taplo]

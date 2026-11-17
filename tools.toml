@@ -107,7 +107,7 @@ depends = ["languages"]
 depends = ["languages"]
 "codex@0.155.1" = { desc = "OpenAI Codex CLI", allow_fail = true }
 "dsh@0.1.5-rc.2" = { desc = "DeepSeek 终端助手", allow_fail = true }
-"pi-coding-agent@1.0.2" = { desc = "Pi Coding Agent", allow_fail = true }
+"pi-coding-agent@1.5.2" = { desc = "Pi Coding Agent", allow_fail = true }
 "qwen-code@0.24.0" = { desc = "Qwen Code", allow_fail = true }
 
 # ── Layer 1f: 其他（独立）──
