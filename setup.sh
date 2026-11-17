@@ -322,6 +322,12 @@ _backup_deploy_targets() {
 
 _confirm_deploy_overwrite() {
     local answer
+    # CI 的一次性 runner 可显式授权覆盖；本机无 TTY 仍保持 fail-closed。
+    # 备份仍在 _backup_deploy_targets 中执行，不会绕过它。
+    if [ "${DOTFILES_DEPLOY_ASSUME_YES:-0}" = "1" ] && [ -n "${CI:-}" ]; then
+        echo "ℹ️  CI 显式授权配置覆盖；普通文件仍已备份"
+        return 0
+    fi
     if [ ! -t 0 ] || [ ! -t 1 ]; then
         echo "⚠️  无 TTY，未获得覆盖确认；配置未部署。请在终端重跑 ./setup.sh --deploy"
         return 1

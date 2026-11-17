@@ -54,6 +54,8 @@ jobs:
     env:
       # 启用 CI 严格模式：allow_fail 工具失败会在安装结束时使构建失败
       TOOL_INSTALLER_STRICT: 1
+      # 一次性 CI runner 显式授权部署覆盖；setup.sh 仍会先备份普通文件
+      DOTFILES_DEPLOY_ASSUME_YES: 1
       # GitHub Token，避免 cargo-binstall 触发 API 限流
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # cargo 编译并行度

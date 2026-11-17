@@ -96,7 +96,25 @@ case_no_tty() {
   grep -q '无 TTY' "$TMP/c4/out" || fail "未报告缺少授权"
 }
 
+case_ci_explicit_approval() {
+  local home="$TMP/c5/home" fakebin="$TMP/c5/bin"
+  mkdir -p "$home/.config/x"
+  printf 'user-data\n' > "$home/.config/x/a.toml"
+  make_fake_xd "$fakebin" conflict
+  set +e
+  CI=1 DOTFILES_DEPLOY_ASSUME_YES=1 HOME="$home" PATH="$fakebin:$PATH" \
+    bash -c 'source "$1/setup.sh"; ensure_xdotter() { :; }; main --deploy' _ "$ROOT" </dev/null >"$TMP/c5/out" 2>&1
+  local rc=$?
+  set -e
+  [ "$rc" -eq 0 ] || fail "CI 显式授权应部署成功：$rc：$(cat "$TMP/c5/out")"
+  [ -L "$home/.config/x/a.toml" ] || fail "CI 显式授权后未部署 symlink"
+  grep -rl 'user-data' "$home/.local/state" >/dev/null 2>&1 \
+    || fail "CI 显式授权不能绕过备份：$(cat "$TMP/c5/out")"
+  grep -q 'CI 显式授权' "$TMP/c5/out" || fail "未报告 CI 授权来源"
+}
+
 case_backup_on_conflict
 case_unparseable_plan_aborts
 case_no_tty
-echo "PASS: 已授权备份 / 无TTY保护 / fail-closed"
+case_ci_explicit_approval
+echo "PASS: 已授权备份 / 无TTY保护 / CI 显式授权 / fail-closed"
