@@ -174,6 +174,16 @@ install_yazi_plugins() {
     local attempts=0
     local max_attempts=3
     local installed=false
+    local yazi_config_dir="${HOME}/.config/yazi"
+
+    # xdotter 可能尚未部署 Yazi 配置；插件管理器需要配置目录存在。
+    # 已有符号链接/目录保持原样，创建失败时不进入重试循环。
+    if [ ! -d "$yazi_config_dir" ]; then
+        if ! mkdir -p "$yazi_config_dir"; then
+            echo "❌ 无法创建 Yazi 配置目录: $yazi_config_dir"
+            return 1
+        fi
+    fi
 
     while [ $attempts -lt $max_attempts ]; do
         attempts=$((attempts + 1))
