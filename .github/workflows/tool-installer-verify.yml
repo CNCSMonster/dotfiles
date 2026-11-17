@@ -29,8 +29,8 @@ env:
 
 jobs:
   # ── Dry-run（快速，无网络）──
-  # 双 OS：full-install/re-install 只在 macOS 上跑默认安装链（dev），opt-in 模块的
-  # .macos 条目否则永远不会被任何作业解析过。
+  # 纯离线解析不依赖 runner OS；macOS/aarch64 等平台差异由 manifest-matrix 覆盖。
+  # 不再占用稀缺 macOS runner，避免整条 workflow 因排队超时被判失败。
   dry-run:
     name: "Dry-run (all modules) — ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
@@ -38,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
