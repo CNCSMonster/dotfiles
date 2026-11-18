@@ -301,6 +301,9 @@ All notable changes to this project will be documented in this file.
   - 验证：7 个 npm 锁 × 3 平台共 21 次 `npm ci --ignore-scripts` 全部 exit 0（codex/dsh/qwen
     三平台各自选中对应预编译子包）；Python 两锁在 3.12/3.14 安装并运行 `tomlq`/`pyright`，
     三平台 wheel 哈希覆盖核对通过；隔离 HOME 中 9 个 locked 工具全部 check SATISFIED
+  - 裸容器首跑问题：`check()` 只读 receipt、不执行运行时，执行器原有的 `CHECK_ERROR`
+    PATH 刷新钩子不会触发，npm 工具在 mise 装好 node 前就因 `npm: No such file` 失败；
+    `install()` 现在先 `refresh_path()` 再解析 `npm`/`uv`
 
 ### Added
 - **macOS Support**: Add cross-platform installation support

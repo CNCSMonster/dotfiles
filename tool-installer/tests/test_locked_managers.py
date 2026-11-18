@@ -2,6 +2,7 @@
 import base64
 from dataclasses import replace
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -30,6 +31,10 @@ class LockedTests(unittest.TestCase):
         self.fail = False
         self.runner = mock.Mock()
         self.runner.run.side_effect = self.run_command
+        # PATH refresh probes the host (mise), keep unit tests hermetic.
+        self.refresh = mock.patch("tool_installer.managers.locked.refresh_path", return_value=[])
+        self.refresh.start()
+        self.addCleanup(self.refresh.stop)
 
     def run_command(self, cmd, **kwargs):
         self.calls.append((cmd, kwargs))
@@ -160,6 +165,20 @@ class LockedTests(unittest.TestCase):
         with self.assertRaises(InstallationError): manager.install(item)
         self.assertFalse((self.home / ".local/bin/pkg").exists())
         self.assertFalse(list((self.home / ".local/share/tool-installer/locked/python-locked/pkg").iterdir()))
+
+    def test_install_refreshes_path_before_invoking_runtime(self):
+        item = self.item()
+        calls = []
+
+        def refresh():
+            calls.append("refresh")
+            os.environ["PATH"] = os.environ.get("PATH", "") + os.pathsep + "/fresh/bin"
+            return ["/fresh/bin"]
+
+        with mock.patch("tool_installer.managers.locked.refresh_path", side_effect=refresh):
+            default_registry(runner=self.runner)["npm-locked"].install(item)
+        self.assertEqual(calls, ["refresh"])
+        self.assertIn("/fresh/bin", self.calls[0][1]["env"]["PATH"])
 
     def test_runtime_environment_drops_configuration(self):
         item = self.item()

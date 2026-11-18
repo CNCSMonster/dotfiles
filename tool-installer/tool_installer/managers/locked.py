@@ -15,6 +15,7 @@ import shutil
 import sys
 import tempfile
 
+from ..environment import refresh_path
 from ..errors import AuthorizationRequired, ConfigError, InstallationError, StrategyError
 from ..hash_lock import validate_npm_lock, validate_python_lock
 from .base import CheckResult, CommandManager
@@ -256,6 +257,11 @@ class LockedManager(CommandManager):
         published = []          # bin names whose dest was already replaced
         success = False
         try:
+            # PATH is a snapshot from process start, while mise/node and uv may
+            # only be installed earlier in this same run. check() is receipt-based
+            # and never shells out, so the executor's CHECK_ERROR refresh hook
+            # cannot fire here; refresh before resolving npm/uv.
+            refresh_path()
             # Allowlist environment: inherited npm/uv/pip configuration cannot override policy.
             env = {"PATH": os.environ.get("PATH", os.defpath), "HOME": str(generation),
                    "UV_NO_CONFIG": "1", "UV_PYTHON_DOWNLOADS": "never",

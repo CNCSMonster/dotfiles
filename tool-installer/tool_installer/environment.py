@@ -17,8 +17,8 @@ def refresh_path() -> List[str]:
     """Re-discover tool directories created during this very run.
 
     PATH is a snapshot from process start, but the installer itself installs
-    the runtimes (mise/node, uv) that later items probe against; without a
-    refresh, npm-global checks fail on a bare system with a frozen PATH.
+    the runtimes (mise/node, uv) that later items invoke; without a refresh,
+    npm/uv lookups fail on a bare system with a frozen PATH.
     Returns the directories that were added.
     """
     current = os.environ.get("PATH", "").split(os.pathsep)
