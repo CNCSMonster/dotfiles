@@ -39,6 +39,8 @@ class LockedTests(unittest.TestCase):
     def run_command(self, cmd, **kwargs):
         self.calls.append((cmd, kwargs))
         gen = Path(kwargs["cwd"])
+        if cmd[0] == "uv" and cmd[2] == "python":
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]")
         if cmd[0] == "npm":
             package = gen / "node_modules/pkg"
             package.mkdir(parents=True)
@@ -51,7 +53,7 @@ class LockedTests(unittest.TestCase):
             link = gen / "node_modules/.bin/pkg"
             link.parent.mkdir()
             link.symlink_to(target)
-        elif cmd[0] == "uv":
+        elif cmd[0] == "uv" and cmd[2] == "pip":
             metadata = gen / "lib/python3.14/site-packages/pkg-1.2.3.dist-info"
             metadata.mkdir(parents=True)
             (metadata / "METADATA").write_text("Name: pkg\nVersion: 1.2.3\n")
@@ -188,6 +190,52 @@ class LockedTests(unittest.TestCase):
         for key in ("NODE_OPTIONS", "NPM_CONFIG_IGNORE_SCRIPTS", "UV_CONFIG_FILE"):
             self.assertNotIn(key, env)
 
+    def test_python_candidates_prefer_current_then_newest_installed(self):
+        current = {
+            "implementation": "cpython", "path": os.path.realpath(sys.executable),
+            "version_parts": {"major": sys.version_info[0], "minor": sys.version_info[1]},
+        }
+        entries = [
+            {"implementation": "cpython", "path": "/opt/py/3.12/bin/python3.12",
+             "version_parts": {"major": 3, "minor": 12}},
+            {"implementation": "cpython", "path": "/opt/py/3.14/bin/python3.14",
+             "version_parts": {"major": 3, "minor": 14}},
+            current,
+            {"implementation": "pypy", "path": "/opt/pypy/bin/python",
+             "version_parts": {"major": 3, "minor": 12}},
+            {"implementation": "cpython", "path": "relative/python",
+             "version_parts": {"major": 3, "minor": 13}},
+        ]
+        self.runner.run.side_effect = None
+        self.runner.run.return_value = subprocess.CompletedProcess(
+            ["uv"], 0, stdout=json.dumps(entries))
+        manager = default_registry(runner=self.runner)["python-locked"]
+        self.assertEqual(
+            manager._python_candidates({"HOME": "/h", "PATH": "/bin"}, self.root),
+            [sys.executable, "/opt/py/3.14/bin/python3.14", "/opt/py/3.12/bin/python3.12"])
+
+    def test_python_install_retries_next_installed_interpreter(self):
+        item = self.item("python-locked")
+        manager = default_registry(runner=self.runner)["python-locked"]
+        attempts = []
+        base = self.run_command
+
+        def run(cmd, **kwargs):
+            if cmd[0] == "uv" and cmd[2] == "pip":
+                attempts.append(cmd)
+                if len(attempts) == 1:
+                    return subprocess.CompletedProcess(cmd, 1)
+            return base(cmd, **kwargs)
+
+        self.runner.run.side_effect = run
+        with mock.patch("tool_installer.managers.locked.LockedManager._python_candidates",
+                        return_value=["/opt/first/bin/python3", "/opt/second/bin/python3.12"]):
+            manager.install(item)
+        self.assertEqual(len(attempts), 2)
+        interpreters = [call[0][0] for call in self.calls if call[0][0].startswith("/opt/")]
+        self.assertEqual(interpreters, ["/opt/first/bin/python3", "/opt/second/bin/python3.12"])
+        self.assertEqual(manager.check(item), CheckResult.SATISFIED)
+
     def test_transitive_bin_is_not_root_entry(self):
         for kind in ("npm-locked", "python-locked"):
             item = self.item(kind)
@@ -197,7 +245,7 @@ class LockedTests(unittest.TestCase):
                 if cmd[0] == "npm":
                     package = gen / "node_modules/pkg/package.json"
                     package.write_text(json.dumps({"name": "pkg", "version": "1.2.3", "bin": {"other": "cli.js"}}))
-                elif cmd[0] == "uv":
+                elif cmd[0] == "uv" and cmd[2] == "pip":
                     next(gen.glob("lib/python*/site-packages/*.dist-info/entry_points.txt")).write_text("[console_scripts]\nother = pkg:main\n")
                 return result
             self.runner.run.side_effect = run
@@ -219,7 +267,7 @@ class LockedTests(unittest.TestCase):
         item = self.item("python-locked")
         def run(cmd, **kwargs):
             result = self.run_command(cmd, **kwargs)
-            if cmd[0] == "uv":
+            if cmd[0] == "uv" and cmd[2] == "pip":
                 gen = Path(kwargs["cwd"])
                 dep = gen / "lib/python3.14/site-packages/dep-1.0.dist-info"
                 dep.mkdir()

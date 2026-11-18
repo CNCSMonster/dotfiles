@@ -161,7 +161,7 @@ rm -rf "$HELIX_TMP" "$DEST"
 正式清单使用**全平台锁**：一份锁同时服务 `linux/x86_64`、`linux/aarch64`、`macos/aarch64`。生成器对每个目标平台各解析一次（npm 用 `os`/`cpu` 配置覆盖，uv 用 `--python-platform`），三份结果必须完全一致才写入 `platforms` 列表与 `resolution = "universal"`；任一平台声明不同或解析结果不同都会拒绝生成，而不是拿宿主锁冒充其它平台。平台守卫要求锁的 `platforms` 覆盖全部三个平台，并叠加 npm `os`/`cpu` 工件覆盖检查。
 
 - npm 接受受限 package-lock v2/v3：根依赖必须精确匹配钉版，列出的工件须有 HTTPS 地址和合法 SHA256/SHA512 integrity。安装使用隔离目录中的 `npm ci --ignore-scripts --no-audit --no-fund`，不运行生命周期脚本。
-- Python 接受每个包单物理行的 `name==version --hash=sha256:...`，不接受 include、URL、markers 或 extras。它使用当前解释器创建独立 venv，再以 `uv pip install --require-hashes --only-binary :all:` 安装，不使用源码构建或下载解释器。
+- Python 接受每个包单物理行的 `name==version --hash=sha256:...`，不接受 include、URL、markers 或 extras。它以当前解释器创建独立 venv，再以 `uv pip install --require-hashes --only-binary :all:` 安装，不使用源码构建或下载解释器。锁内 wheel 只覆盖生成时的解释器版本及更早版本，因此当前解释器解析失败时会回退到 `uv python list --only-installed` 枚举出的其它已装 CPython（当前解释器优先，其余按版本降序；不下载解释器、不构建源码），全部失败才报错并列出尝试过的解释器。当前两份正式锁在 CPython 3.12/3.14 上验证通过。
 - 新安装使用独立 generation，仅在成功后发布声明的 `bin` 或 `bins` 全部入口。已有外来文件、目录、悬空或未认证软链接一律拒绝覆盖，force 不绕过；多入口中任一验证或发布失败会整体回滚，不留半套新命令；失败保留旧入口，旧 generation 不自动删除。
 - check 比对锁摘要、本地 receipt、平台及入口，不运行已安装包的版本命令。receipt 是本机所有权记录，不是数字签名，不能抵抗同用户恶意篡改。
 

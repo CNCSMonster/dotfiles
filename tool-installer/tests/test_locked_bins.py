@@ -44,6 +44,8 @@ class LockedBinsTests(unittest.TestCase):
     def run_command(self, cmd, **kwargs):
         self.calls.append((cmd, kwargs))
         gen = Path(kwargs["cwd"])
+        if cmd[0] == "uv" and cmd[2] == "python":
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]")
         if cmd[0] == "npm":
             package = gen / "node_modules/pkg"
             package.mkdir(parents=True, exist_ok=True)
@@ -58,7 +60,7 @@ class LockedBinsTests(unittest.TestCase):
                 link = gen / "node_modules/.bin" / name
                 link.parent.mkdir(parents=True, exist_ok=True)
                 link.symlink_to(target)
-        elif cmd[0] == "uv":
+        elif cmd[0] == "uv" and cmd[2] == "pip":
             metadata = gen / "lib/python3.14/site-packages/pkg-1.2.3.dist-info"
             metadata.mkdir(parents=True, exist_ok=True)
             (metadata / "METADATA").write_text("Name: pkg\nVersion: 1.2.3\n")
@@ -219,7 +221,7 @@ class LockedBinsTests(unittest.TestCase):
         item = self.item("python-locked")
         def run(cmd, **kwargs):
             result = self.run_command(cmd, **kwargs)
-            if cmd[0] == "uv":
+            if cmd[0] == "uv" and cmd[2] == "pip":
                 gen = Path(kwargs["cwd"])
                 dep = gen / "lib/python3.14/site-packages/dep-1.0.dist-info"
                 dep.mkdir(parents=True, exist_ok=True)

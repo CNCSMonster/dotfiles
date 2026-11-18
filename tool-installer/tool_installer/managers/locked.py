@@ -239,6 +239,73 @@ class LockedManager(CommandManager):
     def install_command(self, item):
         return [item.strategy.manager, "<isolated-generation>"]
 
+    def _python_candidates(self, env, generation):
+        """Host CPython executables to try, current interpreter first.
+
+        Locks are wheel-only, so a host newer than every published wheel cannot
+        resolve them. Fall back to another already-installed CPython instead of
+        downloading an interpreter or building from source; candidates come from
+        uv's installed-interpreter inventory, which is read-only here.
+        """
+        candidates = [sys.executable]
+        seen = {os.path.realpath(sys.executable)}
+        try:
+            result = self.runner.run(
+                ["uv", "--no-config", "python", "list", "--only-installed", "--output-format", "json"],
+                check=False, capture_output=True, text=True, cwd=os.getcwd(),
+                env=dict(env, HOME=os.environ.get("HOME", env["HOME"]),
+                         UV_CACHE_DIR=str(generation / "uv-cache")))
+        except OSError:
+            return candidates
+        if result.returncode:
+            return candidates
+        try:
+            entries = json.loads(result.stdout or "[]")
+        except (TypeError, ValueError):
+            return candidates
+        found = []
+        for entry in entries if isinstance(entries, list) else []:
+            if not isinstance(entry, dict) or entry.get("implementation") != "cpython":
+                continue
+            path, parts = entry.get("path"), entry.get("version_parts")
+            if not isinstance(path, str) or not os.path.isabs(path) or not isinstance(parts, dict):
+                continue
+            try:
+                version = (int(parts["major"]), int(parts["minor"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            if version[0] != sys.version_info[0]:
+                continue
+            real = os.path.realpath(path)
+            if real in seen:
+                continue
+            seen.add(real)
+            found.append((version, real))
+        for _, path in sorted(found, reverse=True):
+            candidates.append(path)
+        return candidates
+
+    def _install_python(self, text, env, generation):
+        tried = []
+        for interpreter in self._python_candidates(env, generation):
+            # A failed resolve can leave a partial environment; start clean.
+            shutil.rmtree(generation)
+            generation.mkdir()
+            (generation / "requirements.txt").write_text(text)
+            commands = [
+                [interpreter, "-I", "-m", "venv", "--without-pip", str(generation)],
+                ["uv", "--no-config", "pip", "install", "--python", str(generation / "bin/python"),
+                 "--require-hashes", "--only-binary", ":all:", "-r", str(generation / "requirements.txt")],
+            ]
+            for command in commands:
+                if self.runner.run(command, check=False, cwd=str(generation), env=env).returncode:
+                    break
+            else:
+                return
+            tried.append(interpreter)
+        raise InstallationError(
+            "Isolated locked install failed (interpreters tried: " + ", ".join(tried) + ")")
+
     def install(self, item):
         text = self._lock(item)
         store, dests = self._paths(item)
@@ -276,18 +343,14 @@ class LockedManager(CommandManager):
                     env["NPM_CONFIG_" + kind.upper() + "CONFIG"] = str(config)
                 (generation / "package-lock.json").write_text(text)
                 (generation / "package.json").write_text(json.dumps({"private": True, "dependencies": {item.strategy.fields["pkg"]: item.tool.reference.version}}))
-                commands = [["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"]]
-                candidates = {name: generation / "node_modules/.bin" / name for name in bins}
-            else:
-                (generation / "requirements.txt").write_text(text)
-                commands = [[sys.executable, "-I", "-m", "venv", "--without-pip", str(generation)],
-                            ["uv", "--no-config", "pip", "install", "--python", str(generation / "bin/python"),
-                             "--require-hashes", "--only-binary", ":all:", "-r", str(generation / "requirements.txt")]]
-                candidates = {name: generation / "bin" / name for name in bins}
-            for command in commands:
-                result = self.runner.run(command, check=False, cwd=str(generation), env=env)
+                result = self.runner.run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+                                         check=False, cwd=str(generation), env=env)
                 if result.returncode:
                     raise InstallationError("Isolated locked install failed")
+                candidates = {name: generation / "node_modules/.bin" / name for name in bins}
+            else:
+                candidates = {name: generation / "bin" / name for name in bins}
+                self._install_python(text, env, generation)
             # Verify every root entry and resolve every target BEFORE any publication.
             self._root_entry(item, generation, candidates)
             targets = {}

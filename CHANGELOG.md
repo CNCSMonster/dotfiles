@@ -304,6 +304,10 @@ All notable changes to this project will be documented in this file.
   - 裸容器首跑问题：`check()` 只读 receipt、不执行运行时，执行器原有的 `CHECK_ERROR`
     PATH 刷新钩子不会触发，npm 工具在 mise 装好 node 前就因 `npm: No such file` 失败；
     `install()` 现在先 `refresh_path()` 再解析 `npm`/`uv`
+  - 解释器版本问题：锁内 wheel 只覆盖生成时的 CPython 及更早版本，macOS runner 默认
+    Python 3.15 上 `pyyaml==6.0.3` 没有 wheel，`--only-binary` 直接失败；python-locked
+    现在在当前解释器失败后回退到 `uv python list --only-installed` 枚举的其它已装
+    CPython（当前优先、其余降序，不下载解释器/不构建源码），全部失败时列出尝试过的版本
 
 ### Added
 - **macOS Support**: Add cross-platform installation support
