@@ -284,6 +284,24 @@ All notable changes to this project will be documented in this file.
   - `docs/config-consistency-check-sop.md`：标注 `scripts/check-completions.sh`
     为尚未实现的建议形态，避免读者按图索骥找不到该文件
 
+### Changed
+- **npm / Python 正式依赖全部迁入哈希锁模式（全平台锁）**：7 个 npm 工具
+  （`typescript-lsp`、`yaml-lsp`、`bash-lsp`、`codex`、`pi-coding-agent`、`dsh`、`qwen-code`）
+  与 2 个 Python 工具（`pyright`、`tomlq`）改由 `npm-locked` / `python-locked` 安装；
+  锁位于 `locks/npm/`、`locks/python/`，每份锁记录
+  `platforms = [linux/x86_64, linux/aarch64, macos/aarch64]` 与 `resolution = "universal"`
+  - 生成器对三个目标平台各解析一次并要求结果完全一致，平台守卫逐平台校验锁覆盖与
+    npm `os/cpu` 工件；不再按平台复制锁，也不再允许把宿主锁冒充跨平台锁
+  - `tomlq` 的发行根改为 `yq`（`tomlq` 0.1.0 只是转发壳且与 yq 双属主），selector 同步为
+    `tomlq@4.4.5`；pyright 用 `bins` 发布四个入口，与 `uv-tool` 的入口集合一致
+  - `dsh`/`qwen-code` 的 install/postinstall 依赖（node-pty、`@qwen-code/audio-capture`）
+    制成品随 tarball 交付：node-pty 预编译按平台在运行时加载，`spawn-helper` 解包后保留
+    执行位；audio-capture 的 install.js 只做定位/校验，失败回退 SoX/arecord。两者在
+    `--ignore-scripts` 下均可安装并运行
+  - 验证：7 个 npm 锁 × 3 平台共 21 次 `npm ci --ignore-scripts` 全部 exit 0（codex/dsh/qwen
+    三平台各自选中对应预编译子包）；Python 两锁在 3.12/3.14 安装并运行 `tomlq`/`pyright`，
+    三平台 wheel 哈希覆盖核对通过；隔离 HOME 中 9 个 locked 工具全部 check SATISFIED
+
 ### Added
 - **macOS Support**: Add cross-platform installation support
 

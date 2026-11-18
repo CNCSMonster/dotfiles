@@ -24,8 +24,8 @@ _SUPPORTED: Dict[str, Dict[str, Any]] = {
     "cargo-install": {"required": {"pkg"}, "optional": {"bin", "locked", "binstall_first", "binstall_fallback_compile", "git", "tag", "branch", "rev"}},
     "rustup": {"required": set(), "optional": {"components", "targets", "profile", "set_default"}},
     "mise": {"required": {"plugin"}, "optional": set()},
-    "npm-locked": {"required": {"pkg", "lock"}, "optional": {"bin"}},
-    "python-locked": {"required": {"pkg", "lock"}, "optional": {"bin"}},
+    "npm-locked": {"required": {"pkg", "lock"}, "optional": {"bin", "bins"}},
+    "python-locked": {"required": {"pkg", "lock"}, "optional": {"bin", "bins"}},
     "npm-global": {"required": {"pkg"}, "optional": {"bin", "registry"}},
     "pnpm-global": {"required": {"pkg"}, "optional": {"bin", "registry"}},
     "uv-tool": {"required": {"pkg"}, "optional": {"bin", "python", "with"}},
@@ -35,7 +35,7 @@ _SUPPORTED: Dict[str, Dict[str, Any]] = {
 _STRING_FIELDS = {"lock", "manager", "pkg", "bin", "registry", "plugin", "python", "git", "tag", "branch", "rev", "profile", "repo", "asset", "sha256", "install_name", "path", "extract_dir"}
 _BOOL_FIELDS = {"force", "locked", "binstall_first", "set_default", "binstall_fallback_compile"}
 _INT_FIELDS: set[str] = set()
-_ARRAY_FIELDS = {"with", "components", "targets"}
+_ARRAY_FIELDS = {"with", "components", "targets", "bins"}
 _NESTED_TABLE_FIELDS = {"version_probe"}
 _VERSION_PROBE_FIELDS = {"command", "regex"}
 
@@ -159,6 +159,11 @@ def _validate_strategy(tool_name: str, version: str, fields: Dict[str, Any], man
         raise StrategyError(f"force for {tool_name} must be a bool")
     if contract.get("latest_only") and version != "latest":
         raise StrategyError(f"Manager {manager} does not support non-latest selector for {tool_name}")
+    if manager in {"npm-locked", "python-locked"}:
+        # bins overrides bin when both are present; both are held to the same
+        # safe-filename contract so no publication path can escape ~/.local/bin.
+        from .managers.locked import declared_bins
+        declared_bins(fields)
     if manager == "cargo-install":
         _validate_cargo_install(tool_name, version, fields)
     if manager == "github-release":

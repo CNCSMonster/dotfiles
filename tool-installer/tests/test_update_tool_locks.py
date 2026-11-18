@@ -27,7 +27,7 @@ class UpdateLocksTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.host = m.detect_environment()
+        self.host = m.Environment("linux", "x86_64")
         self.tools = self.root / "tools.toml"
         self.tools.write_text('[tool-installer]\nmanifest="manifest.toml"\n[demo-module]\n"demo@1.2.3"="demo"\n')
         self.fields = {"manager": "npm-locked", "pkg": "demo", "lock": "lock.json", "bin": "demo"}
@@ -36,7 +36,11 @@ class UpdateLocksTests(unittest.TestCase):
         self.calls = []
 
     def configure(self, manager="npm-locked", lock="lock.json", extra=""):
-        (self.root / "manifest.toml").write_text(f'[demo]\nmanager="{manager}"\npkg="demo"\nlock="{lock}"\n[demo.{self.host.os}]\n{extra}')
+        lines = ['[demo]', f'manager="{manager}"', 'pkg="demo"', f'lock="{lock}"',
+                 '[demo.linux]', '[demo.macos]']
+        if extra:
+            lines += [f'[demo.{self.host.os}.{self.host.arch}]', extra]
+        (self.root / "manifest.toml").write_text("\n".join(lines) + "\n")
 
     def invoke(self, *args, runner=None):
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
@@ -45,7 +49,7 @@ class UpdateLocksTests(unittest.TestCase):
     def forbidden(self, *args, **kwargs):
         self.fail("offline check or early failure invoked resolver")
 
-    def runner(self, command, *, cwd):
+    def runner(self, command, *, cwd, extra_env=None):
         self.calls.append(command)
         if command[-1] == "--version":
             return "test-generator 1.0"
@@ -76,8 +80,13 @@ class UpdateLocksTests(unittest.TestCase):
         with patch.object(m.shutil, "which", return_value="/mock/npm"):
             self.assertEqual(self.invoke("--generate", runner=self.runner), 0)
         data = json.loads((self.root / "lock.json").read_text())
-        self.assertEqual(data["x-tool-lock-generator"]["version"], "test-generator 1.0")
-        self.assertEqual(self.calls[-1][1:], ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"])
+        provenance = data["x-tool-lock-generator"]
+        self.assertEqual(provenance["version"], "test-generator 1.0")
+        self.assertEqual(provenance["platforms"], list(m.PLATFORM_NAMES))
+        self.assertEqual(provenance["resolution"], "universal")
+        installs = [call for call in self.calls if "install" in call]
+        self.assertEqual(len(installs), len(m.PLATFORMS))
+        self.assertEqual(installs[-1][1:], ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"])
         self.assertFalse(any(self.root.glob("node_modules")))
 
     def test_existing_requires_force_before_any_process(self):
@@ -93,7 +102,7 @@ class UpdateLocksTests(unittest.TestCase):
     def test_resolver_failure_and_invalid_root_preserve_existing(self):
         output = self.root / "lock.json"
         output.write_text("original")
-        def invalid(command, *, cwd):
+        def invalid(command, *, cwd, extra_env=None):
             if command[-1] == "--version":
                 return "1.0"
             (cwd / "package-lock.json").write_text(npm_lock("8.0.0"))
@@ -112,10 +121,14 @@ class UpdateLocksTests(unittest.TestCase):
         text = (self.root / "requirements.txt").read_text()
         m.validate_python_lock(text, "demo", "1.2.3")
         self.assertEqual(text.splitlines()[-1], "demo==1.2.3 " + HASH)
-        self.assertIn("--no-strip-markers", self.calls[-1])
-        self.assertIn("--no-strip-extras", self.calls[-1])
-        self.assertIn("--no-python-downloads", self.calls[-1])
-        self.assertNotIn("--universal", self.calls[-1])
+        compiles = [call for call in self.calls if "--output-file" in call]
+        self.assertEqual(len(compiles), len(m.PLATFORMS))
+        for call in compiles:
+            self.assertIn("--no-strip-markers", call)
+            self.assertIn("--no-strip-extras", call)
+            self.assertIn("--no-python-downloads", call)
+            self.assertNotIn("--universal", call)
+            self.assertIn("--python-platform", call)
 
     def test_markers_are_rejected_not_stripped(self):
         with self.assertRaisesRegex(m.ConfigError, "markers"):
@@ -130,15 +143,15 @@ class UpdateLocksTests(unittest.TestCase):
         fields = dict(self.fields, manager="python-locked")
         with patch.object(m.shutil, "which", return_value="/mock/uv"):
             with self.assertRaisesRegex(m.ConfigError, "flags"):
-                m.generate(fields, "1.2.3", self.host, runner=lambda *a, **k: "old uv")
+                m.generate(fields, "1.2.3", runner=lambda *a, **k: "old uv")
 
-    def test_cross_platform_refuses_before_resolve(self):
-        other = m.Environment("macos" if self.host.os == "linux" else "linux", self.host.arch)
-        with self.assertRaisesRegex(m.ConfigError, "host"):
-            m.generate(self.fields, "1.2.3", other, runner=self.forbidden)
+    def test_platform_specific_declaration_is_refused_before_resolve(self):
+        self.configure(extra='pkg="overridden"')
+        with self.assertRaisesRegex(m.ConfigError, "differs"):
+            m.select_universal(self.tools, "demo-module", "demo")
 
     def test_arch_override_and_unsafe_lock_paths(self):
-        self.configure(extra=f'[demo.{self.host.os}.{self.host.arch}]\npkg="overridden"\n')
+        self.configure(extra='pkg="overridden"')
         fields, _, _ = m.select(self.tools, "demo-module", "demo", self.host)
         self.assertEqual(fields["pkg"], "overridden")
         for raw in ["../outside", "/tmp/outside", "./lock.json", "a//b"]:
@@ -166,7 +179,8 @@ class UpdateLocksTests(unittest.TestCase):
         with patch.dict(m.os.environ, {"NODE_OPTIONS": "--require evil.js", "UV_INDEX": "secret",
                                       "npm_config_registry": "https://bad.invalid", "HTTPS_PROXY": "secret"}):
             with patch.object(m.subprocess, "run", return_value=completed) as run:
-                self.assertEqual(m.run_command(["/mock/npm", "--version"], cwd=self.root), "11.0")
+                self.assertEqual(m.run_command(["/mock/npm", "--version"], cwd=self.root,
+                                               extra_env={"NPM_CONFIG_OS": "darwin"}), "11.0")
         kwargs = run.call_args.kwargs
         self.assertEqual(kwargs["timeout"], 300)
         env = kwargs["env"]
@@ -175,6 +189,7 @@ class UpdateLocksTests(unittest.TestCase):
         self.assertEqual(env["UV_NO_CONFIG"], "1")
         self.assertEqual(env["UV_PYTHON_DOWNLOADS"], "never")
         self.assertNotEqual(env["NPM_CONFIG_USERCONFIG"], env["NPM_CONFIG_GLOBALCONFIG"])
+        self.assertEqual(env["NPM_CONFIG_OS"], "darwin")
         for key in ["NPM_CONFIG_USERCONFIG", "NPM_CONFIG_GLOBALCONFIG"]:
             self.assertEqual(Path(env[key]).read_text(), "")
 

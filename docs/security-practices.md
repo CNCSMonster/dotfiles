@@ -156,22 +156,28 @@ rm -rf "$HELIX_TMP" "$DEST"
 
 ## 显式哈希锁安装模式
 
-安装器支持逐工具启用 `npm-locked` / `python-locked`，不会自动迁移现有 `npm-global` / `uv-tool` 条目。两种策略声明 `pkg`、manifest 目录内的相对 `lock` 路径及单个 `bin`（省略时用逻辑工具名）；工具版本仍来自 tools selector。锁校验在安装计划阶段执行，执行前再次核对摘要。
+安装器支持逐工具启用 `npm-locked` / `python-locked`。两种策略声明 `pkg`、manifest 目录内的相对 `lock` 路径，以及 `bin`（单入口）或 `bins`（多入口，优先）；工具版本仍来自 tools selector。锁校验在安装计划阶段执行，执行前再次核对摘要。
+
+正式清单使用**全平台锁**：一份锁同时服务 `linux/x86_64`、`linux/aarch64`、`macos/aarch64`。生成器对每个目标平台各解析一次（npm 用 `os`/`cpu` 配置覆盖，uv 用 `--python-platform`），三份结果必须完全一致才写入 `platforms` 列表与 `resolution = "universal"`；任一平台声明不同或解析结果不同都会拒绝生成，而不是拿宿主锁冒充其它平台。平台守卫要求锁的 `platforms` 覆盖全部三个平台，并叠加 npm `os`/`cpu` 工件覆盖检查。
 
 - npm 接受受限 package-lock v2/v3：根依赖必须精确匹配钉版，列出的工件须有 HTTPS 地址和合法 SHA256/SHA512 integrity。安装使用隔离目录中的 `npm ci --ignore-scripts --no-audit --no-fund`，不运行生命周期脚本。
 - Python 接受每个包单物理行的 `name==version --hash=sha256:...`，不接受 include、URL、markers 或 extras。它使用当前解释器创建独立 venv，再以 `uv pip install --require-hashes --only-binary :all:` 安装，不使用源码构建或下载解释器。
-- 新安装使用独立 generation，仅在成功后发布单个命令。已有外来文件、目录、悬空或未认证软链接一律拒绝覆盖，force 不绕过；失败保留旧入口，旧 generation 不自动删除。
+- 新安装使用独立 generation，仅在成功后发布声明的 `bin` 或 `bins` 全部入口。已有外来文件、目录、悬空或未认证软链接一律拒绝覆盖，force 不绕过；多入口中任一验证或发布失败会整体回滚，不留半套新命令；失败保留旧入口，旧 generation 不自动删除。
 - check 比对锁摘要、本地 receipt、平台及入口，不运行已安装包的版本命令。receipt 是本机所有权记录，不是数字签名，不能抵抗同用户恶意篡改。
 
-锁维护命令为 `python3 scripts/update-tool-locks.py --module <模块> --tool <逻辑工具名> --check`，默认只读离线校验；指定 `--generate` 才解析注册表元数据，已有文件还需 `--force` 才原子替换。它只接受已声明 locked 策略的工具，生成仅支持宿主平台和当前解释器，遇到无法保留的 markers 等语义会拒绝，而不是偷偷删除条件。生成过程不安装目标包、不运行生命周期脚本；解析器自身仍须可信。
+锁维护命令为 `python3 scripts/update-tool-locks.py --module <模块> --tool <逻辑工具名> --check`，默认只读离线校验；指定 `--generate` 才解析注册表元数据，已有文件还需 `--force` 才原子替换。它只接受已声明 locked 策略的工具，并要求同一工具的三个平台声明完全一致；遇到无法保留的 markers、extras 或平台相关闭包会拒绝，而不是偷偷删除条件。生成过程不安装目标包、不运行生命周期脚本；解析器自身仍须可信。
 
-迁移兼容性须逐工具确认：该模式只发布单个入口，不能直接替代会暴露 `pyright-langserver` 等多个命令的安装；pyright 的 Node 运行时和特定回退路径中的 npm 下载不由 Python wheel 锁覆盖。`tomlq` 包依赖 yq 并与其声明同名入口，不能直接迁入；可单独评估以 yq 为发行根、只发布 tomlq 的策略，避免与 Go yq 命令冲突。
+迁移兼容性须逐工具确认。多入口用 `bins` 声明并与原 manager 的入口集合保持一致（pyright 发布 `pyright`、`pyright-langserver`、`pyright-python`、`pyright-python-langserver`）；pyright 的 Node 运行时和特定回退路径中的 npm 下载不由 Python wheel 锁覆盖。`tomlq` 的 PyPI 包 0.1.0 只是转发到 `yq.tq_cli` 的薄壳，且与 yq 同时声明 `tomlq` 入口（双属主）；正式锁因此以 yq 为发行根，只发布 `tomlq` 入口，tools selector 同步为 yq 版本。
+
+npm 侧声明了 install/postinstall 的包要区分两种情况：**制品随 tarball 交付、脚本只做校验或 chmod** 的可以迁 locked；**必须在安装期编译或下载额外二进制** 的不行。实测 dsh 的 node-pty 随包提供三平台 `prebuilds/`，运行时优先加载预编译；`spawn-helper` 在 tarball 里已是 755，npm 解包保留执行位，跳过 postinstall 的 chmod 不影响 macOS。qwen 的 `@qwen-code/audio-capture` 同样携带 prebuilds，其 install.js 只做定位/校验，失败时回退 SoX/arecord。koffi、sharp 也直接加载预编译产物。
 
 离线集成测试使用自造工件：npm 从独立缓存以 HTTPS resolved 锁进行真实离线安装，覆盖错误 SRI 和旧入口保护；Python 使用本地 wheelhouse 验证 uv 接受正确哈希、拒绝错误哈希，仅是安装部件验证，不是完整 Python manager 端到端验收。测试不执行第三方包入口。
 
-真实候选锁的隔离验证限于 Linux x86_64 / 当前 Node 与 Python：5 个无生命周期硬缺口的 npm 候选在 `--ignore-scripts` 下可装出 `.bin` 入口，但未启动 LSP/AI CLI、未验证其他平台原生工件；dsh 与 qwen 存在安装期原生构建或 optional 功能缺口，不能直接迁移。以 yq 4.4.5 为发行根的 Python 候选按哈希锁安装成功，`tomlq -T` 在有限 fixture 中保真、`-T -i` 只改目标行、坏输入保留原文件；`-i` 仍非原子，且 `__tomlq_meta__` 被扰动时格式会大幅失真。这些都是隔离功能证据，不是正式 manager 端到端或跨平台验收。
+全平台验证覆盖到锁闭包层：7 个 npm 锁 × 3 个平台共 21 次 `npm ci --ignore-scripts` 全部退出 0；codex、dsh、qwen 在 linux/x64、linux/arm64、darwin/arm64 分别选中目标平台的预编译子包（dsh 三平台的 node-pty `pty.node` 就位，darwin `spawn-helper` 为 775；qwen 三平台 `@img/sharp-*` 正确）。这证明锁内工件、integrity 与平台选择一致，但未在 macOS 实机运行 CLI。Python 两个锁在 3.12 与 3.14 上都能安装并运行：`tomlq` 读、`-T -i` 单行改写、坏输入保留原文件，`pyright --version` 可启动；每个包在三平台都至少有一个匹配 wheel 的哈希在锁内。`-i` 仍非原子，`__tomlq_meta__` 被扰动时格式会大幅失真。
 
-当前已有依赖清单尚未切换到该模式，不能据此声称 npm/Python 已全部受哈希保护。迁移前需在各目标平台生成并审查真实依赖锁、验证禁用脚本后的入口可用性，再逐工具启用。校验器只检查列出的记录，不自行证明依赖闭包完整；闭包遗漏须由包管理器在哈希强制模式下拒绝。宿主 Node/npm/uv/Python 仍是信任前提。
+正式清单当前状态：7 个 npm 工具（typescript-lsp、yaml-lsp、bash-lsp、codex、pi-coding-agent、dsh、qwen-code）与 2 个 Python 工具（pyright、tomlq）全部使用 locked，锁位于 `locks/npm/` 与 `locks/python/`，不再按平台复制；manifest 中已没有 `npm-global` / `uv-tool` / `pnpm-global` 条目。
+
+不能据此声称 npm/Python 已全部受哈希保护。校验器只检查列出的记录，不自行证明依赖闭包完整；闭包遗漏须由包管理器在哈希强制模式下拒绝。宿主 Node/npm/uv/Python 仍是信任前提。
 
 ## 已知限制
 
@@ -195,9 +201,7 @@ rm -rf "$HELIX_TMP" "$DEST"
 
 ### TOML 编辑工具的身份与写入边界
 
-逻辑工具名 `tomlq` 不等于实际发行包名。本机 `tomlq` 包转发到 `yq:tq_cli`，因此命令输出后端 yq 版本不应直接判为“装错包”或版本超前。审计需要分别读取发行包元数据、入口映射与清单钉版。
-
-当前 `[cargo-tools]` 中的 `tomlq@0.1.0` 实际由 `uv-tool` manager 安装；该组名是历史分类，不代表 Cargo 安装。本机 uv receipt 声明根包 `tomlq==0.1.0`，但入口脚本字节与 `yq@4.4.0` 的 `RECORD` 匹配，两个发行包都声明 `tomlq` 入口。巡检将其单列为 `installed.identity` 的 `dual_owner`，不把它当作版本漂移或安全认证。是否把声明根改为 yq、以及是否采用单属主锁，属于需决策的迁移，不在当前正式清单中实施。
+逻辑工具名 `tomlq` 不等于实际发行包名。正式清单已直接以 `yq` 为根（tools selector `tomlq@4.4.5`，manifest `pkg = "yq"`），只发布 `tomlq` 入口；`tomlq --version` 输出 `tomlq 4.4.5` 和 jq 版本。旧的 `uv-tool` 安装会留下 `tomlq==0.1.0` 壳包 receipt，且两个发行包都声明 `tomlq` 入口；巡检若仍报告 `installed.identity` 的 `dual_owner`，表示本机还没重装，不是清单漂移。
 
 `tomlq -T` 使用注释与格式保留机制，但不保证任意 jq 变换逐字节保真；`-i` 原地写入也不是原子替换。修改重要配置前保留备份，不能把格式保留等同于写入故障可恢复。
 

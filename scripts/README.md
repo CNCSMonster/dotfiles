@@ -47,7 +47,9 @@ bash scripts/test-github-mirror-callers.sh
 
 The installer suite includes local, self-created npm/wheel fixtures. They use isolated temporary directories and offline caches, do not execute installed entry points, and explicitly skip when the required existing runtime is unavailable. Python wheel tests validate the uv installation component, not the complete Python manager.
 
-For an explicitly declared locked tool, `python3 scripts/update-tool-locks.py --module <module> --tool <tool> --check` validates its existing lock without network access. `--generate` resolves registry metadata only for the host platform; existing output additionally requires `--force`. See the security practices document for migration limits.
+For an explicitly declared locked tool, `python3 scripts/update-tool-locks.py --module <module> --tool <tool> --check` validates its existing lock without network access. `--generate` resolves registry metadata for every declared platform (npm `os`/`cpu` override, uv `--python-platform`), refuses to publish unless all three resolutions are identical, and records the verified platform list in `x-tool-lock-generator` / `# generator:`. Existing output additionally requires `--force`. Locks are stored once per tool under `locks/<ecosystem>/` and referenced by both OS tables in `manifest.toml`; do not copy them per platform or edit their provenance.
+
+The platform guard accepts a universal lock only when its `platforms` list covers the target and npm `packages[]` carries that target's `os/cpu` artifacts. A legacy single-platform provenance is still accepted only on an exact OS/arch match. See the security practices document for the npm lifecycle-script, Python root-identity and pyright Node-runtime limits.
 
 ## Full Docker verification
 

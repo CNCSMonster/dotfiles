@@ -127,9 +127,11 @@ class LockedCliTests(unittest.TestCase):
                         rendered.assert_not_called()
                         self.write_lock(kind, "linux-x86_64")
 
-    def test_unmigrated_default_manifest_still_has_60_plan_items(self):
+    def test_default_manifest_locks_every_declared_platform(self):
         config = Path(__file__).resolve().parents[2] / "tools.toml"
-        for os_name, arch in (("linux", "x86_64"), ("macos", "aarch64")):
+        expected = {("linux", "x86_64"): 9, ("linux", "aarch64"): 9,
+                    ("macos", "aarch64"): 9}
+        for (os_name, arch), locked_count in expected.items():
             with self.subTest(os=os_name, arch=arch):
                 code, out, err, rendered = self.invoke(
                     Environment(os_name, arch), config=config, module="dev")
@@ -140,10 +142,11 @@ class LockedCliTests(unittest.TestCase):
                 self.assertTrue(all(line.startswith("PLAN ") for line in lines))
                 plan = rendered.call_args.args[0]
                 self.assertEqual(len(plan.items), 60)
-                self.assertTrue(all(item.strategy.manager not in {
-                    "npm-locked", "python-locked"} for item in plan.items))
-                self.assertTrue(all(item.strategy.lock_root is None and
-                                    item.strategy.lock_digest is None for item in plan.items))
+                locked = [i for i in plan.items if i.strategy.manager in {
+                    "npm-locked", "python-locked"}]
+                self.assertEqual(len(locked), locked_count)
+                self.assertTrue(all(i.strategy.lock_root is not None and
+                                    i.strategy.lock_digest for i in locked))
 
 
 if __name__ == "__main__":

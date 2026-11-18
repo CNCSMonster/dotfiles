@@ -1029,115 +1029,101 @@ sha256 = "7f9fdd9584866245de9a79e0add8f9236fae6f40a8a45e2c4771ccc14db4e0fa"
 # ============================================================
 
 # ============================================================
-# Node.js Global Tools (npm-global)
+# Node.js 全局工具（npm-locked：锁是三平台共同解析快照）
 # ============================================================
 
 [typescript-lsp]
-[typescript-lsp.linux]
-manager = "npm-global"
+manager = "npm-locked"
 pkg = "typescript-language-server"
 bin = "typescript-language-server"
+lock = "locks/npm/typescript-lsp-5.3.0.package-lock.json"
 
+[typescript-lsp.linux]
 [typescript-lsp.macos]
-manager = "npm-global"
-pkg = "typescript-language-server"
-bin = "typescript-language-server"
 
 [yaml-lsp]
-[yaml-lsp.linux]
-manager = "npm-global"
+manager = "npm-locked"
 pkg = "yaml-language-server"
 bin = "yaml-language-server"
+lock = "locks/npm/yaml-lsp-1.23.0.package-lock.json"
 
+[yaml-lsp.linux]
 [yaml-lsp.macos]
-manager = "npm-global"
-pkg = "yaml-language-server"
-bin = "yaml-language-server"
 
 [bash-lsp]
-[bash-lsp.linux]
-manager = "npm-global"
+manager = "npm-locked"
 pkg = "bash-language-server"
 bin = "bash-language-server"
+lock = "locks/npm/bash-lsp-5.6.0.package-lock.json"
 
+[bash-lsp.linux]
 [bash-lsp.macos]
-manager = "npm-global"
-pkg = "bash-language-server"
-bin = "bash-language-server"
 
 [qwen-code]
-[qwen-code.linux]
-manager = "npm-global"
+manager = "npm-locked"
 pkg = "@qwen-code/qwen-code"
 bin = "qwen"
+lock = "locks/npm/qwen-code-0.24.0.package-lock.json"
 
+[qwen-code.linux]
 [qwen-code.macos]
-manager = "npm-global"
-pkg = "@qwen-code/qwen-code"
-bin = "qwen"
 
 # ============================================================
-# AI CLI 工具 (npm-global)
+# AI CLI 工具（npm-locked）
 # ============================================================
 
 [codex]
-[codex.linux]
-manager = "npm-global"
+manager = "npm-locked"
 pkg = "@openai/codex"
 bin = "codex"
+lock = "locks/npm/codex-0.155.1.package-lock.json"
 
+[codex.linux]
 [codex.macos]
-manager = "npm-global"
-pkg = "@openai/codex"
-bin = "codex"
 
 [dsh]
-[dsh.linux]
-manager = "npm-global"
+manager = "npm-locked"
 pkg = "@deepseek-ai/dsh"
 bin = "dsh"
+lock = "locks/npm/dsh-0.1.5-rc.2.package-lock.json"
 
+[dsh.linux]
 [dsh.macos]
-manager = "npm-global"
-pkg = "@deepseek-ai/dsh"
-bin = "dsh"
 
 [pi-coding-agent]
-[pi-coding-agent.linux]
-manager = "npm-global"
+manager = "npm-locked"
 pkg = "@earendil-works/pi-coding-agent"
 bin = "pi"
+lock = "locks/npm/pi-coding-agent-1.5.2.package-lock.json"
 
+[pi-coding-agent.linux]
 [pi-coding-agent.macos]
-manager = "npm-global"
-pkg = "@earendil-works/pi-coding-agent"
-bin = "pi"
 
 # ============================================================
-# Python Tools (uv-tool)
+# Python 工具（python-locked：锁内闭包含三平台 wheel 哈希）
 # ============================================================
 
 [pyright]
-[pyright.linux]
-manager = "uv-tool"
+manager = "python-locked"
 pkg = "pyright"
-bin = "pyright"
+# 入口集合与 uv-tool 安装时一致：少发布入口会让 LSP 消费者缺命令。
+bins = ["pyright", "pyright-langserver", "pyright-python", "pyright-python-langserver"]
+lock = "locks/python/pyright-1.1.410.requirements.txt"
 
+[pyright.linux]
 [pyright.macos]
-manager = "uv-tool"
-pkg = "pyright"
-bin = "pyright"
 
 [tomlq]
-[tomlq.linux]
-manager = "uv-tool"
-pkg = "tomlq"
+# 逻辑工具名是 tomlq，但 PyPI 的 tomlq 0.1.0 只是转发到 yq.tq_cli 的薄壳，
+# 且与 yq 同时声明 tomlq 入口（双属主）。锁根因此钉真实发行包 yq，
+# tools.toml 选择器同步为 yq 版本；`tomlq --version` 输出 yq 版本即预期。
+manager = "python-locked"
+pkg = "yq"
 bin = "tomlq"
+lock = "locks/python/tomlq-4.4.5.requirements.txt"
 
+[tomlq.linux]
 [tomlq.macos]
-manager = "uv-tool"
-pkg = "tomlq"
-bin = "tomlq"
 
 # ============================================================
 # Opt-in tools (不在 [dev] 依赖里，需显式安装)
