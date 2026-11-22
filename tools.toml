@@ -30,8 +30,8 @@ depends = ["build-base", "cargo-binstall"]
 # cargo 调用失败，所以它不能 allow_fail——那条错误在构建时才出现，离原因太远。
 "sccache@0.15.0" = "编译缓存"
 "wild-linker@0.9.0" = { desc = "快速链接器", allow_fail = true }
-"mise@2026.7.14" = "版本管理器"
-"uv@0.11.18" = "Python 包管理器"
+"mise@2026.11.12" = "版本管理器"
+"uv@0.13.9" = "Python 包管理器"
 "cargo-audit@0.22.1" = "依赖审计"
 "cargo-nextest@0.9.150" = "并行测试运行器"
 "bat@0.26.1" = "Cat 替代品"
