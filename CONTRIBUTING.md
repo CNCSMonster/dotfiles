@@ -70,10 +70,25 @@ GitHub Actions 共 4 个 workflow，覆盖改动验证与镜像发布：
 ## 修改后流程
 
 1. 本地修改 dotfiles 配置
-2. （首次克隆推荐）启用本地 git hook：`git config core.hooksPath .githooks`，提交时将自动触发轻量守卫（冲突标记检查、Shell 语法检查、manifest 架构矩阵解析，以及 `tool-installer` 源码改动后的单测与 vendor 同步检查）
+2. 本地 git hook 有**两套，二选一**，不要同时启用：
+   - 仓库自带的轻量守卫：`git config core.hooksPath .githooks`（冲突标记、Shell/Python 语法、`manifest.toml`/`tools.toml` 平台矩阵、`tool-installer` 单测与 vendor 同步）
+   - 本机已装的 pre-commit + 时段闸门：hooks 在 `.git/hooks/`，配置在 `.pre-commit-config.yaml`（已由 `.git/info/exclude` 排除），**不动** `core.hooksPath`
+   切换前先确认当前生效的是哪套：`git config --get core.hooksPath`（空 = 用 `.git/hooks/`）。设成 `.githooks` 会让 `.git/hooks/` 里的闸门失效。
 3. 运行 `./scripts/docker-build-test.sh --gh-token "$(gh auth token)"` 做完整 Docker 构建验证（可选但推荐）
 4. 按脚本提示运行镜像内验证命令，确保验证通过（`失败：0`）
 5. 提交并推送（runner direct CI 自动验证）
+
+### 临时文件与缓存（scratch 契约）
+
+工作区只放跟踪文件和明确白名单，验证/探针产物不要留在仓库里：
+
+- 一次性验证 → `mktemp -d` 在 `/tmp` 或 `$XDG_RUNTIME_DIR`，用 `trap 'rm -rf "$d"' EXIT` 清理
+- 可重建缓存（跨平台 lock 验证、npm/cargo cache 等）→ `$XDG_CACHE_HOME/<tool>`，按 age 清理，不要每份复制大二进制
+- 需跨会话状态 → `$XDG_STATE_HOME/<tool>`，白名单 + 限额
+
+本仓已知需保留的本地例外：`.tmp/supply-chain-watch/`（巡检状态与报告）、`.handoff/`；其余 `.tmp/*` 视为可清缓存。`git status --short` 看不到 ignored 文件，不等于它不占磁盘；新增 ignore 规则必须同时给出体积上限或检查手段。可用 `du -h -d 1 . | sort -h | tail -20` 定期盘点。
+
+---
 
 ## 自动化工具优先原则
 
