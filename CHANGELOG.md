@@ -128,7 +128,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - **apt 清单改用真实包 `7zip`**：Ubuntu 26.04 起 `p7zip-full` 变成虚拟包，`dpkg-query` 查不到记录，`system-packages` 第二次安装被误判未装（幂等性 CI 失败）；`7zip` 在 24.04/26.04 均提供 `7z` / `7za` / `7zr`
-- **mise / uv 钉版前移以覆盖仓库级安全公告**：mise 2026.7.14 → 2026.11.12（jdx/mise 6 条公告，3 条 high；OSV 未收录，只能扫仓库公告）、uv 0.11.18 → 0.13.9（内置 CA bundle 含被攻陷的 emSign 根证书，全生态问题）。`scripts/install-uv.sh` 的默认版本同步；python 锁的 generator 记录随本机 uv 升级后再按同参数重生成
+- **mise / uv 钉版前移以覆盖仓库级安全公告**：mise 2026.7.14 → 2026.11.12（jdx/mise 6 条公告，3 条 high；OSV 未收录，只能扫仓库公告）、uv 0.11.18 → 0.13.9（内置 CA bundle 含被攻陷的 emSign 根证书，全生态问题）。`scripts/install-uv.sh` 的默认版本同步；python 锁已用 uv 0.13.9 按同参数重生成（yq 的 argcomplete / pyyaml 随之更新）
 - **4 条 sha256 钉版与上游发布物不符**：neovim 的 macos.x86_64，以及 starship / yq / zellij 的
   linux.aarch64。在这些平台安装必然 Checksum mismatch 失败——不是安全事件（校验是 fail-closed），
   但 linux/aarch64 与 macos/x86_64 实际长期不可装。四个发布物已重新下载、逐个核对上游 release asset 的 sha256
