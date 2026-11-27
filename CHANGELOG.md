@@ -133,6 +133,14 @@ All notable changes to this project will be documented in this file.
   计划行标记判定改为 `^[+=!] `，纯 `=` 计划直接放行（无可备份对象）；无任何标记行（如报错输出）
   仍 fail-closed。新增离线回归用例 3：fake xd 只输出 `=` 行，断言退出 0、无"无法解析"、
   未弹覆盖确认、既有链接未被改动
+- **gh / uv 钉版前移以清掉本轮新披露的公告**：gh v2.102.0 → v2.106.0（cli/cli 7 条 low：
+  终端转义注入、C1 控制字符过滤遗漏、skill 同名仓库安装、Codespace Jupyter 暴露本地 cookie 等）；
+  四个平台 asset / bin 与 sha256 按上游 release 的 checksums.txt 逐个核对。
+  uv 0.13.9 → 0.13.10（GHSA-vjvj-3m3f-fgmm，ZIP data descriptor 与 central directory
+  压缩长度不一致可隐藏可执行内容）；公告结构化字段 `>0.13.10` 与正文/0.13.10 release notes 冲突，
+  已以上游 release「This release addresses GHSA-vjvj-3m3f-fgmm」为准。`scripts/install-uv.sh`
+  默认版本同步；python 锁已用 uv 0.13.10 按同参数重生成
+  （generator 头更新，tomlq 的 tomlkit 0.15.2 → 0.15.3）
 - **apt 清单改用真实包 `7zip`**：Ubuntu 26.04 起 `p7zip-full` 变成虚拟包，`dpkg-query` 查不到记录，`system-packages` 第二次安装被误判未装（幂等性 CI 失败）；`7zip` 在 24.04/26.04 均提供 `7z` / `7za` / `7zr`
 - **mise / uv 钉版前移以覆盖仓库级安全公告**：mise 2026.7.14 → 2026.11.12（jdx/mise 6 条公告，3 条 high；OSV 未收录，只能扫仓库公告）、uv 0.11.18 → 0.13.9（内置 CA bundle 含被攻陷的 emSign 根证书，全生态问题）。`scripts/install-uv.sh` 的默认版本同步；python 锁已用 uv 0.13.9 按同参数重生成（yq 的 argcomplete / pyyaml 随之更新）
 - **4 条 sha256 钉版与上游发布物不符**：neovim 的 macos.x86_64，以及 starship / yq / zellij 的

@@ -5,7 +5,7 @@
 set -eo pipefail
 
 # 固定版本号（与 tools.toml 同步）
-UV_VERSION="${TOOL_INSTALLER_VERSION:-0.13.9}"
+UV_VERSION="${TOOL_INSTALLER_VERSION:-0.13.10}"
 
 # 检查是否已安装相同版本
 if command -v uv &>/dev/null; then
