@@ -276,8 +276,10 @@ _backup_deploy_targets() {
     local targets=()
     # 有冲突时 dry-run 以非零退出，但计划行仍会输出（"<标记> <目标> -> <源> [原因]"）。
     # 因此不能用退出码判断成败；拿不到任何计划行才说明无法判断覆盖范围，此时中止覆盖。
+    # 标记有三种：+ 需创建、! 需覆盖、= 已正确。全部为 = 说明本次没有要覆盖的对象，
+    # 是合法计划（无需备份，直接放行）；只有完全没有标记行（如报错输出）才算解析失败。
     dry="$(xd deploy --dry-run 2>&1)" || true
-    if ! printf '%s\n' "$dry" | grep -qE '^[+!] '; then
+    if ! printf '%s\n' "$dry" | grep -qE '^[+=!] '; then
         echo "❌ 无法解析 xd deploy --dry-run 的部署计划，已中止覆盖式部署"
         return 1
     fi

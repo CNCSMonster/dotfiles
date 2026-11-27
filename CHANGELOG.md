@@ -127,6 +127,12 @@ All notable changes to this project will be documented in this file.
   - 回归测试 112 例全绿，已重建 `vendor/tool-installer`
 
 ### Fixed
+- **`setup.sh --deploy` 在链接全部已正确时误报失败**：`_backup_deploy_targets` 只把 `+`/`!` 开头的
+  dry-run 计划行视为可解析，全 `=`（already correct，无需覆盖）的合法计划被判为"无法解析"而返回 1，
+  导致跳过部署并 `exit 1`（生产 ali 现场：xd status 32/32 正常，setup.sh --deploy 却报错）。
+  计划行标记判定改为 `^[+=!] `，纯 `=` 计划直接放行（无可备份对象）；无任何标记行（如报错输出）
+  仍 fail-closed。新增离线回归用例 3：fake xd 只输出 `=` 行，断言退出 0、无"无法解析"、
+  未弹覆盖确认、既有链接未被改动
 - **apt 清单改用真实包 `7zip`**：Ubuntu 26.04 起 `p7zip-full` 变成虚拟包，`dpkg-query` 查不到记录，`system-packages` 第二次安装被误判未装（幂等性 CI 失败）；`7zip` 在 24.04/26.04 均提供 `7z` / `7za` / `7zr`
 - **mise / uv 钉版前移以覆盖仓库级安全公告**：mise 2026.7.14 → 2026.11.12（jdx/mise 6 条公告，3 条 high；OSV 未收录，只能扫仓库公告）、uv 0.11.18 → 0.13.9（内置 CA bundle 含被攻陷的 emSign 根证书，全生态问题）。`scripts/install-uv.sh` 的默认版本同步；python 锁已用 uv 0.13.9 按同参数重生成（yq 的 argcomplete / pyyaml 随之更新）
 - **4 条 sha256 钉版与上游发布物不符**：neovim 的 macos.x86_64，以及 starship / yq / zellij 的

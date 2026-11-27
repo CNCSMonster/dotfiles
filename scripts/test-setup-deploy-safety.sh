@@ -36,12 +36,21 @@ case "\${1:-}" in
           echo "error: 无法读取配置"
           exit 1
           ;;
+        clean)
+          # 全部已正确：只有 = 行，没有任何 +/!。这是合法计划，不是解析失败。
+          echo "# Deploy plan (1 条目)"
+          echo "= \$target -> \$PWD/a.toml [already correct]"
+          ;;
       esac
       exit 0
     fi
-    rm -f "\$target"
-    ln -s "\$PWD/a.toml" "\$target"
-    echo "Deploy: 1 succeeded, 0 skipped, 0 failed (planned 1)"
+    if [ "$mode" = "clean" ]; then
+      echo "Deploy: 0 succeeded, 1 skipped, 0 failed (planned 1)"
+    else
+      rm -f "\$target"
+      ln -s "\$PWD/a.toml" "\$target"
+      echo "Deploy: 1 succeeded, 0 skipped, 0 failed (planned 1)"
+    fi
     ;;
   --version|-V) echo "xd (fake)" ;;
   *) exit 0 ;;
@@ -84,6 +93,30 @@ case_unparseable_plan_aborts() {
   grep -q 'user-data' "$home/.config/x/a.toml" || fail "既有文件内容被改动"
 }
 
+# ── 用例 3：链接全部已正确（纯 = 计划）不得误报解析失败 ──
+# 生产现象（ali，2026-11-26）：xd status 32/32 已部署，xd deploy --dry-run 只有 = 行，
+# 旧解析只认 +/! → 误判"无法解析" → 跳过部署并 exit 1。
+case_all_correct() {
+  local home="$TMP/c3/home" fakebin="$TMP/c3/bin" repo="$TMP/c3/repo"
+  mkdir -p "$home/.config/x" "$repo"
+  printf 'repo-data\n' > "$repo/a.toml"
+  # 目标本来就是正确的 symlink
+  ln -s "$repo/a.toml" "$home/.config/x/a.toml"
+  make_fake_xd "$fakebin" clean
+
+  set +e
+  HOME="$home" PATH="$fakebin:$PATH" bash -c 'source "$1/setup.sh"; ensure_xdotter() { :; }; _confirm_deploy_overwrite() { : > "$2/confirm"; }; main --deploy' _ "$ROOT" "$TMP/c3" >"$TMP/c3/out" 2>&1
+  local rc=$?
+  set -e
+  [ "$rc" -eq 0 ] || fail "已全正确的部署应退出 0，实际 rc=$rc：$(cat "$TMP/c3/out")"
+  if grep -q '无法解析' "$TMP/c3/out"; then
+    fail "纯 = 计划被误判为无法解析：$(cat "$TMP/c3/out")"
+  fi
+  [ ! -e "$TMP/c3/confirm" ] || fail "无需覆盖却弹出了覆盖确认"
+  [ "$(readlink "$home/.config/x/a.toml")" = "$repo/a.toml" ] \
+    || fail "已正确的链接被改动"
+}
+
 case_no_tty() {
   local home="$TMP/c4/home" fakebin="$TMP/c4/bin"
   mkdir -p "$home/.config/x"
@@ -115,6 +148,7 @@ case_ci_explicit_approval() {
 
 case_backup_on_conflict
 case_unparseable_plan_aborts
+case_all_correct
 case_no_tty
 case_ci_explicit_approval
-echo "PASS: 已授权备份 / 无TTY保护 / CI 显式授权 / fail-closed"
+echo "PASS: 已授权备份 / 无TTY保护 / CI 显式授权 / fail-closed / 全正确计划退出0"
